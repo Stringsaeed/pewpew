@@ -450,7 +450,7 @@ const DRONE_MOVES: { readonly [P in DronePattern]: (w: World, i: number) => void
   sine: (w, i) => { const b = w.bodies; driveX(b, i, b.param[i] + 1.6 * sinT(2.4 * b.t[i])); b.vy[i] = -1.2; },
   zigzag: (w, i) => {
     const b = w.bodies;
-    const ph = 0.9 * b.t[i], f = ph - Math.floor(ph);
+    const ph = 0.5 * b.t[i], f = ph - Math.floor(ph);
     driveX(b, i, b.param[i] + 1.8 * (f < 0.5 ? 4 * f - 1 : 3 - 4 * f));
     b.vy[i] = -1.2;
   },
@@ -606,6 +606,9 @@ function transition(w: World, out: SimEvent[]): void {
   if (boss !== null && boss.hp <= 0) {
     out.push({ e: 'destroy', target: 'boss', x: boss.x, y: boss.y });
     w.score += BOSSES[boss.id].hp * BOSS_SCORE_PER_HP;
+    // The boss's bolts die with it, so the flight to the wormhole is a victory lap, not a cleanup.
+    const b = w.bodies;
+    for (let i = b.count - 1; i >= 0; i--) if (ARCHETYPES[b.kind[i] as Kind].role === 'enemyShot') remove(b, i);
     w.boss = null;
     w.wormholeY = boss.y;
     w.phase = { p: 'fly' };

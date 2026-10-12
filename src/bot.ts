@@ -10,6 +10,8 @@ const PATH_POINTS = Math.floor(HORIZON / PATH_DT) + 1;
 const MARGIN = 0.3;
 const BOLT_SPEED = 28;
 const FIRE_PERIOD = 0.2;
+// A rocket against the wall has one escape direction, so the bot prefers room on both sides.
+const CORNER = 0.04;
 
 const paths = new Float64Array(LANES.length * PATH_POINTS);
 
@@ -33,7 +35,7 @@ export const greedyBot: Bot = (w) => {
   let best: number = LANES[0], bestScore = Infinity;
   for (let l = 0; l < LANES.length; l++) {
     const lane = LANES[l];
-    let score = 0.02 * Math.abs(lane - p.x);
+    let score = 0.02 * Math.abs(lane - p.x) + CORNER * Math.abs(lane);
     for (let i = 0; i < b.count; i++) {
       const k = b.kind[i] as Kind;
       const a = ARCHETYPES[k];
