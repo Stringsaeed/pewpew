@@ -4,6 +4,8 @@ export const color = {
   panel: 'rgba(12,14,36,0.86)',
   text: '#e8ecff',
   dim: '#5b6385',
+  textDim: '#8a93b8',
+  threat: '#ff5a36',
   cyan: '#35f0ff',
   magenta: '#ff3d9a',
   yellow: '#ffd23f',

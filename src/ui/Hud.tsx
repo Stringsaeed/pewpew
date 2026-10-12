@@ -16,12 +16,12 @@ export function Hud({ hud, level, onPause, auto }: Props) {
     <View pointerEvents="box-none" style={styles.root}>
       <View pointerEvents="box-none" style={styles.row}>
         <View style={styles.left}>
-          <Text accessibilityLabel={`Score ${hud.score}`} style={styles.score}>{String(hud.score).padStart(6, '0')}</Text>
+          <Text maxFontSizeMultiplier={1.3} accessibilityLabel={`Score ${hud.score}`} style={styles.score}>{String(hud.score).padStart(6, '0')}</Text>
           <View accessible accessibilityLabel={`Lives ${hud.lives}`} style={styles.lives}>
             {Array.from({ length: hud.lives }, (_, i) => <Rocket key={i} />)}
           </View>
         </View>
-        <Text style={styles.level}>{`LV ${level}`}</Text>
+        <Text maxFontSizeMultiplier={1.3} style={styles.level}>{`LV ${level}`}</Text>
         {auto ? (
           <Pressable
             accessibilityRole="switch"
@@ -31,7 +31,7 @@ export function Hud({ hud, level, onPause, auto }: Props) {
             onPress={auto.onToggle}
             style={[styles.auto, auto.on && styles.autoOn]}
           >
-            <Text style={[styles.autoText, auto.on && styles.autoTextOn]}>AUTO</Text>
+            <Text maxFontSizeMultiplier={1.3} style={[styles.autoText, auto.on && styles.autoTextOn]}>AUTO</Text>
           </Pressable>
         ) : null}
         <Pressable
@@ -64,7 +64,7 @@ export function Hud({ hud, level, onPause, auto }: Props) {
 function Chip({ text, tint }: { readonly text: string; readonly tint: string }) {
   return (
     <View accessible accessibilityLabel={`${text} active`} style={[styles.chip, { borderColor: tint }]}>
-      <Text style={[styles.chipText, { color: tint }]}>{text}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={[styles.chipText, { color: tint }]}>{text}</Text>
     </View>
   );
 }
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   left: { gap: space.xs },
   score: { fontFamily: font.family, fontSize: font.score, fontWeight: '800', color: color.cyan, letterSpacing: 2 },
   lives: { flexDirection: 'row', gap: space.xs, height: 18 },
-  level: { fontFamily: font.family, fontSize: font.label, color: color.dim, letterSpacing: 2, paddingTop: space.sm },
+  level: { fontFamily: font.family, fontSize: 13, color: color.textDim, letterSpacing: 2, paddingTop: space.sm },
   pause: { width: 44, height: 44, borderRadius: 12, borderWidth: 2, borderColor: color.cyan, flexDirection: 'row', gap: 5, alignItems: 'center', justifyContent: 'center' },
   pausePressed: { backgroundColor: 'rgba(53,240,255,0.35)' },
   auto: { height: 44, paddingHorizontal: space.sm, borderRadius: 12, borderWidth: 2, borderColor: color.dim, justifyContent: 'center' },
