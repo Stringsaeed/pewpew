@@ -1,0 +1,39 @@
+
+> pewpew@1.0.0 verify
+> tsx scripts/verify-levels.ts
+
+lvl outcome  steps  secs scroll s  score stars lost dropped       hash replay  idle ms/step
+  1     won   2701  45.0     45.0    565     3    0       0   e9ab99ad     ok   won  0.0021
+  2     won   2807  46.8     46.8    920     3    0       0   8474e5d3     ok  lost  0.0005
+  3     won   2907  48.5     48.4    735     3    0       0   c734d52a     ok   won  0.0004
+  4     won   3000  50.0     50.0    295     3    0       0   c17f9730     ok  lost  0.0005
+  5     won   3089  51.5     51.5    950     3    0       0   cde7ff88     ok  lost  0.0004
+  6     won   3172  52.9     52.9   1085     3    0       0   992f20e3     ok  lost  0.0005
+  7     won   3250  54.2     54.2   1120     3    0       0   73aa66aa     ok  lost  0.0006
+  8     won   3365  56.1     56.1   1370     3    0       0   0ca6f70b     ok  lost  0.0005
+  9     won   3435  57.3     57.2   2140     3    0       0   568d238b     ok  lost  0.0005
+ 10     won   4428  73.8     59.0   2065     3    0       0   23c74b19     ok  lost  0.0016
+ 11     won   3638  60.6     60.6   2260     3    0       0   46d4709d     ok  lost  0.0006
+ 12     won   3732  62.2     62.2   3070     3    0       0   0dd82c4f     ok  lost  0.0006
+ 13     won   3822  63.7     63.7   1860     3    0       0   6ef7b3db     ok  lost  0.0006
+ 14     won   3907  65.1     65.1   2085     3    0       0   77c9d296     ok  lost  0.0006
+ 15     won   3989  66.5     66.5   3835     3    0       0   9a3e77a7     ok  lost  0.0007
+ 16     won   4101  68.3     68.3   2720     3    0       0   7d826566     ok  lost  0.0007
+ 17     won   4174  69.6     69.6   3465     3    0       0   05590e19     ok  lost  0.0007
+ 18     won   4277  71.3     71.3   3490     3    0       0   56b790cc     ok  lost  0.0008
+ 19     won   4376  72.9     72.9   4335     3    0       0   96c9d18c     ok  lost  0.0007
+ 20     won   6683 111.4     74.5   8110     3    0       0   f2031b32     ok  lost  0.0007
+ 21     won   4561  76.0     76.0   2470     3    0       0   6cd0a412     ok  lost  0.0008
+ 22     won   4648  77.5     77.5   4375     3    0       0   0084cdb7     ok  lost  0.0008
+ 23     won   4760  79.3     79.3   4365     3    0       0   2478d1a3     ok  lost  0.0008
+ 24     won   4840  80.7     80.7   4030     2    1       0   b45d9f7b     ok  lost  0.0008
+ 25     won   4945  82.4     82.4   5195     2    1       0   583831a0     ok  lost  0.0009
+ 26     won   5019  83.7     83.6   5795     2    1       0   f417cfa5     ok  lost  0.0009
+ 27     won   5117  85.3     85.3   4890     2    1       0   8fffeb22     ok  lost  0.0009
+ 28     won   5211  86.8     86.8   6140     2    1       0   8add2b3c     ok  lost  0.0009
+ 29     won   5302  88.4     88.4   7395     2    1       0   da4a3aef     ok  lost  0.0008
+ 30     won   7008 116.8     89.8   7375     2    1       0   51ab16b2     ok  lost  0.0009
+greedyBot lives lost per level, tier averages: 0.00 <= 0.00 <= 0.70
+step cost (replay, no bot): 0.0008 ms/step average over 126264 steps; worst level 0.0021 ms/step; budget 2 ms
+
+PASS: 30 levels, every level won by greedyBot with no dropped spawns, replay bit-identical
