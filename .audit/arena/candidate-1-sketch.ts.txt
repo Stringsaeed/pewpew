@@ -1,0 +1,379 @@
+// pewpew architecture sketch, candidate 1. One file for review; each `// ── <path>` banner is a real module.
+// Pure modules (levels, sim, bot, flow, sound, save's pure half) import each other with `.ts` specifiers and
+// `erasableSyntaxOnly`, so `node scripts/verify-levels.ts` runs on Node 26 with no build step.
+const NI = (): never => { throw new Error('not implemented'); };
+
+// ── src/levels.ts: every gameplay number. Data plus derivations; no logic that reads a clock or RNG.
+
+export const Kind = {
+  Asteroid: 0, Fragment: 1, Mine: 2, Drone: 3, Well: 4,
+  Crystal: 5, Shield: 6, Rapid: 7, Bolt: 8, EnemyBolt: 9,
+} as const;
+export type Kind = (typeof Kind)[keyof typeof Kind];
+export type PickupKind = typeof Kind.Crystal | typeof Kind.Shield | typeof Kind.Rapid;
+
+/** How a body interacts. Collision rules in sim switch on role, never on kind. */
+export type Role = 'hazard' | 'pickup' | 'playerShot' | 'enemyShot' | 'field';
+
+export interface Archetype {
+  readonly role: Role;
+  readonly radius: number;
+  /** Bolt hits to destroy; 0 = cannot be shot (mines, wells, pickups). */
+  readonly hp: number;
+  readonly score: number;
+  readonly splitInto: { readonly kind: Kind; readonly count: number } | null;
+}
+export const ARCHETYPES: { readonly [K in Kind]: Archetype } = {
+  [Kind.Asteroid]:  { role: 'hazard', radius: 0.7, hp: 3, score: 50, splitInto: { kind: Kind.Fragment, count: 3 } },
+  [Kind.Fragment]:  { role: 'hazard', radius: 0.3, hp: 1, score: 10, splitInto: null },
+  [Kind.Mine]:      { role: 'hazard', radius: 0.45, hp: 0, score: 0, splitInto: null },
+  [Kind.Drone]:     { role: 'hazard', radius: 0.5, hp: 2, score: 100, splitInto: null },
+  [Kind.Well]:      { role: 'field', radius: 0.6, hp: 0, score: 0, splitInto: null },
+  [Kind.Crystal]:   { role: 'pickup', radius: 0.4, hp: 0, score: 25, splitInto: null },
+  [Kind.Shield]:    { role: 'pickup', radius: 0.45, hp: 0, score: 0, splitInto: null },
+  [Kind.Rapid]:     { role: 'pickup', radius: 0.45, hp: 0, score: 0, splitInto: null },
+  [Kind.Bolt]:      { role: 'playerShot', radius: 0.12, hp: 1, score: 0, splitInto: null },
+  [Kind.EnemyBolt]: { role: 'enemyShot', radius: 0.15, hp: 1, score: 0, splitInto: null },
+};
+
+export type DronePattern = 'sine' | 'zigzag' | 'dive' | 'orbit';
+export type BossId = 'warden' | 'hive' | 'core';
+export type BossAttack =
+  | { readonly a: 'spread'; readonly bolts: number; readonly arcDeg: number }
+  | { readonly a: 'aimed'; readonly bolts: number }
+  | { readonly a: 'mines'; readonly count: number }
+  | { readonly a: 'drones'; readonly count: number; readonly pattern: DronePattern };
+export interface BossSpec {
+  readonly hp: number;
+  readonly sweepSpeed: number;
+  readonly attackEvery: number; // seconds
+  readonly attacks: readonly BossAttack[]; // cycled in order
+}
+export const BOSSES: { readonly [B in BossId]: BossSpec } = {
+  warden: { hp: 60, sweepSpeed: 1.5, attackEvery: 1.6, attacks: [{ a: 'spread', bolts: 5, arcDeg: 60 }, { a: 'mines', count: 3 }] },
+  hive: { hp: 110, sweepSpeed: 2.0, attackEvery: 1.3, attacks: [{ a: 'drones', count: 3, pattern: 'orbit' }, { a: 'aimed', bolts: 3 }] },
+  core: { hp: 180, sweepSpeed: 2.6, attackEvery: 1.0, attacks: [{ a: 'spread', bolts: 9, arcDeg: 120 }, { a: 'aimed', bolts: 5 }, { a: 'mines', count: 4 }] },
+};
+
+export type LevelNumber =
+  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15
+  | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30;
+
+export interface LevelSpec {
+  readonly n: LevelNumber;
+  /** Fixed per level, so players and the verifier fly the identical compiled track. */
+  readonly seed: number;
+  readonly length: number;        // world units to the wormhole (or boss arena)
+  readonly scroll: number;        // units per second
+  readonly density: number;       // hazards per 100 units
+  readonly mix: { readonly asteroid: number; readonly mine: number; readonly drone: number }; // weights
+  readonly drones: readonly DronePattern[];
+  readonly droneFireRate: number; // shots per second per drone; 0 = drones hold fire
+  readonly wells: number;         // count over the whole track
+  readonly wellPull: number;      // lateral units/s^2 at the core
+  readonly pickups: { readonly crystal: number; readonly shield: number; readonly rapid: number }; // per 100 units
+  readonly boss: BossId | null;   // non-null exactly on 10, 20, 30 (verifier asserts)
+}
+
+export const LEVELS: readonly LevelSpec[] = [
+  { n: 1, seed: 0x9e3779b9, length: 600, scroll: 6, density: 2.5, mix: { asteroid: 1, mine: 0, drone: 0 }, drones: [],
+    droneFireRate: 0, wells: 0, wellPull: 0, pickups: { crystal: 4, shield: 0.3, rapid: 0.3 }, boss: null },
+  // TODO rows 2..9
+  { n: 10, seed: 0x85ebca6b, length: 900, scroll: 8, density: 4.5, mix: { asteroid: 3, mine: 1, drone: 1 }, drones: ['sine'],
+    droneFireRate: 0.2, wells: 1, wellPull: 3, pickups: { crystal: 4, shield: 0.4, rapid: 0.4 }, boss: 'warden' },
+  // TODO rows 11..30
+];
+
+type NumericKeys<T> = { [K in keyof T]: T[K] extends number ? K : never }[keyof T];
+/** Ramp policy per numeric column. Mapped over LevelSpec so a new numeric column fails the build until classified. */
+export const RAMP: { readonly [K in Exclude<NumericKeys<LevelSpec>, 'n' | 'seed'>]: 'nondecreasing' | 'free' } = {
+  length: 'nondecreasing', scroll: 'nondecreasing', density: 'nondecreasing',
+  droneFireRate: 'nondecreasing', wells: 'nondecreasing', wellPull: 'nondecreasing',
+};
+
+export const levelSpec = (n: LevelNumber): LevelSpec => LEVELS[n - 1] ?? NI();
+export const tierOf = (n: LevelNumber): 1 | 2 | 3 => (n <= 10 ? 1 : n <= 20 ? 2 : 3);
+
+// ── src/sim.ts: the whole game rule set. Imports only levels.ts. Fixed step, seeded, no Math.random/sin/cos/pow
+// (lint-banned in this file: engine trig differs in the last ulp between Hermes and V8, which would make the
+// verifier prove a slightly different game than the one on the phone). Uses polynomial sinT/cosT instead.
+
+export const STEP = 1 / 60;
+export const TRACK_HALF_WIDTH = 4.5;
+export const MAX_BODIES = 512;
+
+/** One input per step. targetX: world x the rocket steers toward. null: finger up, the rocket coasts and wells pull it. */
+export interface Input { readonly targetX: number | null }
+export const COAST: Input = { targetX: null };
+/** Relative drag: anchorX is the rocket x when the finger went down; dxFrac is finger dx / screen width. */
+export function dragInput(anchorX: number, dxFrac: number): Input { return NI(); }
+
+/** Struct-of-arrays pool, dense in [0, count). Removal swaps the last body in, so indices are not identities. */
+export interface Bodies {
+  count: number;
+  readonly kind: Uint8Array;
+  readonly variant: Uint8Array; // mesh variant for asteroids; DronePattern index for drones
+  readonly x: Float32Array; readonly y: Float32Array;
+  readonly px: Float32Array; readonly py: Float32Array; // previous step, for render interpolation
+  readonly vx: Float32Array; readonly vy: Float32Array;
+  readonly rot: Float32Array; readonly spin: Float32Array;
+  readonly t: Float32Array;     // per-body clock: pattern phase, fire timer
+  readonly param: Float32Array; // pattern anchor x for drones, pull for wells
+  readonly hp: Int16Array;
+}
+
+export interface Player {
+  x: number; px: number; vx: number;
+  y: number; py: number;
+  lives: 0 | 1 | 2 | 3;
+  shield: boolean;
+  rapidUntil: number;  // tick
+  invulnUntil: number; // tick
+  fireAt: number;      // tick
+}
+export interface Boss { readonly id: BossId; x: number; px: number; y: number; hp: number; attack: number; attackAt: number }
+
+export type Stars = 1 | 2 | 3;
+/** Run phase. 'won' and 'lost' are terminal: step() on them is a no-op that emits nothing. */
+export type Phase =
+  | { readonly p: 'fly' }
+  | { readonly p: 'boss' }
+  | { readonly p: 'won'; readonly stars: Stars }
+  | { readonly p: 'lost' };
+
+export interface Spawn { readonly y: number; readonly x: number; readonly kind: Kind; readonly variant: number; readonly param: number }
+/** Compiled from (LevelSpec, seed) once at createWorld, sorted by y. */
+export type Track = readonly Spawn[];
+
+export interface World {
+  readonly spec: LevelSpec;
+  readonly track: Track;
+  cursor: number;           // next Spawn index
+  tick: number;
+  rng: number;              // mulberry32 state; the only randomness source
+  phase: Phase;
+  score: number;
+  wormholeY: number | null; // null while a boss lives
+  readonly player: Player;
+  readonly bodies: Bodies;
+  boss: Boss | null;
+  dropped: number;          // spawns refused at MAX_BODIES; verifier asserts 0
+}
+
+type Column = ArrayLike<number>; // readonly index signature: renderer and bots cannot write
+type View<T> = T extends Float32Array | Uint8Array | Int16Array ? Column
+  : T extends object ? { readonly [K in keyof T]: View<T[K]> } : T;
+/** What the renderer, HUD, and bots get. Mutation does not typecheck. */
+export type WorldView = View<World>;
+
+export type Target = Kind | 'boss';
+export type SimEvent =
+  | { readonly e: 'start'; readonly level: LevelNumber }
+  | { readonly e: 'fire'; readonly x: number; readonly y: number; readonly rapid: boolean }
+  | { readonly e: 'enemyFire'; readonly x: number; readonly y: number }
+  | { readonly e: 'hit'; readonly target: Target; readonly x: number; readonly y: number }     // shot landed, target survived
+  | { readonly e: 'destroy'; readonly target: Target; readonly x: number; readonly y: number } // includes mine detonation
+  | { readonly e: 'pickup'; readonly kind: PickupKind; readonly x: number; readonly y: number }
+  | { readonly e: 'shieldBlock'; readonly x: number; readonly y: number }
+  | { readonly e: 'playerHit'; readonly x: number; readonly y: number; readonly lives: number }
+  | { readonly e: 'bossEnter'; readonly boss: BossId }
+  | { readonly e: 'wormholeOpen'; readonly y: number }
+  | { readonly e: 'won'; readonly score: number; readonly stars: Stars }
+  | { readonly e: 'lost'; readonly score: number };
+export type EventName = SimEvent['e'];
+export type EventOf<E extends EventName> = Extract<SimEvent, { e: E }>;
+
+export function createWorld(n: LevelNumber): World { return NI(); }
+
+/**
+ * Advance one STEP. Appends events to `out` (caller clears it once per rendered frame, after several steps).
+ * Order: snapshot px/py → steer + well pull → scroll (held in 'boss') → spawn from track → fire → move bodies
+ * by kind → collide by role → despawn behind camera → phase transition.
+ */
+export function step(w: World, input: Input, out: SimEvent[]): void { NI(); }
+
+export interface Hud {
+  readonly score: number; readonly lives: number; readonly progress: number; // 0..100 integer
+  readonly shield: boolean; readonly rapid: boolean; readonly bossHp: number | null; // 0..100
+}
+/** Returns `prev` itself when nothing visible changed, so React's setState bails out at 60 fps. */
+export function hudOf(w: WorldView, prev: Hud | null): Hud { return NI(); }
+
+export type Bot = (w: WorldView) => Input;
+export interface RunResult {
+  readonly outcome: 'won' | 'lost' | 'timeout';
+  readonly steps: number; readonly score: number; readonly stars: 0 | Stars;
+  readonly hash: number;         // FNV-1a over final world state
+  readonly dropped: number;
+  readonly inputs: Float32Array; // one per step, NaN = coast; feed to replay()
+}
+/** Headless run; the same createWorld/step the app uses. */
+export function simulate(n: LevelNumber, bot: Bot, maxSteps?: number): RunResult { return NI(); }
+export function replay(n: LevelNumber, inputs: Float32Array): RunResult { return NI(); }
+
+function compileTrack(spec: LevelSpec): Track { return NI(); } // TODO stratified placement: hazards by mix weights, wells spaced evenly, guarantee a 1.6-unit gap per row
+function sinT(x: number): number { return NI(); }             // range-reduced odd polynomial; deterministic across engines
+
+// ── src/bot.ts: pure. Used by the verifier, and by the title screen as an attract-mode demo.
+
+/** Looks 3 s ahead, scores 9 lanes by threat (hazards, enemy bolts, well pull) minus crystal value, steers to the best. */
+export const greedyBot: Bot = (w) => NI();
+export const idleBot: Bot = () => COAST;
+
+// ── src/flow.ts: screen state machine. Pure, immutable; the only place screens change.
+
+export type Screen =
+  | { readonly s: 'title' }
+  | { readonly s: 'levels' }
+  | { readonly s: 'settings'; readonly back: 'title' | 'levels' | 'paused'; readonly level: LevelNumber | null }
+  | { readonly s: 'play'; readonly level: LevelNumber; readonly attempt: number } // (level, attempt) keys the World
+  | { readonly s: 'paused'; readonly level: LevelNumber; readonly attempt: number }
+  | { readonly s: 'complete'; readonly level: LevelNumber; readonly score: number; readonly stars: Stars }
+  | { readonly s: 'gameover'; readonly level: LevelNumber; readonly score: number };
+export type Action =
+  | { readonly a: 'start' } | { readonly a: 'pick'; readonly level: LevelNumber }
+  | { readonly a: 'pause' } | { readonly a: 'resume' } | { readonly a: 'quit' }
+  | { readonly a: 'retry' } | { readonly a: 'next' } | { readonly a: 'settings' } | { readonly a: 'back' }
+  | { readonly a: 'ended'; readonly result: EventOf<'won'> | EventOf<'lost'> };
+/** Actions invalid for the current screen return `s` unchanged, so duplicate dispatches are harmless. */
+export function reduce(s: Screen, act: Action, save: Save): Screen { return NI(); }
+
+// ── src/save.ts: one AsyncStorage key, JSON. Unlock state is derived, never stored.
+
+export interface LevelRecord { readonly best: number; readonly stars: 0 | Stars }
+export interface Save {
+  readonly v: 1;
+  readonly levels: readonly LevelRecord[]; // index n-1, length 30 (parseSave guarantees)
+  readonly music: boolean; readonly sfx: boolean;
+}
+export const SAVE_KEY = 'pewpew/save/v1';
+export function parseSave(raw: unknown): Save { return NI(); }                       // bad or missing → fresh save
+export function recordRun(s: Save, n: LevelNumber, score: number, stars: Stars): Save { return NI(); } // max-merge: idempotent
+export function isUnlocked(s: Save, n: LevelNumber): boolean { return NI(); }        // n === 1 || stars[n-2] > 0
+export async function loadSave(): Promise<Save> { return NI(); }
+export async function writeSave(s: Save): Promise<void> { return NI(); }
+
+// ── src/sound.ts: all music and SFX as data. Interpreted by audio.ts; nothing else reads it.
+
+export type Wave = 'square' | 'sawtooth' | 'triangle' | 'sine' | 'noise';
+export interface Env { readonly a: number; readonly d: number; readonly s: number; readonly r: number } // seconds; s is level 0..1
+export interface Patch {
+  readonly wave: Wave; readonly gain: number; readonly env: Env;
+  readonly detune?: number;                                    // cents; adds a second oscillator
+  readonly filter?: { readonly type: 'lowpass' | 'highpass' | 'bandpass'; readonly hz: number; readonly q: number; readonly envHz?: number };
+  readonly sweep?: { readonly semis: number; readonly time: number }; // pitch drop for lasers and kicks
+}
+export const PATCHES = {
+  lead: { wave: 'square', gain: 0.18, env: { a: 0.005, d: 0.08, s: 0.5, r: 0.06 }, detune: 7 },
+  bass: { wave: 'sawtooth', gain: 0.22, env: { a: 0.005, d: 0.1, s: 0.6, r: 0.05 }, filter: { type: 'lowpass', hz: 600, q: 4, envHz: 900 } },
+  kick: { wave: 'sine', gain: 0.6, env: { a: 0.001, d: 0.18, s: 0, r: 0.02 }, sweep: { semis: -24, time: 0.08 } },
+  hat: { wave: 'noise', gain: 0.12, env: { a: 0.001, d: 0.04, s: 0, r: 0.01 }, filter: { type: 'highpass', hz: 7000, q: 1 } },
+  zap: { wave: 'square', gain: 0.15, env: { a: 0.001, d: 0.07, s: 0, r: 0.02 }, sweep: { semis: -18, time: 0.07 } },
+  boom: { wave: 'noise', gain: 0.5, env: { a: 0.001, d: 0.45, s: 0, r: 0.1 }, filter: { type: 'lowpass', hz: 1200, q: 1, envHz: -1000 } },
+  chime: { wave: 'triangle', gain: 0.25, env: { a: 0.002, d: 0.2, s: 0.2, r: 0.2 } },
+} as const satisfies Record<string, Patch>;
+export type PatchId = keyof typeof PATCHES;
+
+export interface SfxNote { readonly at: number; readonly midi: number; readonly dur: number }
+export interface Sfx { readonly patch: PatchId; readonly notes: readonly SfxNote[]; readonly maxVoices: number }
+export type SfxId = 'laser' | 'hit' | 'explode' | 'pickup' | 'shield' | 'complete' | 'gameover' | 'tap';
+export declare const SFX: { readonly [S in SfxId]: Sfx }; // TODO data
+
+export type MusicId = 'tier1' | 'tier2' | 'tier3' | 'boss';
+/** One token per 16th note: "C4" strike, "-" hold, "." rest. All tracks of a song have equal token counts (unit-tested). */
+export interface Voice { readonly patch: PatchId; readonly steps: string }
+export interface Song { readonly bpm: number; readonly voices: readonly Voice[] }
+export declare const SONGS: { readonly [M in MusicId]: Song }; // TODO data
+
+/** Exhaustive over SimEvent: adding an event fails the build here until it is given a sound (or null). */
+export const EVENT_SFX: { readonly [E in EventName]: (ev: EventOf<E>) => SfxId | null } = {
+  start: () => null, fire: () => 'laser', enemyFire: () => null, hit: () => 'hit', destroy: () => 'explode',
+  pickup: (ev) => (ev.kind === Kind.Shield ? 'shield' : 'pickup'), shieldBlock: () => 'shield', playerHit: () => 'explode',
+  bossEnter: () => null, wormholeOpen: () => 'pickup', won: () => 'complete', lost: () => 'gameover',
+};
+
+// ── src/audio.ts: the one synth engine. Owns the AudioContext, a noise buffer, voice caps, and a 25 ms
+// lookahead sequencer (setInterval) scheduling 120 ms ahead on ctx.currentTime. Music state has one owner: here.
+
+export interface AudioEngine {
+  /** Every SimEvent of the frame. SFX via EVENT_SFX; music: start → tier song, bossEnter → boss, won/lost → stop. */
+  events(evs: readonly SimEvent[]): void;
+  /** Out-of-run cues from menus. */
+  ui(cue: 'tap' | 'menu-music' | 'silence'): void;
+  mix(m: { readonly music: boolean; readonly sfx: boolean }): void;
+  /** Pause / app background: suspends the context and the sequencer clock together. */
+  active(on: boolean): void;
+}
+export function createAudio(): AudioEngine { return NI(); } // sets AudioManager session options before new AudioContext()
+
+// ── src/meshes.gen.ts: GENERATED by scripts/gen-meshes.ts. Flat-shaded: vertices unshared, one normal per face.
+
+export interface MeshData {
+  readonly positions: Float32Array; // xyz
+  readonly normals: Float32Array;   // xyz, face normal repeated per vertex
+  readonly colors: Float32Array;    // rgb, neon palette
+  readonly indices: Uint16Array;
+  readonly radius: number;          // bounding radius, for the renderer's scale = archetype radius / mesh radius
+}
+export type MeshId =
+  | 'rocket' | 'asteroid0' | 'asteroid1' | 'asteroid2' | 'asteroid3' | 'fragment0' | 'fragment1'
+  | 'mine' | 'drone' | 'well' | 'crystal' | 'shield' | 'rapid' | 'wormhole' | 'warden' | 'hive' | 'core';
+export declare const MESHES: { readonly [M in MeshId]: MeshData };
+
+// ── scripts/gen-meshes.ts: `node scripts/gen-meshes.ts` rewrites src/meshes.gen.ts byte-identically for the same code.
+//   const BUILDERS = { rocket: (rng) => lathe(ROCKET_PROFILE, 12, PALETTE.hull), asteroid0: (rng) => icosphere(2, 0.25, rng), ... }
+//   satisfies Record<string, (rng: () => number) => RawMesh>; MeshId union is emitted from Object.keys(BUILDERS).
+//   Primitives: lathe(profile, segments, color), icosphere(subdiv, noise, rng), prism, spikes; flatten(raw) → MeshData.
+
+// ── src/render.ts: reads WorldView, owns GPU objects and particles. WGSL inline. Never imports React.
+
+/** Kind → look. Exhaustive over Kind; 'glow' kinds draw as additive billboards, not meshes. */
+export type Look =
+  | { readonly draw: 'mesh'; readonly meshes: readonly MeshId[]; readonly tint: readonly [number, number, number] } // meshes[variant % len]
+  | { readonly draw: 'glow'; readonly size: number; readonly rgba: readonly [number, number, number, number] };
+export declare const LOOK: { readonly [K in Kind]: Look };
+
+/**
+ * Three pipelines, drawn in order into one pass with a depth buffer:
+ *  stars  fullscreen triangle, procedural hashed star layers parallaxed by camera y uniform. No buffers.
+ *  mesh   one shared vertex+index buffer holding every MeshData (interleaved pos|normal|color, 36 B), plus one
+ *         instance buffer (x, y, rot, scale, tint rgb, flash = 8 f32). Per frame: counting-sort live bodies by MeshId,
+ *         one writeBuffer, then drawIndexed(indexCount, n, firstIndex, baseVertex, firstInstance) per non-empty mesh.
+ *         Rocket, boss, and wormhole are appended from player/boss/wormholeY scalars. Lambert + emissive vertex color.
+ *  glow   instanced quads, additive blend, no depth write: bolts, exhaust, explosion particles, shield bubble.
+ * Particles live here (CPU SoA, 2048 cap) and are spawned from SimEvents; the sim never knows they exist.
+ */
+export interface Renderer {
+  /** world null = menu backdrop (stars only). alpha = leftover accumulator / STEP, for interpolation. */
+  frame(world: WorldView | null, events: readonly SimEvent[], alpha: number, dtSec: number): void;
+  dispose(): void;
+}
+/** Resizes the backing store from clientWidth × PixelRatio inside frame(); calls ctx.present() after submit. */
+export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext, format: GPUTextureFormat): Renderer { return NI(); }
+
+// ── App.tsx: the shell. Owns screen (useReducer over flow.reduce), save, audio, renderer, the World, and the loop.
+// Input → pixels is App.tsx (touch → Input, tick) → sim.ts (step) → render.ts (frame).
+
+export interface Loop {
+  world: World | null;  // replaced when (level, attempt) of the 'play' screen changes; null on menus
+  input: Input;         // written by the touch responder, read once per step
+  acc: number;
+  last: number;
+  readonly events: SimEvent[]; // reused buffer, cleared after renderer and audio consume it
+}
+/**
+ * rAF body. stepping = screen.s === 'play'.
+ *   acc += min(dt, 0.1); while (stepping && acc >= STEP) { step(world, input, events); acc -= STEP }
+ *   renderer.frame(world, events, acc / STEP, dt); audio.events(events)
+ *   for ev of events: won|lost → onEnded(ev)  (dispatch {a:'ended'}, writeSave(recordRun(...)))
+ *   events.length = 0; setHud(h => hudOf(world, h))
+ */
+export function tick(l: Loop, now: number, stepping: boolean, r: Renderer, a: AudioEngine,
+  onEnded: (ev: EventOf<'won'> | EventOf<'lost'>) => void): void { NI(); }
+
+// ── scripts/verify-levels.ts: CI proof of "30 levels". Exit 1 on any failure; prints a per-level stats table.
+//   assert LEVELS.length === 30, LEVELS[i].n === i + 1, (boss !== null) === (n % 10 === 0)
+//   for each RAMP column marked 'nondecreasing': LEVELS[i][col] >= LEVELS[i-1][col]; boss hp 10 < 20 < 30
+//   for n in 1..30: r = simulate(n, greedyBot); assert r.outcome === 'won' && r.dropped === 0
+//                   assert replay(n, r.inputs).hash === r.hash   (determinism from the input stream alone)
+//   difficulty sanity: idleBot loses every level >= 4; greedyBot's lives lost per tier is nondecreasing.

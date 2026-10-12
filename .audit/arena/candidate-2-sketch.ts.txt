@@ -1,0 +1,297 @@
+// Candidate shape only. Each function body is intentionally unimplemented.
+
+export type Brand<T, Name extends string> = T & { readonly __brand: Name };
+export type LevelNumber = Brand<number, "LevelNumber">;
+export type Seed = Brand<number, "Seed">;
+export type Tick = Brand<number, "Tick">;
+export type Q15 = Brand<number, "Q15">;
+export type EntityId = Brand<number, "EntityId">;
+export type Score = Brand<number, "Score">;
+export type Stars = 0 | 1 | 2 | 3;
+export type MusicTier = "tier-1" | "tier-2" | "tier-3" | "boss";
+export type MeshId = "rocket" | "asteroid" | "fragment" | "drone" | "mine" | "crystal" | "shield" | "rapid-fire" | "gravity-well" | "boss-1" | "boss-2" | "boss-3" | "laser" | "enemy-shot" | "wormhole";
+export type HazardKind = "asteroid" | "mine" | "drone" | "gravity-well";
+export type PickupKind = "crystal" | "shield" | "rapid-fire";
+export type DronePatternId = "sine" | "dive" | "cross" | "escort";
+export type BossId = "warden" | "splitter" | "singularity";
+export const ENTITY_KIND = { rocket: 1, asteroid: 2, fragment: 3, mine: 4, drone: 5, gravityWell: 6, crystal: 7, shield: 8, rapidFire: 9, laser: 10, enemyShot: 11, boss1: 12, boss2: 13, boss3: 14, wormhole: 15 } as const;
+export type EntityKind = typeof ENTITY_KIND[keyof typeof ENTITY_KIND];
+export const FIXED_DT_MS = 1000 / 60;
+
+export type ScreenState =
+  | { readonly screen: "title" }
+  | { readonly screen: "level-select" }
+  | { readonly screen: "settings"; readonly returnTo: "title" | "level-select" }
+  | { readonly screen: "gameplay"; readonly level: LevelNumber; readonly seed: Seed; readonly phase: "running" | "paused" }
+  | { readonly screen: "level-complete"; readonly level: LevelNumber; readonly score: Score; readonly stars: Exclude<Stars, 0> }
+  | { readonly screen: "game-over"; readonly level: LevelNumber; readonly score: Score };
+
+export type FlowEvent =
+  | { readonly type: "show-levels" }
+  | { readonly type: "show-settings" }
+  | { readonly type: "back" }
+  | { readonly type: "choose-level"; readonly level: LevelNumber; readonly seed: Seed }
+  | { readonly type: "pause" }
+  | { readonly type: "resume" }
+  | { readonly type: "retry"; readonly seed: Seed }
+  | { readonly type: "sim-won"; readonly score: Score; readonly stars: Exclude<Stars, 0> }
+  | { readonly type: "sim-lost"; readonly score: Score }
+  | { readonly type: "next-level"; readonly seed: Seed }
+  | { readonly type: "quit-run" };
+
+export type FlowEffect =
+  | { readonly type: "start-run"; readonly level: LevelNumber; readonly seed: Seed; readonly musicTier: Exclude<MusicTier, "boss"> }
+  | { readonly type: "stop-run" }
+  | { readonly type: "save-result"; readonly level: LevelNumber; readonly score: Score; readonly stars: Stars }
+  | { readonly type: "ui-sound"; readonly cue: "tap" };
+
+export interface FlowTransition {
+  readonly state: ScreenState;
+  readonly effects: readonly FlowEffect[];
+}
+
+export function reduceFlow(_state: ScreenState, _event: FlowEvent, _campaign: CampaignSpec): FlowTransition {
+  throw new Error("not implemented");
+}
+
+export interface Weighted<T> { readonly value: T; readonly weight: number }
+export interface StarThresholds { readonly one: number; readonly two: number; readonly three: number }
+export interface BossPhaseSpec {
+  readonly atHealthFraction: number;
+  readonly movement: DronePatternId;
+  readonly weaponSequence: string;
+  readonly speedMultiplier: number;
+}
+export interface BossSpec {
+  readonly id: BossId;
+  readonly mesh: Extract<MeshId, `boss-${number}`>;
+  readonly hitPoints: number;
+  readonly collisionRadius: number;
+  readonly score: number;
+  readonly phases: readonly BossPhaseSpec[];
+}
+export interface LevelSpec {
+  readonly number: LevelNumber;
+  readonly musicTier: Exclude<MusicTier, "boss">;
+  readonly scrollSpeed: number;
+  readonly hazardDensity: number;
+  readonly hazardMix: readonly Weighted<HazardKind>[];
+  readonly dronePatterns: readonly Weighted<DronePatternId>[];
+  readonly gravityWellCount: number;
+  readonly trackLength: number;
+  readonly stars: StarThresholds;
+  readonly boss?: BossSpec;
+}
+export interface MonotoneRule {
+  readonly field: "scrollSpeed" | "hazardDensity" | "gravityWellCount" | "trackLength" | "boss.hitPoints";
+  readonly direction: "nondecreasing";
+  readonly scope: "campaign" | "within-tier" | "bosses";
+}
+type TupleOf<T, N extends number, A extends readonly T[] = readonly []> =
+  A["length"] extends N ? A : TupleOf<T, N, readonly [...A, T]>;
+export interface CampaignSpec {
+  readonly bossCadence: 10;
+  readonly monotoneRules: readonly MonotoneRule[];
+  readonly levels: TupleOf<LevelSpec, 30>;
+}
+
+export const MIX = {
+  rock: [{ value: "asteroid", weight: 1 }],
+  mines: [{ value: "asteroid", weight: 3 }, { value: "mine", weight: 1 }],
+  drones: [{ value: "asteroid", weight: 3 }, { value: "mine", weight: 1 }, { value: "drone", weight: 2 }],
+  gravity: [{ value: "asteroid", weight: 3 }, { value: "mine", weight: 2 }, { value: "drone", weight: 2 }, { value: "gravity-well", weight: 1 }],
+} as const satisfies Record<string, readonly Weighted<HazardKind>[]>;
+export const PATTERNS = {
+  easy: [{ value: "sine", weight: 1 }],
+  medium: [{ value: "sine", weight: 2 }, { value: "dive", weight: 1 }, { value: "cross", weight: 1 }],
+  hard: [{ value: "sine", weight: 1 }, { value: "dive", weight: 2 }, { value: "cross", weight: 2 }, { value: "escort", weight: 1 }],
+} as const satisfies Record<string, readonly Weighted<DronePatternId>[]>;
+
+export function level(_number: number, _tier: 1 | 2 | 3, _speed: number, _density: number, _mix: readonly Weighted<HazardKind>[], _patterns: readonly Weighted<DronePatternId>[], _wells: number, _length: number, _stars: readonly [number, number, number], _boss?: BossSpec): LevelSpec {
+  throw new Error("not implemented");
+}
+export function defineCampaign(_spec: CampaignSpec): CampaignSpec {
+  throw new Error("not implemented");
+}
+
+const BOSS_1: BossSpec = { id: "warden", mesh: "boss-1", hitPoints: 120, collisionRadius: 2.4, score: 5000, phases: [{ atHealthFraction: 1, movement: "sine", weaponSequence: "warden-a", speedMultiplier: 1 }, { atHealthFraction: 0.4, movement: "dive", weaponSequence: "warden-b", speedMultiplier: 1.25 }] };
+const BOSS_2: BossSpec = { id: "splitter", mesh: "boss-2", hitPoints: 240, collisionRadius: 2.8, score: 10000, phases: [{ atHealthFraction: 1, movement: "cross", weaponSequence: "splitter-a", speedMultiplier: 1 }, { atHealthFraction: 0.5, movement: "escort", weaponSequence: "splitter-b", speedMultiplier: 1.35 }] };
+const BOSS_3: BossSpec = { id: "singularity", mesh: "boss-3", hitPoints: 400, collisionRadius: 3.2, score: 20000, phases: [{ atHealthFraction: 1, movement: "escort", weaponSequence: "singularity-a", speedMultiplier: 1 }, { atHealthFraction: 0.6, movement: "cross", weaponSequence: "singularity-b", speedMultiplier: 1.3 }, { atHealthFraction: 0.25, movement: "dive", weaponSequence: "singularity-c", speedMultiplier: 1.6 }] };
+
+export const CAMPAIGN = defineCampaign({
+  bossCadence: 10,
+  monotoneRules: [
+    { field: "scrollSpeed", direction: "nondecreasing", scope: "campaign" },
+    { field: "hazardDensity", direction: "nondecreasing", scope: "campaign" },
+    { field: "gravityWellCount", direction: "nondecreasing", scope: "within-tier" },
+    { field: "trackLength", direction: "nondecreasing", scope: "within-tier" },
+    { field: "boss.hitPoints", direction: "nondecreasing", scope: "bosses" },
+  ],
+  levels: [
+    level(1, 1, 6.0, .08, MIX.rock, PATTERNS.easy, 0, 900, [800, 1400, 2200]),
+    level(2, 1, 6.2, .09, MIX.rock, PATTERNS.easy, 0, 940, [900, 1600, 2400]),
+    level(3, 1, 6.4, .10, MIX.mines, PATTERNS.easy, 0, 980, [1000, 1800, 2700]),
+    level(4, 1, 6.6, .11, MIX.mines, PATTERNS.easy, 0, 1020, [1100, 2000, 3000]),
+    level(5, 1, 6.8, .12, MIX.drones, PATTERNS.easy, 0, 1060, [1300, 2300, 3400]),
+    level(6, 1, 7.0, .13, MIX.drones, PATTERNS.medium, 0, 1100, [1500, 2600, 3800]),
+    level(7, 1, 7.2, .14, MIX.drones, PATTERNS.medium, 1, 1140, [1700, 2900, 4200]),
+    level(8, 1, 7.4, .15, MIX.gravity, PATTERNS.medium, 1, 1180, [1900, 3200, 4600]),
+    level(9, 1, 7.6, .16, MIX.gravity, PATTERNS.medium, 1, 1220, [2200, 3600, 5100]),
+    level(10, 1, 7.8, .17, MIX.gravity, PATTERNS.medium, 2, 1260, [3000, 5000, 7500], BOSS_1),
+    level(11, 2, 8.0, .18, MIX.drones, PATTERNS.medium, 0, 1300, [2400, 4000, 5700]),
+    level(12, 2, 8.2, .19, MIX.drones, PATTERNS.medium, 0, 1340, [2600, 4300, 6100]),
+    level(13, 2, 8.4, .20, MIX.gravity, PATTERNS.medium, 1, 1380, [2800, 4600, 6500]),
+    level(14, 2, 8.6, .21, MIX.gravity, PATTERNS.medium, 1, 1420, [3000, 4900, 6900]),
+    level(15, 2, 8.8, .22, MIX.gravity, PATTERNS.hard, 1, 1460, [3300, 5300, 7400]),
+    level(16, 2, 9.0, .23, MIX.gravity, PATTERNS.hard, 2, 1500, [3600, 5700, 7900]),
+    level(17, 2, 9.2, .24, MIX.gravity, PATTERNS.hard, 2, 1540, [3900, 6100, 8400]),
+    level(18, 2, 9.4, .25, MIX.gravity, PATTERNS.hard, 2, 1580, [4200, 6500, 8900]),
+    level(19, 2, 9.6, .26, MIX.gravity, PATTERNS.hard, 3, 1620, [4500, 6900, 9400]),
+    level(20, 2, 9.8, .27, MIX.gravity, PATTERNS.hard, 3, 1660, [6000, 9000, 12500], BOSS_2),
+    level(21, 3, 10.0, .28, MIX.gravity, PATTERNS.hard, 1, 1700, [5000, 7500, 10000]),
+    level(22, 3, 10.2, .29, MIX.gravity, PATTERNS.hard, 1, 1740, [5300, 7900, 10500]),
+    level(23, 3, 10.4, .30, MIX.gravity, PATTERNS.hard, 2, 1780, [5600, 8300, 11000]),
+    level(24, 3, 10.6, .31, MIX.gravity, PATTERNS.hard, 2, 1820, [5900, 8700, 11500]),
+    level(25, 3, 10.8, .32, MIX.gravity, PATTERNS.hard, 3, 1860, [6200, 9100, 12000]),
+    level(26, 3, 11.0, .33, MIX.gravity, PATTERNS.hard, 3, 1900, [6500, 9500, 12500]),
+    level(27, 3, 11.2, .34, MIX.gravity, PATTERNS.hard, 4, 1940, [6800, 9900, 13000]),
+    level(28, 3, 11.4, .35, MIX.gravity, PATTERNS.hard, 4, 1980, [7100, 10300, 13500]),
+    level(29, 3, 11.6, .36, MIX.gravity, PATTERNS.hard, 5, 2020, [7400, 10700, 14000]),
+    level(30, 3, 11.8, .37, MIX.gravity, PATTERNS.hard, 5, 2060, [9000, 13000, 18000], BOSS_3),
+  ],
+});
+
+export type RunPhase = "launching" | "flying" | "boss" | "escaping" | "won" | "lost";
+export interface PlayerState { x: number; y: number; lives: 0 | 1 | 2 | 3; shieldHits: 0 | 1; rapidFireTicks: number }
+export interface EntityStore {
+  readonly capacity: number; count: number;
+  readonly alive: Uint8Array; readonly generation: Uint16Array; readonly kind: Uint8Array;
+  readonly x: Float32Array; readonly y: Float32Array; readonly z: Float32Array;
+  readonly vx: Float32Array; readonly vy: Float32Array; readonly vz: Float32Array;
+  readonly radius: Float32Array; readonly hitPoints: Int16Array; readonly ttl: Uint16Array;
+  readonly flags: Uint16Array; readonly behaviorPhase: Float32Array; readonly aux0: Float32Array; readonly aux1: Float32Array;
+}
+export interface SimulationStateModel {
+  tick: Tick; phase: RunPhase; distance: number; score: Score; combo: number;
+  readonly level: LevelSpec; readonly seed: Seed; rngState: number;
+  readonly player: PlayerState; readonly entities: EntityStore;
+}
+declare const simulationBrand: unique symbol;
+export interface Simulation { readonly [simulationBrand]: true }
+export interface InputAccumulator { accumulatedNormalizedDx: number }
+export interface InputFrame { readonly dragDxQ15: Q15 }
+export interface NumericReadView { readonly length: number; readonly [index: number]: number }
+export interface EntityReadView {
+  readonly count: number; readonly alive: NumericReadView; readonly kind: NumericReadView;
+  readonly x: NumericReadView; readonly y: NumericReadView; readonly z: NumericReadView;
+  readonly vx: NumericReadView; readonly vy: NumericReadView;
+  readonly radius: NumericReadView; readonly hitPoints: NumericReadView; readonly flags: NumericReadView;
+}
+export interface SimulationView {
+  readonly tick: Tick; readonly phase: RunPhase; readonly distance: number; readonly trackLength: number;
+  readonly score: Score; readonly player: Readonly<PlayerState>; readonly entities: EntityReadView;
+}
+export type SimEvent =
+  | { readonly type: "laser-fired"; readonly source: EntityId; readonly x: number; readonly y: number }
+  | { readonly type: "player-hit"; readonly lives: 0 | 1 | 2; readonly x: number; readonly y: number }
+  | { readonly type: "shield-consumed"; readonly x: number; readonly y: number }
+  | { readonly type: "entity-destroyed"; readonly kind: EntityKind; readonly x: number; readonly y: number; readonly fragments: number }
+  | { readonly type: "pickup-collected"; readonly pickup: PickupKind; readonly x: number; readonly y: number }
+  | { readonly type: "boss-entered"; readonly boss: BossId }
+  | { readonly type: "level-completed"; readonly score: Score; readonly stars: Exclude<Stars, 0> }
+  | { readonly type: "game-over"; readonly score: Score };
+export interface StepResult { readonly tick: Tick; readonly events: readonly SimEvent[] }
+
+export function createInputAccumulator(): InputAccumulator { throw new Error("not implemented"); }
+export function recordDrag(_input: InputAccumulator, _deltaPixels: number, _viewportWidth: number): void { throw new Error("not implemented"); }
+export function sampleInput(_input: InputAccumulator): InputFrame { throw new Error("not implemented"); }
+export function createSimulation(_args: { readonly level: LevelSpec; readonly seed: Seed }): Simulation { throw new Error("not implemented"); }
+export function stepSimulation(_simulation: Simulation, _input: InputFrame): StepResult { throw new Error("not implemented"); }
+export function readSimulation(_simulation: Simulation): SimulationView { throw new Error("not implemented"); }
+
+export interface EntityArchetype {
+  readonly kind: EntityKind; readonly mesh: MeshId; readonly collision: "none" | "circle";
+  readonly shootable: boolean; readonly hitPoints: number | "from-level"; readonly score: number | "from-level";
+  readonly behavior: "player" | "asteroid" | "fragment" | "mine" | "drone" | "well" | "pickup" | "projectile" | "boss" | "goal";
+  readonly pickup?: PickupKind;
+}
+export type EntityArchetypeTable = Readonly<Record<EntityKind, EntityArchetype>>;
+export const ARCHETYPES = {
+  [ENTITY_KIND.rocket]: { kind: ENTITY_KIND.rocket, mesh: "rocket", collision: "circle", shootable: false, hitPoints: 1, score: 0, behavior: "player" },
+  [ENTITY_KIND.asteroid]: { kind: ENTITY_KIND.asteroid, mesh: "asteroid", collision: "circle", shootable: true, hitPoints: 2, score: 100, behavior: "asteroid" },
+  [ENTITY_KIND.fragment]: { kind: ENTITY_KIND.fragment, mesh: "fragment", collision: "circle", shootable: true, hitPoints: 1, score: 25, behavior: "fragment" },
+  [ENTITY_KIND.mine]: { kind: ENTITY_KIND.mine, mesh: "mine", collision: "circle", shootable: false, hitPoints: 1, score: 0, behavior: "mine" },
+  [ENTITY_KIND.drone]: { kind: ENTITY_KIND.drone, mesh: "drone", collision: "circle", shootable: true, hitPoints: 3, score: 250, behavior: "drone" },
+  [ENTITY_KIND.gravityWell]: { kind: ENTITY_KIND.gravityWell, mesh: "gravity-well", collision: "none", shootable: false, hitPoints: 1, score: 0, behavior: "well" },
+  [ENTITY_KIND.crystal]: { kind: ENTITY_KIND.crystal, mesh: "crystal", collision: "circle", shootable: false, hitPoints: 1, score: 0, behavior: "pickup", pickup: "crystal" },
+  [ENTITY_KIND.shield]: { kind: ENTITY_KIND.shield, mesh: "shield", collision: "circle", shootable: false, hitPoints: 1, score: 0, behavior: "pickup", pickup: "shield" },
+  [ENTITY_KIND.rapidFire]: { kind: ENTITY_KIND.rapidFire, mesh: "rapid-fire", collision: "circle", shootable: false, hitPoints: 1, score: 0, behavior: "pickup", pickup: "rapid-fire" },
+  [ENTITY_KIND.laser]: { kind: ENTITY_KIND.laser, mesh: "laser", collision: "circle", shootable: false, hitPoints: 1, score: 0, behavior: "projectile" },
+  [ENTITY_KIND.enemyShot]: { kind: ENTITY_KIND.enemyShot, mesh: "enemy-shot", collision: "circle", shootable: false, hitPoints: 1, score: 0, behavior: "projectile" },
+  [ENTITY_KIND.boss1]: { kind: ENTITY_KIND.boss1, mesh: "boss-1", collision: "circle", shootable: true, hitPoints: "from-level", score: "from-level", behavior: "boss" },
+  [ENTITY_KIND.boss2]: { kind: ENTITY_KIND.boss2, mesh: "boss-2", collision: "circle", shootable: true, hitPoints: "from-level", score: "from-level", behavior: "boss" },
+  [ENTITY_KIND.boss3]: { kind: ENTITY_KIND.boss3, mesh: "boss-3", collision: "circle", shootable: true, hitPoints: "from-level", score: "from-level", behavior: "boss" },
+  [ENTITY_KIND.wormhole]: { kind: ENTITY_KIND.wormhole, mesh: "wormhole", collision: "none", shootable: false, hitPoints: 1, score: 0, behavior: "goal" },
+} as const satisfies EntityArchetypeTable;
+
+export interface MeshData {
+  readonly positions: Float32Array; readonly normals: Float32Array; readonly colors: Uint8Array;
+  readonly indices: Uint16Array | Uint32Array; readonly boundsRadius: number;
+}
+export interface GeneratedMeshModule { readonly formatVersion: 1; readonly generatorSeed: number; readonly meshes: Readonly<Record<MeshId, MeshData>> }
+export function generateMeshes(_seed: number): GeneratedMeshModule { throw new Error("not implemented"); }
+export function emitMeshModule(_module: GeneratedMeshModule, _outputPath: string): void { throw new Error("not implemented"); }
+export declare const MESHES: GeneratedMeshModule;
+
+export type PipelineId = "starfield" | "mesh" | "particle";
+export interface Renderer {
+  resize(widthPixels: number, heightPixels: number): void;
+  draw(view: SimulationView, events: readonly SimEvent[], interpolationAlpha: number): void;
+  dispose(): void;
+}
+export interface RendererResources { readonly meshes: GeneratedMeshModule; readonly archetypes: EntityArchetypeTable; readonly pipelines: Readonly<Record<PipelineId, string>> }
+export function createRenderer(_canvasContext: unknown, _gpuDevice: unknown, _resources: RendererResources): Renderer { throw new Error("not implemented"); }
+
+export type OscillatorShape = "sine" | "square" | "sawtooth" | "triangle" | "noise";
+export interface Envelope { readonly attack: number; readonly decay: number; readonly sustain: number; readonly release: number }
+export interface SynthLayer { readonly shape: OscillatorShape; readonly gain: number; readonly detuneCents: number; readonly octave: number }
+export interface SynthPatch {
+  readonly layers: readonly SynthLayer[]; readonly envelope: Envelope;
+  readonly filter?: { readonly type: "lowpass" | "highpass" | "bandpass"; readonly frequency: number; readonly q: number };
+  readonly pitchSweepSemitones?: number; readonly delay?: { readonly seconds: number; readonly feedback: number; readonly mix: number };
+}
+export interface NoteStep { readonly beat: number; readonly durationBeats: number; readonly midi: number; readonly velocity: number }
+export interface SequenceTrack { readonly patch: string; readonly notes: readonly NoteStep[] }
+export interface SoundSequence { readonly patch: string; readonly notes: readonly NoteStep[] }
+export interface MusicSequence { readonly tier: MusicTier; readonly bpm: number; readonly beatsPerLoop: number; readonly tracks: readonly SequenceTrack[] }
+export interface AudioCatalog { readonly patches: Readonly<Record<string, SynthPatch>>; readonly sfx: Readonly<Record<string, SoundSequence>>; readonly music: Readonly<Record<MusicTier, MusicSequence>> }
+export type SfxCue = "laser" | "hit" | "explode" | "pickup" | "shield" | "level-complete" | "game-over" | "ui-tap";
+export const SFX_BY_SIM_EVENT = { "laser-fired": "laser", "player-hit": "hit", "shield-consumed": "shield", "entity-destroyed": "explode", "pickup-collected": "pickup", "level-completed": "level-complete", "game-over": "game-over" } as const satisfies Partial<Record<SimEvent["type"], SfxCue>>;
+export type AudioCommand =
+  | { readonly type: "play-sfx"; readonly cue: SfxCue }
+  | { readonly type: "set-music"; readonly tier: MusicTier | "off" };
+export interface AudioEngine { dispatch(commands: readonly AudioCommand[]): void; setEnabled(settings: AudioSettings): void; dispose(): void }
+export interface AudioSettings { readonly music: boolean; readonly sfx: boolean }
+export function mapAudioEvents(_events: readonly (SimEvent | FlowEffect)[]): readonly AudioCommand[] { throw new Error("not implemented"); }
+export function createAudioEngine(_catalog: AudioCatalog): AudioEngine { throw new Error("not implemented"); }
+export declare const AUDIO_CATALOG: AudioCatalog;
+
+export interface BotEntity { readonly id: EntityId; readonly kind: EntityKind; readonly x: number; readonly y: number; readonly vx: number; readonly vy: number; readonly radius: number }
+export interface BotObservation { readonly tick: Tick; readonly phase: RunPhase; readonly playerX: number; readonly lives: number; readonly progress: number; readonly visibleEntities: readonly BotEntity[] }
+export interface LevelBot { reset(level: LevelSpec, seed: Seed): void; next(observation: BotObservation): InputFrame }
+export interface LevelVerification { readonly level: LevelNumber; readonly seed: Seed; readonly completed: boolean; readonly ticks: number; readonly finalScore: Score; readonly failure?: string }
+export interface CampaignVerification { readonly monotoneErrors: readonly string[]; readonly levels: readonly LevelVerification[] }
+export declare const VERIFY_SEEDS: readonly Seed[];
+export function createAutopilotBot(): LevelBot { throw new Error("not implemented"); }
+export function observeForBot(_view: SimulationView): BotObservation { throw new Error("not implemented"); }
+export function verifyCampaign(_campaign: CampaignSpec, _botFactory: () => LevelBot, _seeds: readonly Seed[]): CampaignVerification { throw new Error("not implemented"); }
+export function assertCampaignVerified(_report: CampaignVerification): void { throw new Error("not implemented"); }
+
+export interface LevelProgress { readonly bestScore: number; readonly stars: Stars; readonly completed: boolean }
+export interface SaveV1 { readonly version: 1; readonly settings: AudioSettings; readonly progress: Readonly<Record<string, LevelProgress>> }
+export interface ProgressStore { load(): Promise<SaveV1>; save(document: SaveV1): Promise<void> }
+export interface LevelTile { readonly level: LevelNumber; readonly stars: Stars; readonly locked: boolean }
+export function createProgressStore(): ProgressStore { throw new Error("not implemented"); }
+export function parseSaveDocument(_value: unknown): SaveV1 { throw new Error("not implemented"); }
+export function recordLevelResult(_save: SaveV1, _result: { readonly level: LevelNumber; readonly score: Score; readonly stars: Stars }): SaveV1 { throw new Error("not implemented"); }
+export function deriveLevelTiles(_campaign: CampaignSpec, _progress: SaveV1["progress"]): readonly LevelTile[] { throw new Error("not implemented"); }
