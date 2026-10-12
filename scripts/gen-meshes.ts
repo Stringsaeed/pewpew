@@ -13,7 +13,7 @@ type Builder = (rng: () => number) => RawMesh;
 const SEED = 0x5eed1e55;
 const TAU = Math.PI * 2;
 
-/** Components above 1 are emissive: the mesh shader adds max(color - 1, 0) regardless of lighting. */
+/** A color with any component above 1 is emissive: the mesh shader draws it unlit. */
 const PALETTE = {
   hull: [0.86, 0.9, 1] as Rgb,
   hullStripe: [0.15, 0.95, 1] as Rgb,
@@ -268,7 +268,7 @@ function well(rng: () => number): RawMesh {
 }
 
 function wormhole(): RawMesh {
-  const outer = ring(32, 1, 0.2, 10, (i, j) => ((i + j) % 2 === 0 ? PALETTE.white : PALETTE.violet));
+  const outer = ring(32, 1, 0.2, 10, (i) => (i % 2 === 0 ? PALETTE.white : PALETTE.violet));
   const inner = ring(24, 0.68, 0.07, 6, (i) => (i % 2 === 0 ? PALETTE.violet : PALETTE.white));
   return merge(outer, inner);
 }
