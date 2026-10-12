@@ -9,7 +9,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { BOSSES, LEVELS, RAMP, tierOf } from '../src/levels';
-import { replay, simulate } from '../src/sim';
+import { TICKS_PER_SEC, replay, simulate } from '../src/sim';
 import { greedyBot, idleBot } from '../src/bot';
 
 /** One line per level: `n hash steps score stars`. Hash is 8 lowercase hex digits. */
@@ -57,7 +57,7 @@ for (const spec of LEVELS) {
   const same = rp.hash === r.hash && rp.steps === r.steps && rp.score === r.score;
   check(same, `level ${spec.n}: replay hash ${rp.hash} != ${r.hash}`);
   if (spec.n >= 4) check(idle.outcome === 'lost', `level ${spec.n}: idleBot ${idle.outcome}`);
-  console.log([spec.n, r.outcome, r.steps, (r.steps / 60).toFixed(1), (spec.length / spec.scroll).toFixed(1), r.score, r.stars, lost,
+  console.log([spec.n, r.outcome, r.steps, (r.steps / TICKS_PER_SEC).toFixed(1), (spec.length / spec.scroll).toFixed(1), r.score, r.stars, lost,
     r.dropped, r.hash.toString(16).padStart(8, '0'), same ? 'ok' : 'DIFF', idle.outcome, perStep.toFixed(4)]
     .map((v, i) => pad(v, [3, 7, 6, 5, 8, 6, 5, 4, 7, 10, 6, 5, 7][i])).join(' '));
 }
