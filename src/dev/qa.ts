@@ -14,19 +14,20 @@ export function logAutoRun(w: World): void {
 
 const FRAMES = 600;
 
-/** Collects whole rAF tick durations of one run and logs average and p95 once, after FRAMES samples. */
+/** Collects whole rAF tick durations and logs average and p95 for each consecutive FRAMES-frame window of a run. */
 export function createTickTimer() {
   const ms = new Float64Array(FRAMES);
-  let n = 0;
+  let n = 0, window = 0;
   return {
-    reset(): void { n = 0; },
+    reset(): void { n = 0; window = 0; },
     add(sample: number, level: number, auto: boolean): void {
-      if (n >= FRAMES) return;
       ms[n++] = sample;
       if (n < FRAMES) return;
+      n = 0;
+      window++;
       const sorted = ms.slice().sort();
       const avg = sorted.reduce((a, b) => a + b, 0) / FRAMES;
-      console.log(`[pewpew] tick level ${level}${auto ? ' auto' : ''} avg ${avg.toFixed(2)} ms p95 ${sorted[Math.floor(FRAMES * 0.95)].toFixed(2)} ms max ${sorted[FRAMES - 1].toFixed(2)} ms over ${FRAMES} frames`);
+      console.log(`[pewpew] tick level ${level}${auto ? ' auto' : ''} window ${window} avg ${avg.toFixed(2)} ms p95 ${sorted[Math.floor(FRAMES * 0.95)].toFixed(2)} ms max ${sorted[FRAMES - 1].toFixed(2)} ms over ${FRAMES} frames`);
     },
   };
 }
