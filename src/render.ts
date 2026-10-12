@@ -38,6 +38,8 @@ export interface Renderer {
   dispose(): void;
 }
 
+export const MAX_PIXEL_RATIO = 2;
+
 const UNIFORMS = /* wgsl */ `
 struct U { view: mat4x4f, proj: mat4x4f, res: vec2f, camY: f32, time: f32 };
 @group(0) @binding(0) var<uniform> u: U;
@@ -299,6 +301,7 @@ export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext & { pres
   let time = 0;
   let menuY = 0;
   let bossFlash = 0;
+  let bossFlashCooldown = 0;
   const colorAttachment: GPURenderPassColorAttachment = {
     view: undefined as unknown as GPUTextureView,
     clearValue: { r: 0.01, g: 0.01, b: 0.03, a: 1 },
@@ -310,7 +313,7 @@ export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext & { pres
   const passDesc: GPURenderPassDescriptor = { colorAttachments: [colorAttachment], depthStencilAttachment: depthAttachment };
 
   function resize(): boolean {
-    const ratio = PixelRatio.get();
+    const ratio = Math.min(PixelRatio.get(), MAX_PIXEL_RATIO);
     const w = Math.round(canvas.clientWidth * ratio);
     const h = Math.round(canvas.clientHeight * ratio);
     if (w === 0 || h === 0) return false;
@@ -377,7 +380,10 @@ export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext & { pres
         }
         case 'hit':
           burstAt(ev.x, ev.y, 6, 4, 0.2, 0.25, WHITE, 0);
-          if (ev.target === 'boss') bossFlash = 0.12;
+          if (ev.target === 'boss' && bossFlashCooldown <= 0) {
+            bossFlash = 0.06;
+            bossFlashCooldown = 0.15;
+          }
           break;
         case 'playerHit': burstAt(ev.x, ev.y, 48, 7, 0.4, 0.9, RED, 0); break;
         case 'pickup': burstAt(ev.x, ev.y, 22, 4, 0.25, 0.5, burst, ev.kind * 3); break;
@@ -407,6 +413,7 @@ export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext & { pres
     if (!resize()) return;
     time += dt;
     bossFlash = Math.max(0, bossFlash - dt);
+    bossFlashCooldown = Math.max(0, bossFlashCooldown - dt);
     onEvents(world, events);
     stepParticles(dt);
 
@@ -459,7 +466,7 @@ export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext & { pres
         const b = world.boss;
         const m = BOSS_MESH[b.id];
         putMesh(cursor[m]++, b.px + (b.x - b.px) * alpha, b.y, Math.sin(time * 0.8) * 0.08,
-          BOSS_RADIUS / MESHES[b.id].radius, 1, 1, 1, bossFlash > 0 ? 0.6 : 0);
+          BOSS_RADIUS / MESHES[b.id].radius, 1, 1, 1, 0.45 * Math.min(1, bossFlash / 0.06));
       }
       if (world.wormholeY !== null) {
         putMesh(cursor[MESH_INDEX.wormhole]++, 0, world.wormholeY, time * 0.9, WORMHOLE_RADIUS / MESHES.wormhole.radius, 1, 1, 1, 0);

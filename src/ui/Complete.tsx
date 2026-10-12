@@ -57,6 +57,6 @@ export function Complete({ level, score, stars, best, onNext, onRetry, onLevels 
 const styles = StyleSheet.create({
   stars: { flexDirection: 'row', gap: space.sm },
   star: { fontFamily: font.family, fontSize: 56 },
-  sub: { fontFamily: font.family, fontSize: font.label, letterSpacing: 4, color: color.dim },
+  sub: { fontFamily: font.family, fontSize: font.label, letterSpacing: 4, color: color.textDim },
   score: { fontFamily: font.family, fontSize: 36, fontWeight: '800', letterSpacing: 3, color: color.text },
 });

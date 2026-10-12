@@ -22,6 +22,6 @@ export function GameOver({ level, score, onRetry, onLevels }: Props) {
 }
 
 const styles = StyleSheet.create({
-  sub: { fontFamily: font.family, fontSize: font.label, letterSpacing: 4, color: color.dim },
+  sub: { fontFamily: font.family, fontSize: font.label, letterSpacing: 4, color: color.textDim },
   score: { fontFamily: font.family, fontSize: 36, fontWeight: '800', letterSpacing: 3, color: color.text, marginBottom: space.sm },
 });

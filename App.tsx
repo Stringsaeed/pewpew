@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AppState, PixelRatio, StyleSheet, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Canvas, useCanvasRef, type NativeCanvas } from 'react-native-webgpu';
 import { reduce, runOf, TITLE, type Action, type Run, type Screen } from './src/flow';
 import { loadSave, parseSave, recordRun, writeSave, type Save } from './src/save';
 import { COAST, STEP, createWorld, dragInput, hudOf, step, type Hud as HudState, type Input, type SimEvent, type World } from './src/sim';
-import { createRenderer, type Renderer } from './src/render';
+import { MAX_PIXEL_RATIO, createRenderer, type Renderer } from './src/render';
 import type { AudioEngine } from './src/audio';
 import { greedyBot } from './src/bot';
 import { createTickTimer, logAutoRun, unlockAll } from './src/dev/qa';
@@ -34,6 +34,7 @@ interface Loop {
   readonly events: SimEvent[];
   acc: number;
   last: number;
+  hud: HudState | null;
 }
 
 const runKey = (r: Run | null) => (r === null ? null : `${r.level}:${r.attempt}`);
@@ -56,7 +57,7 @@ export default function App() {
   audioRef.current ??= createAudio();
   const audio = audioRef.current;
 
-  const loop = useRef<Loop>({ world: null, key: null, playing: false, input: COAST, auto: false, botOnly: true, events: [], acc: 0, last: 0 }).current;
+  const loop = useRef<Loop>({ world: null, key: null, playing: false, input: COAST, auto: false, botOnly: true, events: [], acc: 0, last: 0, hud: null }).current;
   if (__DEV__) (globalThis as { pewpew?: Loop }).pewpew = loop;
   const [auto, setAuto] = useState(false);
   const timer = useRef(createTickTimer()).current;
@@ -85,7 +86,7 @@ export default function App() {
     dispatch(a);
   }, [audio]);
 
-  const run = runOf(screen);
+  const run = useMemo(() => runOf(screen), [screen]);
   const key = runKey(run);
   const onMenu = screen.s === 'title' || screen.s === 'levels' || (screen.s === 'settings' && run === null);
   const suspended = run !== null && screen.s !== 'play';
@@ -100,6 +101,7 @@ export default function App() {
       timer.reset();
       loop.acc = 0;
       loop.events.length = 0;
+      loop.hud = null;
       setHud(null);
     }
   }, [screen, key, run, loop, timer]);
@@ -167,7 +169,13 @@ export default function App() {
       audio.events(loop.events);
       for (const ev of loop.events) onEnded(ev);
       loop.events.length = 0;
-      if (world) setHud((h) => hudOf(world, h));
+      if (world) {
+        const next = hudOf(world, loop.hud);
+        if (next !== loop.hud) {
+          loop.hud = next;
+          setHud(next);
+        }
+      }
     };
 
     const frameFn = (now: number) => {
@@ -178,7 +186,7 @@ export default function App() {
         const c = canvasRef.current?.getContext('webgpu') ?? null;
         const canvas = c?.canvas as unknown as NativeCanvas | undefined;
         if (!c || !canvas || canvas.clientWidth === 0 || canvas.clientHeight === 0 || !device) return;
-        const ratio = PixelRatio.get();
+        const ratio = Math.min(PixelRatio.get(), MAX_PIXEL_RATIO);
         canvas.width = Math.round(canvas.clientWidth * ratio);
         canvas.height = Math.round(canvas.clientHeight * ratio);
         c.configure({ device, format, alphaMode: 'opaque' });

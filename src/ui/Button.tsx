@@ -3,6 +3,7 @@ import { color, font, space } from './theme';
 
 export type Tone = 'primary' | 'ghost' | 'danger';
 const TONE: Record<Tone, string> = { primary: color.cyan, ghost: color.dim, danger: color.magenta };
+const LABEL: Record<Tone, string> = { primary: color.cyan, ghost: color.textDim, danger: color.magenta };
 
 interface Props {
   readonly label: string;
@@ -13,7 +14,8 @@ interface Props {
 }
 
 export function Button({ label, onPress, tone = 'primary', accessibilityLabel, style }: Props) {
-  const c = TONE[tone];
+  const border = TONE[tone];
+  const ink = LABEL[tone];
   return (
     <Pressable
       accessibilityRole="button"
@@ -21,12 +23,12 @@ export function Button({ label, onPress, tone = 'primary', accessibilityLabel, s
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
-        { borderColor: c, backgroundColor: pressed ? c : 'rgba(255,255,255,0.04)', transform: [{ scale: pressed ? 0.97 : 1 }] },
+        { borderColor: border, backgroundColor: pressed ? border : 'rgba(255,255,255,0.04)', transform: [{ scale: pressed ? 0.97 : 1 }] },
         style,
       ]}
     >
       {({ pressed }) => (
-        <Text style={[styles.label, { color: pressed ? color.bg : c }]}>{label}</Text>
+        <Text style={[styles.label, { color: pressed ? color.bg : ink }]}>{label}</Text>
       )}
     </Pressable>
   );

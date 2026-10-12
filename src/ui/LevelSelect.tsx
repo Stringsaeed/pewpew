@@ -61,8 +61,13 @@ function Tile({ n, size, stars, best, open, boss, onPick }: TileProps) {
         },
       ]}
     >
-      <Text style={[styles.num, { color: open ? accent : color.dim }]}>{n}</Text>
-      {open ? <Text style={styles.stars}>{[1, 2, 3].map((i) => (i <= stars ? '★' : '☆')).join('')}</Text> : <Lock />}
+      <Text maxFontSizeMultiplier={1.3} style={[styles.num, { color: open ? accent : color.dim }]}>{n}</Text>
+      {open ? (
+        <Text maxFontSizeMultiplier={1.3} style={styles.stars}>
+          <Text maxFontSizeMultiplier={1.3} style={styles.earned}>{'★'.repeat(stars)}</Text>
+          <Text maxFontSizeMultiplier={1.3} style={styles.empty}>{'☆'.repeat(3 - stars)}</Text>
+        </Text>
+      ) : <Lock />}
     </Pressable>
   );
 }
@@ -84,7 +89,9 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, paddingHorizontal: SIDE, paddingBottom: inset.bottom + space.lg },
   tile: { borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center', gap: 2 },
   num: { fontFamily: font.family, fontSize: 20, fontWeight: '800' },
-  stars: { fontFamily: font.family, fontSize: 11, color: color.yellow, letterSpacing: 1 },
+  stars: { fontFamily: font.family, fontSize: 13, letterSpacing: 1 },
+  earned: { color: color.yellow },
+  empty: { color: color.dim },
   lock: { alignItems: 'center', height: 16, justifyContent: 'flex-end' },
   shackle: { width: 9, height: 7, borderWidth: 2, borderBottomWidth: 0, borderTopLeftRadius: 5, borderTopRightRadius: 5, borderColor: color.dim },
   lockBody: { width: 14, height: 9, borderRadius: 2, backgroundColor: color.dim },
