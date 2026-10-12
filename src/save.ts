@@ -53,7 +53,6 @@ export function recordRun(s: Save, n: LevelNumber, score: number, stars: Stars):
   return { ...s, levels: s.levels.map((r, i) => (i === n - 1 ? { best, stars: merged } : r)) };
 }
 
-/** n === 1, or level n - 1 has at least one star. */
 export function isUnlocked(s: Save, n: LevelNumber): boolean {
   return n === 1 || s.levels[n - 2].stars > 0;
 }
