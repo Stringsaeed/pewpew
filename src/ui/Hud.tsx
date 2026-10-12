@@ -7,9 +7,11 @@ interface Props {
   readonly hud: HudState;
   readonly level: number;
   readonly onPause: () => void;
+  /** Dev only: the attract-mode toggle. Absent in release. */
+  readonly auto?: { readonly on: boolean; readonly onToggle: () => void };
 }
 
-export function Hud({ hud, level, onPause }: Props) {
+export function Hud({ hud, level, onPause, auto }: Props) {
   return (
     <View pointerEvents="box-none" style={styles.root}>
       <View pointerEvents="box-none" style={styles.row}>
@@ -20,6 +22,18 @@ export function Hud({ hud, level, onPause }: Props) {
           </View>
         </View>
         <Text style={styles.level}>{`LV ${level}`}</Text>
+        {auto ? (
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityLabel="Auto"
+            accessibilityState={{ checked: auto.on }}
+            hitSlop={8}
+            onPress={auto.onToggle}
+            style={[styles.auto, auto.on && styles.autoOn]}
+          >
+            <Text style={[styles.autoText, auto.on && styles.autoTextOn]}>AUTO</Text>
+          </Pressable>
+        ) : null}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Pause"
@@ -64,6 +78,10 @@ const styles = StyleSheet.create({
   level: { fontFamily: font.family, fontSize: font.label, color: color.dim, letterSpacing: 2, paddingTop: space.sm },
   pause: { width: 44, height: 44, borderRadius: 12, borderWidth: 2, borderColor: color.cyan, flexDirection: 'row', gap: 5, alignItems: 'center', justifyContent: 'center' },
   pausePressed: { backgroundColor: 'rgba(53,240,255,0.35)' },
+  auto: { height: 44, paddingHorizontal: space.sm, borderRadius: 12, borderWidth: 2, borderColor: color.dim, justifyContent: 'center' },
+  autoOn: { borderColor: color.yellow, backgroundColor: 'rgba(255,210,63,0.2)' },
+  autoText: { fontFamily: font.family, fontSize: 12, fontWeight: '700', letterSpacing: 2, color: color.dim },
+  autoTextOn: { color: color.yellow },
   bar: { width: 5, height: 16, borderRadius: 1, backgroundColor: color.cyan },
   track: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
   fill: { height: '100%', backgroundColor: color.green },

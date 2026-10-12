@@ -250,7 +250,7 @@ function run(n: LevelNumber, maxSteps: number, next: (w: World, i: number) => nu
 
 const PHASE_CODE = { fly: 1, boss: 2, won: 3, lost: 4 } as const;
 
-function hashWorld(w: World): number {
+export function hashWorld(w: World): number {
   const f = new Float64Array(1);
   const u = new Uint32Array(f.buffer);
   let h = 0x811c9dc5;
