@@ -9,13 +9,16 @@ interface Props {
   readonly onMusic: (on: boolean) => void;
   readonly onSfx: (on: boolean) => void;
   readonly onBack: () => void;
+  /** Dev only: QA shortcut to every level. Absent in release. */
+  readonly onUnlockAll?: () => void;
 }
 
-export function Settings({ music, sfx, onMusic, onSfx, onBack }: Props) {
+export function Settings({ music, sfx, onMusic, onSfx, onBack, onUnlockAll }: Props) {
   return (
     <Panel title="SETTINGS">
       <Row label="MUSIC" value={music} onChange={onMusic} />
       <Row label="SFX" value={sfx} onChange={onSfx} />
+      {onUnlockAll ? <Button label="UNLOCK ALL" tone="danger" onPress={onUnlockAll} /> : null}
       <Button label="BACK" tone="ghost" onPress={onBack} />
     </Panel>
   );

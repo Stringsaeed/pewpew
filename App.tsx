@@ -7,6 +7,8 @@ import { loadSave, parseSave, recordRun, writeSave, type Save } from './src/save
 import { COAST, STEP, createWorld, dragInput, hudOf, step, type Hud as HudState, type Input, type SimEvent, type World } from './src/sim';
 import { createRenderer, type Renderer } from './src/render';
 import type { AudioEngine } from './src/audio';
+import { greedyBot } from './src/bot';
+import { createTickTimer, logAutoRun, unlockAll } from './src/dev/qa';
 import { createAudioOrSilent } from './src/dev/silentAudio';
 import { Complete } from './src/ui/Complete';
 import { GameOver } from './src/ui/GameOver';
@@ -25,6 +27,10 @@ interface Loop {
   key: string | null;
   playing: boolean;
   input: Input;
+  /** Dev only: greedyBot drives every step instead of touch. */
+  auto: boolean;
+  /** Every step of this world so far came from the bot, so its final hash is comparable with the verifier's. */
+  botOnly: boolean;
   readonly events: SimEvent[];
   acc: number;
   last: number;
@@ -50,7 +56,10 @@ export default function App() {
   audioRef.current ??= createAudioOrSilent();
   const audio = audioRef.current;
 
-  const loop = useRef<Loop>({ world: null, key: null, playing: false, input: COAST, events: [], acc: 0, last: 0 }).current;
+  const loop = useRef<Loop>({ world: null, key: null, playing: false, input: COAST, auto: false, botOnly: true, events: [], acc: 0, last: 0 }).current;
+  if (__DEV__) (globalThis as { pewpew?: Loop }).pewpew = loop;
+  const [auto, setAuto] = useState(false);
+  const timer = useRef(createTickTimer()).current;
   const drag = useRef({ anchorX: 0, fx: 0 }).current;
   const foreground = useRef(true);
 
@@ -87,11 +96,15 @@ export default function App() {
     if (key !== loop.key) {
       loop.key = key;
       loop.world = run === null ? null : createWorld(run.level);
+      loop.botOnly = true;
+      timer.reset();
       loop.acc = 0;
       loop.events.length = 0;
       setHud(null);
     }
-  }, [screen, key, run, loop]);
+  }, [screen, key, run, loop, timer]);
+
+  useEffect(() => { loop.auto = auto; }, [auto, loop]);
 
   useEffect(() => {
     audio.active(foreground.current && !suspended);
@@ -131,6 +144,7 @@ export default function App() {
       loop.playing = false;
       const level = loop.world?.spec.n;
       if (ev.e === 'won' && level !== undefined && saveRef.current) commitSave(recordRun(saveRef.current, level, ev.score, ev.stars));
+      if (__DEV__ && loop.botOnly && loop.world) logAutoRun(loop.world);
       dispatch({ a: 'ended', result: ev });
     };
 
@@ -142,7 +156,8 @@ export default function App() {
         loop.acc += dt;
         let steps = 0;
         while (loop.acc >= STEP && steps < MAX_STEPS_PER_FRAME) {
-          step(world, loop.input, loop.events);
+          if (!loop.auto) loop.botOnly = false;
+          step(world, loop.auto ? greedyBot(world) : loop.input, loop.events);
           loop.acc -= STEP;
           steps += 1;
         }
@@ -172,7 +187,10 @@ export default function App() {
         loop.last = now;
         return;
       }
+      if (!__DEV__ || !loop.playing || !loop.world) return tick(now);
+      const t0 = performance.now();
       tick(now);
+      timer.add(performance.now() - t0, loop.world.spec.n, loop.auto);
     };
 
     const init = async () => {
@@ -189,7 +207,7 @@ export default function App() {
       cancelAnimationFrame(frame);
       renderer?.dispose();
     };
-  }, [audio, canvasRef, commitSave, loop]);
+  }, [audio, canvasRef, commitSave, loop, timer]);
 
   const onTouchStart = (e: GestureResponderEvent) => {
     drag.anchorX = loop.world?.player.x ?? 0;
@@ -230,7 +248,7 @@ export default function App() {
               onResponderRelease={onTouchEnd}
               onResponderTerminate={onTouchEnd}
             >
-              <Hud hud={hud} level={level} onPause={() => act({ a: 'pause' })} />
+              <Hud hud={hud} level={level} onPause={() => act({ a: 'pause' })} auto={__DEV__ ? { on: auto, onToggle: () => setAuto((a) => !a) } : undefined} />
             </View>
           ) : null}
           {screen.s === 'paused' ? (
@@ -242,7 +260,14 @@ export default function App() {
             />
           ) : null}
           {screen.s === 'settings' ? (
-            <Settings music={save.music} sfx={save.sfx} onMusic={setMusic} onSfx={setSfx} onBack={() => act({ a: 'back' })} />
+            <Settings
+              music={save.music}
+              sfx={save.sfx}
+              onMusic={setMusic}
+              onSfx={setSfx}
+              onBack={() => act({ a: 'back' })}
+              onUnlockAll={__DEV__ ? () => commitSave(unlockAll(save)) : undefined}
+            />
           ) : null}
           {screen.s === 'complete' ? (
             <Complete
