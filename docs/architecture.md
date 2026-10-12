@@ -38,7 +38,7 @@ for (const spec of LEVELS) {
 ```
 
 ```ts
-// src/ui/Menus.tsx: screens dispatch actions and never touch the sim
+// src/ui/LevelSelect.tsx: screens dispatch actions and never touch the sim
 <LevelTile n={n} stars={save.levels[n - 1].stars} locked={!isUnlocked(save, n)} onPress={() => dispatch({ a: 'pick', level: n })} />
 ```
 
@@ -46,7 +46,7 @@ for (const spec of LEVELS) {
 
 We need a 30-level arcade shooter whose rules can be proved headless in Node and then played on the phone, with the same code doing both. The brief in `.audit/brief.md` adds hard constraints. The sim must be pure and deterministic. The renderer reads the sim and never writes it. Audio reacts only to events. Meshes and music are data. A reader must be able to trace input to pixels in three files.
 
-The shape is non-obvious for three reasons. Hermes punishes per-frame allocation. "Deterministic" breaks quietly when Node (V8) and Hermes disagree in the last bit of `Math.sin`. And "the table is the single source of truth" fails if per-level rules leak into spawn code, the renderer, or audio. The spike in `App.tsx` already has the canvas lifecycle (retry on zero layout, resize from `clientWidth * PixelRatio`, `ctx.present()`), and `render.ts` reuses it.
+The shape is non-obvious for three reasons. Hermes punishes per-frame allocation. "Deterministic" breaks quietly when Node (V8) and Hermes disagree in the last bit of `Math.sin`. And "the table is the single source of truth" fails if per-level rules leak into spawn code, the renderer, or audio. `App.tsx` keeps the canvas lifecycle from the toolchain spike (retry on zero layout, resize from `clientWidth * PixelRatio`, `ctx.present()`), and `render.ts` relies on it.
 
 ## Shape
 
@@ -69,7 +69,6 @@ Each module is one file, so its internals stay file-local and nothing outside ca
 | `scripts/gen-meshes.ts` | mesh generation (`npm run gen:meshes`) | meshes (types) |
 | `scripts/verify-levels.ts` | the CI proof (`npm run verify`) | levels, sim, bot |
 
-`App.tsx` is still the WebGPU and audio spike. The shell replaces it in a later unit.
 
 ### Data first
 
@@ -91,7 +90,7 @@ Each module is one file, so its internals stay file-local and nothing outside ca
 
 ### Difficulty ramp
 
-Every `RAMP` column rises or holds from level 1 to level 30. Scroll goes from 6.0 to 11.8 units per second, density from 8 to 37 hazards per 100 units, and length from 900 to 2060 units. Wells start at level 7 and reach 5 by level 29. Drones appear at level 5 and start firing at level 6. The numbers are a first draft. The tuning unit adjusts them from verifier stats, and `defineLevels` keeps every edit monotone.
+Every `RAMP` column rises or holds from level 1 to level 30. Scroll goes from 6.0 to 11.8 units per second, density from 8 to 33 hazards per 100 units, and length from 270 to 1060 units, so a run lasts 45 s on level 1 and about 90 s on level 30 (bosses add their fight on top). Wells start at level 4 and reach 5 by level 29. Drones appear at level 5 and start firing at level 6. The values were tuned against `npm run verify` and a 41-seed sweep (`.audit/u2-ramp-sweep.txt`), and `defineLevels` keeps every edit monotone.
 
 ### Determinism
 
@@ -171,14 +170,16 @@ Three architecture candidates competed in an arena. The coordinator and a gpt-5.
 - **One combined "game" module (flow plus sim plus save) with `game.dispatch`.** It's a deeper single entry point, but it fuses the pure deterministic sim with UI and persistence, so the verifier would drag in screens. A separate `flow.reduce` stays tiny, and the sim stays importable from Node with zero UI.
 - **Sim on a worklet thread (react-native-worklets).** It would free the JS thread, but it adds a serialization boundary between sim and renderer, splits ownership of `World`, and complicates determinism and debugging. A few hundred bodies don't justify that.
 
-## Open questions and risks
+## Resolved questions
 
-- Is a greedy lookahead bot strong enough to win level 30 and its boss without softening the table to suit the bot? If it isn't, do we let the bot read the compiled `Track` (perfect foresight) and keep a separate reaction-delay check for human plausibility?
-- At these lengths a level lasts about 150 s (level 1) to 175 s (level 30). That may be long for a mobile arcade level. The tuning unit should decide from play on the simulator.
-- Does `react-native-audio-api` 0.13.6 hold up under about 40 to 60 node creations a second (sequencer plus SFX) on Hermes and JSI without glitches? The fallback is pre-rendering SFX into `AudioBuffer`s with the same patch data at init.
-- Can the JS thread carry the sim, renderer encoding, and RN HUD updates together? The budget is about 4 ms of sim plus about 3 ms of encoding. We need to measure on the simulator before the renderer unit.
-- Should we prove cross-engine determinism, not only design for it, by recording golden `hash` values from the device into the verifier?
+- The greedy bot wins all 30 levels without reading the compiled `Track`. The table was tuned to it (boss hit points and attack cadence came down, seeds were chosen by the sweep), so the verifier proves these layouts are winnable by an instant-reaction bot, not that a person finds them fair.
+- A level lasts 45 to 90 s of scroll. The 150 to 175 s first draft was cut.
+- Cross-engine determinism is proved, not only designed for. The device logged the same hash as the Node verifier for levels 1, 10, and 30 (`.audit/u7-report.md`).
+- The JS thread carries sim, bot, renderer, audio, and HUD in about 3 ms per frame on the simulator at 60 Hz (`.audit/u7-report.md`). A physical phone is not measured.
+- `react-native-audio-api` constructs and schedules without errors on the device. Audibility and mix balance on hardware are not verified; render the songs with `npx tsx scripts/render-song.ts` to listen.
 
-## Next implementation step
+## Follow-ups
 
-Implement `createWorld`, `compileTrack`, and `step` in `src/sim.ts`, then `scripts/verify-levels.ts` against `idleBot` and then `greedyBot`, before any rendering.
+- Rename fields to carry their units (`scrollUnitsPerSec`, `attackEverySec`) and split the shared `Bodies` columns `variant`, `t`, and `param` per kind, as the comment review proposed.
+- Run the Android emulator and a physical iPhone pass, and a release build.
+- Decide whether to keep momentum after a finger lift (coast damping is 0.9 per step) once people have played it.

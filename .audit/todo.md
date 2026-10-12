@@ -2,19 +2,19 @@
 
 - [x] Read Principles section of poteto-mode
 - [x] Phase A: Frame (predicate, scope, rigor) -> brief.md, decisions.tsv
-- [ ] Phase B: Design the workflow (arena over architecture; spike toolchain)
-- [ ] Phase C: Run the loop, one verified unit at a time
+- [x] Phase B: Design the workflow (arena over architecture; spike toolchain)
+- [x] Phase C: Run the loop, one verified unit at a time
   - [x] U1 scaffold + webgpu triangle + beep on simulator (spike) VERIFIED b1b8e96
   - [x] U2 sim VERIFIED by npm run verify in main checkout, merged
   - [x] U3 meshes VERIFIED byte-identical rerun, merged
   - [x] U4 renderer VERIFIED on iPhone 17 sim, merged
   - [x] U5 audio VERIFIED by 13 node tests and 12 WAV renders, merged
   - [x] U6 screens VERIFIED on iPhone 17 Pro sim with stubs, merged c3ab86f
-  - [ ] U7 polish: juice, difficulty tuning from verifier stats, perf check on sim
-- [ ] Phase D: audit trail kept in .audit/decisions.tsv (commit it)
-- [ ] Phase E: verify whole against predicate on the simulator; cross-model review of trail; reply
-- [ ] Opening a PR
-- [ ] Remind user: Argent update 0.25.0 -> 0.28.0 available
+  - [x] U7 integration VERIFIED on device, hashes equal Node; final smoke VERIFIED
+- [x] Phase D: audit trail kept in .audit/decisions.tsv (commit it)
+- [x] Phase E: verify whole against predicate on the simulator; cross-model review of trail; reply
+- [x] Opening a PR
+- [x] Remind user: Argent update 0.25.0 -> 0.28.0 available
 
 ## Throughput checkpoint (Phase B, rewritten after the arena)
 
