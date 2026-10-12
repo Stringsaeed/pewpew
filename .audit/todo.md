@@ -5,7 +5,7 @@
 - [ ] Phase B: Design the workflow (arena over architecture; spike toolchain)
 - [ ] Phase C: Run the loop, one verified unit at a time
   - [x] U1 scaffold + webgpu triangle + beep on simulator (spike) VERIFIED b1b8e96
-  - [ ] U2 sim core: types, level table, step(), events; headless verifier bot for 30 levels
+  - [x] U2 sim VERIFIED by npm run verify in main checkout, merged
   - [x] U3 meshes VERIFIED byte-identical rerun, merged
   - [x] U4 renderer VERIFIED on iPhone 17 sim, merged
   - [ ] U5 audio: synth engine, SFX patches, 4 music tiers
