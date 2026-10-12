@@ -1,0 +1,29 @@
+com.facebook.react.runtime.JavaScript: 4599 ms = 55.0% of app CPU samples
+     3334  72.5%  Hermes interpreter (JS code)
+      716  15.6%  WebGPU (rnwgpu/Dawn)
+      271   5.9%  Audio API (react-native-audio-api)
+      142   3.1%  other
+       96   2.1%  Hermes GC
+       40   0.9%  React Fabric (UIManager/ShadowTree)
+AURemoteIO::IOThread: 2866 ms = 34.2% of app CPU samples
+     2843  99.2%  Audio API (react-native-audio-api)
+       21   0.7%  other
+        2   0.1%  WebGPU (rnwgpu/Dawn)
+PewPew (unnamed GCD/worker threads): 703 ms = 8.4% of app CPU samples
+      360  51.2%  other
+      305  43.4%  Metal/MTLSim/FramePacing
+       34   4.8%  Audio API (react-native-audio-api)
+        4   0.6%  WebGPU (rnwgpu/Dawn)
+Main Thread: 125 ms = 1.5% of app CPU samples
+      108  86.4%  other
+       16  12.8%  Worklets/Reanimated
+        1   0.8%  React Fabric (UIManager/ShadowTree)
+com.apple.audio.IOThread.client: 38 ms = 0.5% of app CPU samples
+       38 100.0%  other
+hades: 33 ms = 0.4% of app CPU samples
+       18  54.5%  Hermes GC
+       15  45.5%  Audio API (react-native-audio-api)
+com.facebook.SocketRocket.NetworkThread: 3 ms = 0.0% of app CPU samples
+        3 100.0%  other
+com.apple.CFSocket.private: 1 ms = 0.0% of app CPU samples
+        1 100.0%  other
