@@ -17,13 +17,13 @@ test('the determinism checker flags trig, pow, and random but ignores comments',
   assert.deepEqual(disallowed('const a = Math.sin(x) + Math.floor(y) ** 2; // Math.cos\n/* Math.random */ Math.pow(2, 3);'), ['sin', 'pow', '**']);
 });
 
-const srcDir = dirname(fileURLToPath(import.meta.url));
+const srcDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const mathSources: string[] = [];
 const simFile = join(srcDir, 'sim.ts');
 if (existsSync(simFile)) mathSources.push(simFile);
 const simDir = join(srcDir, 'sim');
 if (existsSync(simDir) && statSync(simDir).isDirectory()) {
-  for (const name of readdirSync(simDir).filter((entry) => entry.endsWith('.ts')).sort()) {
+  for (const name of readdirSync(simDir).filter((entry) => entry.endsWith('.ts') && !entry.endsWith('.test.ts')).sort()) {
     mathSources.push(join(simDir, name));
   }
 }
@@ -36,9 +36,9 @@ for (const file of mathSources) {
   });
 }
 
-import { ARCHETYPES, Kind } from './levels';
-import { COAST, createWorld, dragInput, hudOf, replay, simulate, step, type SimEvent, type World } from './sim';
-import { greedyBot, idleBot } from './bot';
+import { ARCHETYPES, Kind } from '../levels';
+import { COAST, createWorld, dragInput, hudOf, replay, simulate, step, type SimEvent, type World } from './index';
+import { greedyBot, idleBot } from '../bot';
 
 /** A world with its track exhausted, so only bodies a test places exist. */
 function emptyWorld(): World {

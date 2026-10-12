@@ -1,5 +1,5 @@
-import { ARCHETYPES, BOSSES, DRONE_PATTERNS, Kind, levelSpec } from './levels';
-import type { BossAttack, BossId, BossPhase, BossSpec, DronePattern, LevelNumber, LevelSpec, PickupKind } from './levels';
+import { ARCHETYPES, BOSSES, DRONE_PATTERNS, Kind, levelSpec } from '../levels';
+import type { BossAttack, BossId, BossPhase, BossSpec, DronePattern, LevelNumber, LevelSpec, PickupKind } from '../levels';
 
 // This file and levels.ts may use only + - * / and Math.sqrt, imul, floor, min, max, abs (sim.test.ts enforces it).
 // Engine trig differs in the last ulp between Hermes and V8, which would make the verifier prove a slightly different
