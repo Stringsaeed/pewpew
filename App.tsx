@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AppState, PixelRatio, StyleSheet, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Canvas, useCanvasRef, type NativeCanvas } from 'react-native-webgpu';
@@ -85,7 +85,7 @@ export default function App() {
     dispatch(a);
   }, [audio]);
 
-  const run = runOf(screen);
+  const run = useMemo(() => runOf(screen), [screen]);
   const key = runKey(run);
   const onMenu = screen.s === 'title' || screen.s === 'levels' || (screen.s === 'settings' && run === null);
   const suspended = run !== null && screen.s !== 'play';
