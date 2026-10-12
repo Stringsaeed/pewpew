@@ -250,6 +250,16 @@ export interface AudioEngine {
   active(on: boolean): void;
 }
 
+const columnsBySong = new Map<MusicId, Cell[][]>();
+
+function columnsOf(id: MusicId): Cell[][] {
+  const cached = columnsBySong.get(id);
+  if (cached) return cached;
+  const cols = songColumns(SONGS[id]);
+  columnsBySong.set(id, cols);
+  return cols;
+}
+
 /** Sets AudioManager session options before new AudioContext(), so sound plays with the mute switch on. */
 export function createAudio(factory: AudioFactory = defaultFactory()): AudioEngine {
   factory.configureSession();
@@ -360,7 +370,7 @@ export function createAudio(factory: AudioFactory = defaultFactory()): AudioEngi
     const t = ctx.currentTime;
     stopMusic(t);
     const song = SONGS[id];
-    music = { origin: t, index: 0, stepDur: 60 / song.bpm / 4, cols: songColumns(song), voices: [] };
+    music = { origin: t, index: 0, stepDur: 60 / song.bpm / 4, cols: columnsOf(id), voices: [] };
     pump();
   }
 
