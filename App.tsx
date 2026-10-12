@@ -1,205 +1,270 @@
-import { useEffect, useRef } from 'react';
-import { PixelRatio, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { AppState, PixelRatio, StyleSheet, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Canvas, useCanvasRef, type NativeCanvas } from 'react-native-webgpu';
-import { AudioContext, AudioManager } from 'react-native-audio-api';
+import { reduce, runOf, TITLE, type Action, type Run, type Screen } from './src/flow';
+import { loadSave, parseSave, recordRun, writeSave, type Save } from './src/save';
+import { COAST, STEP, type Hud as HudState, type Input, type SimEvent, type World } from './src/sim';
+import { createAudio, createRenderer, createWorld, dragInput, hudOf, step } from './src/ui/stubs';
+import type { AudioEngine } from './src/audio';
+import type { Renderer } from './src/render';
+import { Complete } from './src/ui/Complete';
+import { GameOver } from './src/ui/GameOver';
+import { Hud } from './src/ui/Hud';
+import { LevelSelect } from './src/ui/LevelSelect';
+import { Pause } from './src/ui/Pause';
+import { Settings } from './src/ui/Settings';
+import { Title } from './src/ui/Title';
+import { color } from './src/ui/theme';
 
-const SHADER = /* wgsl */ `
-struct Uniforms { angle: f32, aspect: f32, pad0: f32, pad1: f32 };
-@group(0) @binding(0) var<uniform> u: Uniforms;
+const MAX_STEPS_PER_FRAME = 4;
 
-struct VSOut {
-  @builtin(position) pos: vec4f,
-  @location(0) color: vec3f,
-};
-
-@vertex
-fn vs(@location(0) p: vec2f, @location(1) c: vec3f) -> VSOut {
-  let s = sin(u.angle);
-  let co = cos(u.angle);
-  let r = vec2f(p.x * co - p.y * s, p.x * s + p.y * co);
-  var o: VSOut;
-  o.pos = vec4f(r.x / u.aspect * 0.6, r.y * 0.6, 0.0, 1.0);
-  o.color = c;
-  return o;
+/** Everything the rAF tick reads and writes. Mutable on purpose: nothing here may cost a React render per frame. */
+interface Loop {
+  world: World | null;
+  key: string | null;
+  playing: boolean;
+  input: Input;
+  readonly events: SimEvent[];
+  acc: number;
+  last: number;
 }
 
-@fragment
-fn fs(i: VSOut) -> @location(0) vec4f {
-  return vec4f(i.color, 1.0);
-}
-`;
-
-const VERTICES = new Float32Array([
-  // x, y, r, g, b
-  0.0, 0.5, 1.0, 0.1, 0.4,
-  -0.45, -0.35, 0.1, 1.0, 0.8,
-  0.45, -0.35, 1.0, 0.9, 0.1,
-]);
-
-function beep(audio: AudioContext) {
-  const t = audio.currentTime;
-  const osc = audio.createOscillator();
-  const gain = audio.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(440, t);
-  gain.gain.setValueAtTime(0.5, t);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-  osc.connect(gain);
-  gain.connect(audio.destination);
-  osc.start(t);
-  osc.stop(t + 0.2);
-}
+const runKey = (r: Run | null) => (r === null ? null : `${r.level}:${r.attempt}`);
 
 export default function App() {
   const canvasRef = useCanvasRef();
-  const audioRef = useRef<AudioContext | null>(null);
+  const { width } = useWindowDimensions();
+  const widthRef = useRef(width);
+  widthRef.current = width;
+
+  const saveRef = useRef<Save | null>(null);
+  const [save, setSave] = useState<Save | null>(null);
+  const [screen, dispatch] = useReducer(
+    (s: Screen, a: Action) => reduce(s, a, saveRef.current ?? parseSave(null)),
+    TITLE,
+  );
+  const [hud, setHud] = useState<HudState | null>(null);
+
+  const audioRef = useRef<AudioEngine | null>(null);
+  audioRef.current ??= createAudio();
+  const audio = audioRef.current;
+
+  const loop = useRef<Loop>({ world: null, key: null, playing: false, input: COAST, events: [], acc: 0, last: 0 }).current;
+  const drag = useRef({ anchorX: 0, fx: 0 }).current;
+  const foreground = useRef(true);
+
+  const commitSave = useCallback((next: Save) => {
+    if (next === saveRef.current) return;
+    saveRef.current = next;
+    setSave(next);
+    void writeSave(next);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    void loadSave().then((s) => {
+      if (!alive) return;
+      saveRef.current = s;
+      setSave(s);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  const act = useCallback((a: Action) => {
+    audio.ui('tap');
+    dispatch(a);
+  }, [audio]);
+
+  const run = runOf(screen);
+  const key = runKey(run);
+  const onMenu = screen.s === 'title' || screen.s === 'levels' || (screen.s === 'settings' && run === null);
+  const suspended = run !== null && screen.s !== 'play';
+
+  useEffect(() => {
+    loop.playing = screen.s === 'play';
+    loop.input = COAST;
+    if (key !== loop.key) {
+      loop.key = key;
+      loop.world = run === null ? null : createWorld(run.level);
+      loop.acc = 0;
+      loop.events.length = 0;
+      setHud(null);
+    }
+  }, [screen, key, run, loop]);
+
+  useEffect(() => {
+    audio.active(foreground.current && !suspended);
+    if (onMenu) audio.ui('menu-music');
+  }, [audio, suspended, onMenu]);
+
+  useEffect(() => {
+    if (save) audio.mix({ music: save.music, sfx: save.sfx });
+  }, [audio, save?.music, save?.sfx]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      foreground.current = state === 'active';
+      if (!foreground.current) {
+        audio.active(false);
+        if (loop.playing) {
+          loop.playing = false;
+          dispatch({ a: 'pause' });
+        }
+      } else {
+        audio.active(!suspended);
+      }
+    });
+    return () => sub.remove();
+  }, [audio, loop, suspended]);
 
   useEffect(() => {
     let frame = 0;
     let stopped = false;
+    let renderer: Renderer | null = null;
+    let device: GPUDevice | null = null;
+    let format: GPUTextureFormat;
+    let ctx: GPUCanvasContext | null = null;
+
+    const onEnded = (ev: SimEvent) => {
+      if (ev.e !== 'won' && ev.e !== 'lost') return;
+      loop.playing = false;
+      const level = loop.world?.spec.n;
+      if (ev.e === 'won' && level !== undefined && saveRef.current) commitSave(recordRun(saveRef.current, level, ev.score, ev.stars));
+      dispatch({ a: 'ended', result: ev });
+    };
+
+    const tick = (now: number) => {
+      const dt = Math.min((now - loop.last) / 1000, 0.1);
+      loop.last = now;
+      const world = loop.world;
+      if (loop.playing && world) {
+        loop.acc += dt;
+        let steps = 0;
+        while (loop.acc >= STEP && steps < MAX_STEPS_PER_FRAME) {
+          step(world, loop.input, loop.events);
+          loop.acc -= STEP;
+          steps += 1;
+        }
+        if (loop.acc >= STEP) loop.acc = 0;
+      }
+      renderer!.frame(world, loop.events, loop.acc / STEP, dt);
+      audio.events(loop.events);
+      for (const ev of loop.events) onEnded(ev);
+      loop.events.length = 0;
+      if (world) setHud((h) => hudOf(world, h));
+    };
+
+    const frameFn = (now: number) => {
+      if (stopped) return;
+      frame = requestAnimationFrame(frameFn);
+      if (!renderer) {
+        // Layout size is 0 until the first layout pass, so retry on the next frame.
+        const c = canvasRef.current?.getContext('webgpu') ?? null;
+        const canvas = c?.canvas as unknown as NativeCanvas | undefined;
+        if (!c || !canvas || canvas.clientWidth === 0 || canvas.clientHeight === 0 || !device) return;
+        const ratio = PixelRatio.get();
+        canvas.width = Math.round(canvas.clientWidth * ratio);
+        canvas.height = Math.round(canvas.clientHeight * ratio);
+        c.configure({ device, format, alphaMode: 'opaque' });
+        ctx = c;
+        renderer = createRenderer(device, ctx, format);
+        loop.last = now;
+        return;
+      }
+      tick(now);
+    };
 
     const init = async () => {
       const adapter = await navigator.gpu.requestAdapter();
       if (!adapter) throw new Error('no GPU adapter');
-      const { vendor, architecture, device: name, description, isFallbackAdapter } = adapter.info;
-      console.log('[spike] adapter.info', JSON.stringify({ vendor, architecture, device: name, description, isFallbackAdapter }));
-      const device = await adapter.requestDevice();
-      const format = navigator.gpu.getPreferredCanvasFormat();
-      console.log('[spike] preferred canvas format', format);
-
-      const module = device.createShaderModule({ code: SHADER });
-      const pipeline = device.createRenderPipeline({
-        layout: 'auto',
-        vertex: {
-          module,
-          entryPoint: 'vs',
-          buffers: [
-            {
-              arrayStride: 20,
-              attributes: [
-                { shaderLocation: 0, offset: 0, format: 'float32x2' },
-                { shaderLocation: 1, offset: 8, format: 'float32x3' },
-              ],
-            },
-          ],
-        },
-        fragment: { module, entryPoint: 'fs', targets: [{ format }] },
-        primitive: { topology: 'triangle-list' },
-      });
-
-      const vbuf = device.createBuffer({
-        size: VERTICES.byteLength,
-        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      });
-      device.queue.writeBuffer(vbuf, 0, VERTICES);
-
-      const ubuf = device.createBuffer({
-        size: 16,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      });
-      const bind = device.createBindGroup({
-        layout: pipeline.getBindGroupLayout(0),
-        entries: [{ binding: 0, resource: { buffer: ubuf } }],
-      });
-
-      const start = Date.now();
-      let configuredW = 0;
-      let configuredH = 0;
-      let ctx: ReturnType<NonNullable<typeof canvasRef.current>['getContext']> = null;
-
-      const draw = () => {
-        if (stopped) return;
-        frame = requestAnimationFrame(draw);
-
-        if (!ctx) {
-          // Layout size is 0 until the first layout pass, so retry on the next frame.
-          const c = canvasRef.current?.getContext('webgpu') ?? null;
-          const size = c?.canvas as unknown as NativeCanvas | undefined;
-          if (!c || !size || size.clientWidth === 0 || size.clientHeight === 0) return;
-          ctx = c;
-        }
-        const canvas = ctx.canvas as unknown as NativeCanvas;
-        const ratio = PixelRatio.get();
-        const w = Math.round(canvas.clientWidth * ratio);
-        const h = Math.round(canvas.clientHeight * ratio);
-        if (w !== configuredW || h !== configuredH) {
-          canvas.width = w;
-          canvas.height = h;
-          ctx.configure({ device, format, alphaMode: 'opaque' });
-          configuredW = w;
-          configuredH = h;
-        }
-
-        const angle = ((Date.now() - start) / 1000) * 1.5;
-        device.queue.writeBuffer(ubuf, 0, new Float32Array([angle, w / h, 0, 0]));
-
-        const encoder = device.createCommandEncoder();
-        const pass = encoder.beginRenderPass({
-          colorAttachments: [
-            {
-              view: ctx.getCurrentTexture().createView(),
-              clearValue: { r: 0.02, g: 0.02, b: 0.06, a: 1 },
-              loadOp: 'clear',
-              storeOp: 'store',
-            },
-          ],
-        });
-        pass.setPipeline(pipeline);
-        pass.setBindGroup(0, bind);
-        pass.setVertexBuffer(0, vbuf);
-        pass.draw(3);
-        pass.end();
-        device.queue.submit([encoder.finish()]);
-        ctx.present();
-      };
-      frame = requestAnimationFrame(draw);
+      device = await adapter.requestDevice();
+      format = navigator.gpu.getPreferredCanvasFormat();
+      if (!stopped) frame = requestAnimationFrame(frameFn);
     };
 
-    init().catch((e) => console.error('[spike] webgpu init failed', e));
+    init().catch((e) => console.error('[pewpew] webgpu init failed', e));
     return () => {
       stopped = true;
       cancelAnimationFrame(frame);
+      renderer?.dispose();
     };
-  }, [canvasRef]);
+  }, [audio, canvasRef, commitSave, loop]);
 
-  const onBeep = () => {
-    if (!audioRef.current) {
-      AudioManager.setAudioSessionOptions({ iosCategory: 'playback', iosMode: 'default' });
-      audioRef.current = new AudioContext();
-    }
-    beep(audioRef.current);
-    console.log('[spike] beep');
+  const onTouchStart = (e: GestureResponderEvent) => {
+    drag.anchorX = loop.world?.player.x ?? 0;
+    drag.fx = e.nativeEvent.pageX;
+    loop.input = dragInput(drag.anchorX, 0);
   };
+  const onTouchMove = (e: GestureResponderEvent) => {
+    loop.input = dragInput(drag.anchorX, (e.nativeEvent.pageX - drag.fx) / widthRef.current);
+  };
+  const onTouchEnd = () => { loop.input = COAST; };
+
+  const level = run?.level ?? 1;
+  const setMusic = (music: boolean) => save && commitSave({ ...save, music });
+  const setSfx = (sfx: boolean) => save && commitSave({ ...save, sfx });
 
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
       <Canvas ref={canvasRef} style={StyleSheet.absoluteFill} />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="beep"
-        onPress={onBeep}
-        style={styles.button}
-      >
-        <Text style={styles.label}>Beep</Text>
-      </Pressable>
+      {save === null ? null : (
+        <>
+          {onMenu ? <View pointerEvents="none" style={styles.dim} /> : null}
+          {screen.s === 'title' ? <Title save={save} onPlay={() => act({ a: 'start' })} onSettings={() => act({ a: 'settings' })} /> : null}
+          {screen.s === 'levels' ? (
+            <LevelSelect
+              save={save}
+              onPick={(n) => act({ a: 'pick', level: n })}
+              onBack={() => act({ a: 'back' })}
+              onSettings={() => act({ a: 'settings' })}
+            />
+          ) : null}
+          {run !== null && hud !== null ? (
+            <View
+              style={StyleSheet.absoluteFill}
+              onStartShouldSetResponder={() => screen.s === 'play'}
+              onResponderGrant={onTouchStart}
+              onResponderMove={onTouchMove}
+              onResponderRelease={onTouchEnd}
+              onResponderTerminate={onTouchEnd}
+            >
+              <Hud hud={hud} level={level} onPause={() => act({ a: 'pause' })} />
+            </View>
+          ) : null}
+          {screen.s === 'paused' ? (
+            <Pause
+              onResume={() => act({ a: 'resume' })}
+              onRetry={() => act({ a: 'retry' })}
+              onSettings={() => act({ a: 'settings' })}
+              onQuit={() => act({ a: 'quit' })}
+            />
+          ) : null}
+          {screen.s === 'settings' ? (
+            <Settings music={save.music} sfx={save.sfx} onMusic={setMusic} onSfx={setSfx} onBack={() => act({ a: 'back' })} />
+          ) : null}
+          {screen.s === 'complete' ? (
+            <Complete
+              level={screen.level}
+              score={screen.score}
+              stars={screen.stars}
+              best={save.levels[screen.level - 1].best}
+              onNext={() => act({ a: 'next' })}
+              onRetry={() => act({ a: 'retry' })}
+              onLevels={() => act({ a: 'quit' })}
+            />
+          ) : null}
+          {screen.s === 'gameover' ? (
+            <GameOver level={screen.level} score={screen.score} onRetry={() => act({ a: 'retry' })} onLevels={() => act({ a: 'quit' })} />
+          ) : null}
+        </>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#05050f' },
-  button: {
-    position: 'absolute',
-    bottom: 64,
-    alignSelf: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-  },
-  label: { color: '#fff', fontSize: 20, fontWeight: '600' },
+  root: { flex: 1, backgroundColor: color.bg },
+  dim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,5,15,0.35)' },
 });
