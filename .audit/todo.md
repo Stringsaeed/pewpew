@@ -8,7 +8,7 @@
   - [x] U2 sim VERIFIED by npm run verify in main checkout, merged
   - [x] U3 meshes VERIFIED byte-identical rerun, merged
   - [x] U4 renderer VERIFIED on iPhone 17 sim, merged
-  - [ ] U5 audio: synth engine, SFX patches, 4 music tiers
+  - [x] U5 audio VERIFIED by 13 node tests and 12 WAV renders, merged
   - [x] U6 screens VERIFIED on iPhone 17 Pro sim with stubs, merged c3ab86f
   - [ ] U7 polish: juice, difficulty tuning from verifier stats, perf check on sim
 - [ ] Phase D: audit trail kept in .audit/decisions.tsv (commit it)
