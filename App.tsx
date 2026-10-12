@@ -34,6 +34,7 @@ interface Loop {
   readonly events: SimEvent[];
   acc: number;
   last: number;
+  hud: HudState | null;
 }
 
 const runKey = (r: Run | null) => (r === null ? null : `${r.level}:${r.attempt}`);
@@ -56,7 +57,7 @@ export default function App() {
   audioRef.current ??= createAudio();
   const audio = audioRef.current;
 
-  const loop = useRef<Loop>({ world: null, key: null, playing: false, input: COAST, auto: false, botOnly: true, events: [], acc: 0, last: 0 }).current;
+  const loop = useRef<Loop>({ world: null, key: null, playing: false, input: COAST, auto: false, botOnly: true, events: [], acc: 0, last: 0, hud: null }).current;
   if (__DEV__) (globalThis as { pewpew?: Loop }).pewpew = loop;
   const [auto, setAuto] = useState(false);
   const timer = useRef(createTickTimer()).current;
@@ -100,6 +101,7 @@ export default function App() {
       timer.reset();
       loop.acc = 0;
       loop.events.length = 0;
+      loop.hud = null;
       setHud(null);
     }
   }, [screen, key, run, loop, timer]);
@@ -167,7 +169,13 @@ export default function App() {
       audio.events(loop.events);
       for (const ev of loop.events) onEnded(ev);
       loop.events.length = 0;
-      if (world) setHud((h) => hudOf(world, h));
+      if (world) {
+        const next = hudOf(world, loop.hud);
+        if (next !== loop.hud) {
+          loop.hud = next;
+          setHud(next);
+        }
+      }
     };
 
     const frameFn = (now: number) => {
