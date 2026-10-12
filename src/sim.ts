@@ -9,7 +9,7 @@ export const STEP = 1 / 60;
 export const TRACK_HALF_WIDTH = 4.5;
 export const MAX_BODIES = 512;
 
-const PLAYER_R = 0.35;
+export const PLAYER_RADIUS = 0.35;
 const PLAYER_X_LIMIT = TRACK_HALF_WIDTH - 0.5;
 const PLAYER_MAX_VX = 9;
 const STEER_GAIN = 10;
@@ -42,6 +42,8 @@ const BOSS_R = 1.4;
 const BOSS_SWEEP = 3.2;
 const BOSS_GRACE_TICKS = 90;
 const BOSS_SCORE_PER_HP = 10;
+// Neighbouring aimed bolts land about 2 units apart at the rocket's row, wide enough to thread by finger.
+const AIM_SPREAD = 0.2;
 const WELL_REACH_Y = 5;
 
 const PI = 3.141592653589793;
@@ -317,13 +319,15 @@ function remove(b: Bodies, i: number): void {
   for (const c of COLUMNS) b[c][i] = b[c][last];
 }
 
+/** The rocket's lateral velocity after one held-finger STEP, before well pull. Exported so a bot can plan with the real handling. */
+export function steerVelocity(x: number, vx: number, targetX: number): number {
+  const want = clamp((clamp(targetX, -PLAYER_X_LIMIT, PLAYER_X_LIMIT) - x) * STEER_GAIN, -PLAYER_MAX_VX, PLAYER_MAX_VX);
+  return vx + clamp(want - vx, -STEER_ACCEL * STEP, STEER_ACCEL * STEP);
+}
+
 function steer(w: World, input: Input): void {
   const p = w.player;
-  if (input.targetX === null) p.vx *= COAST_DAMPING;
-  else {
-    const want = clamp((clamp(input.targetX, -PLAYER_X_LIMIT, PLAYER_X_LIMIT) - p.x) * STEER_GAIN, -PLAYER_MAX_VX, PLAYER_MAX_VX);
-    p.vx += clamp(want - p.vx, -STEER_ACCEL * STEP, STEER_ACCEL * STEP);
-  }
+  p.vx = input.targetX === null ? p.vx * COAST_DAMPING : steerVelocity(p.x, p.vx, input.targetX);
   p.vx += wellPull(w) * STEP;
   p.x += p.vx * STEP;
   if (p.x > PLAYER_X_LIMIT) { p.x = PLAYER_X_LIMIT; p.vx = 0; }
@@ -409,18 +413,19 @@ function bossAttack(w: World, boss: Boss, atk: BossAttack): void {
       const len = Math.sqrt(dx * dx + dy * dy);
       const ux = dx / len, uy = dy / len;
       for (let k = 0; k < atk.bolts; k++) {
-        const a = (k - (atk.bolts - 1) / 2) * 0.14;
+        const a = (k - (atk.bolts - 1) / 2) * AIM_SPREAD;
         const c = cosT(a), s = sinT(a);
         add(w, Kind.EnemyBolt, boss.x, y, ENEMY_BOLT_SPEED * (ux * c - uy * s), ENEMY_BOLT_SPEED * (ux * s + uy * c));
       }
       return;
     }
     case 'mines': {
-      const slots = atk.count + 1;
-      const skip = Math.floor(rand(w) * slots);
+      // A wall across the track with two adjacent empty slots, so there is always a gap about 3 units wide.
+      const slots = atk.count + 2;
+      const skip = Math.floor(rand(w) * (slots - 1));
       const edge = TRACK_HALF_WIDTH - 0.6;
       for (let k = 0; k < slots; k++) {
-        if (k === skip) continue;
+        if (k === skip || k === skip + 1) continue;
         const i = add(w, Kind.Mine, -edge + 2 * edge * (k + 0.5) / slots, y, 0, -2.5);
         if (i >= 0) b.spin[i] = 1.5;
       }
@@ -524,7 +529,7 @@ function collide(w: World, out: SimEvent[]): void {
     const a = ARCHETYPES[k];
     if (a.role === 'playerShot') continue;
     const dx = b.x[i] - p.x, dy = b.y[i] - p.y;
-    const rr = a.radius + PLAYER_R + (a.role === 'pickup' ? PICKUP_SLACK : 0);
+    const rr = a.radius + PLAYER_RADIUS + (a.role === 'pickup' ? PICKUP_SLACK : 0);
     if (dx * dx + dy * dy >= rr * rr) continue;
     if (a.role === 'pickup') {
       collect(w, k as PickupKind, b.x[i], b.y[i], out);

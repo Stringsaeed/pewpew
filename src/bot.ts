@@ -1,33 +1,45 @@
 import { ARCHETYPES, Kind } from './levels';
-import { COAST, STEP, type Bot } from './sim';
+import { COAST, PLAYER_RADIUS, STEP, steerVelocity, type Bot } from './sim';
 
 const LANES = [-4, -3, -2, -1, 0, 1, 2, 3, 4] as const;
 const HORIZON = 3;
 const SAMPLES = 5;
-// The bot's own model of the rocket, kept slightly pessimistic so it leaves margin.
-const SHIP_R = 0.35;
+const PATH_TICKS = 3;
+const PATH_DT = PATH_TICKS * STEP;
+const PATH_POINTS = Math.floor(HORIZON / PATH_DT) + 1;
 const MARGIN = 0.3;
-const LATERAL_SPEED = 7;
 const BOLT_SPEED = 28;
 const FIRE_PERIOD = 0.2;
 
+const paths = new Float64Array(LANES.length * PATH_POINTS);
+
 /**
  * Looks 3 s ahead, scores 9 lanes by threat (hazards, enemy bolts, well cores) minus pickup value, steers to the best.
- * For each body it finds the time window in which the body overlaps the rocket's row, then samples that window
- * against the rocket flying straight toward the lane, so threats beside or across the path count too. A shootable
- * body dead ahead with time to kill it costs little. Stateless, so two runs of a level make identical choices.
+ * Each lane's path is the rocket's real steering response from its current x and velocity. For each body the bot finds
+ * the window in which the body overlaps the rocket's row and samples it against that path, so threats beside or across
+ * the path count too. Contact costs full weight and a near miss a quarter; a shootable body dead ahead with time to
+ * kill it costs little. No memory between calls, so two runs of a level make identical choices.
  */
 export const greedyBot: Bot = (w) => {
   const p = w.player, b = w.bodies;
   const pvy = w.phase.p === 'fly' ? w.spec.scroll : 0;
+  for (let l = 0; l < LANES.length; l++) {
+    let x = p.x, vx = p.vx;
+    for (let s = 0; s < PATH_POINTS; s++) {
+      paths[l * PATH_POINTS + s] = x;
+      for (let k = 0; k < PATH_TICKS; k++) { vx = steerVelocity(x, vx, LANES[l]); x += vx * STEP; }
+    }
+  }
   let best: number = LANES[0], bestScore = Infinity;
-  for (const lane of LANES) {
+  for (let l = 0; l < LANES.length; l++) {
+    const lane = LANES[l];
     let score = 0.02 * Math.abs(lane - p.x);
     for (let i = 0; i < b.count; i++) {
       const k = b.kind[i] as Kind;
       const a = ARCHETYPES[k];
       if (a.role === 'playerShot') continue;
-      const reach = a.radius + SHIP_R + (a.role === 'pickup' ? 0.2 : MARGIN);
+      const contact = a.radius + PLAYER_RADIUS;
+      const reach = contact + (a.role === 'pickup' ? 0.2 : MARGIN);
       const dy = b.y[i] - p.y, rvy = b.vy[i] - pvy;
       let t0 = 0, t1 = HORIZON;
       if (rvy < -0.01 || rvy > 0.01) {
@@ -39,20 +51,19 @@ export const greedyBot: Bot = (w) => {
       for (let s = 0; s < SAMPLES; s++) {
         const t = t0 + (t1 - t0) * s / (SAMPLES - 1);
         const bx = b.x[i] + b.vx[i] * t;
-        const sx = p.x + Math.max(-LATERAL_SPEED * t, Math.min(LATERAL_SPEED * t, lane - p.x));
-        const ex = sx - bx, ey = dy + rvy * t;
-        if (ex * ex + ey * ey >= reach * reach) continue;
+        const ex = paths[l * PATH_POINTS + Math.floor(t / PATH_DT + 0.5)] - bx, ey = dy + rvy * t, d2 = ex * ex + ey * ey;
+        if (d2 >= reach * reach) continue;
         if (a.role === 'pickup') score -= (k === Kind.Crystal ? 0.15 : 0.6) / (0.5 + t);
         else {
           const killable = a.hp > 0 && Math.abs(lane - bx) < a.radius && t > b.hp[i] * FIRE_PERIOD + dy / BOLT_SPEED + 0.3;
-          score += (killable ? 0.2 : 1) / (0.2 + t);
+          score += (killable ? 0.2 : 1) * (d2 < contact * contact ? 1 : 0.25) / (0.2 + t);
         }
         break;
       }
     }
     if (w.boss !== null) {
       const bx = w.boss.x + (w.boss.x - w.boss.px) / STEP * 0.45;
-      score -= 0.8 * Math.max(0, 1 - Math.abs(lane - bx) / 1.5);
+      score -= 0.25 * Math.max(0, 1 - Math.abs(lane - bx) / 1.5);
     }
     if (score < bestScore) { bestScore = score; best = lane; }
   }
