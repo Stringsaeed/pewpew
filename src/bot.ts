@@ -1,15 +1,15 @@
 import { ARCHETYPES, Kind } from './levels';
-import { COAST, PLAYER_RADIUS, STEP, steerVelocity, type Bot } from './sim';
+import { BOLT_SPEED, COAST, FIRE_TICKS, PLAYER_RADIUS, PLAYER_X_LIMIT, STEP, TICKS_PER_SEC, steerVelocity, type Bot } from './sim';
 
-const LANES = [-4, -3, -2, -1, 0, 1, 2, 3, 4] as const;
+const LANES: number[] = [];
+for (let lane = -PLAYER_X_LIMIT; lane <= PLAYER_X_LIMIT; lane += 1) LANES.push(lane);
 const HORIZON = 3;
 const SAMPLES = 5;
 const PATH_TICKS = 3;
 const PATH_DT = PATH_TICKS * STEP;
 const PATH_POINTS = Math.floor(HORIZON / PATH_DT) + 1;
 const MARGIN = 0.3;
-const BOLT_SPEED = 28;
-const FIRE_PERIOD = 0.2;
+const FIRE_PERIOD = FIRE_TICKS / TICKS_PER_SEC;
 // A rocket against the wall has one escape direction, so the bot prefers room on both sides.
 const CORNER = 0.04;
 

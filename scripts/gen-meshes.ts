@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 type Vec3 = readonly [number, number, number];
@@ -392,5 +392,13 @@ function emit(): string {
 
 const out = resolve(__dirname, '../src/meshes.gen.ts');
 const text = emit();
+if (process.argv.includes('--check')) {
+  const committed = readFileSync(out, 'utf8');
+  if (committed !== text) {
+    console.error(`${out} differs from the generator output. Rerun \`npm run gen:meshes\`.`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
 writeFileSync(out, text);
 console.log(`wrote ${out} (${(text.length / 1024).toFixed(0)} KB)`);

@@ -1,16 +1,17 @@
-import { ARCHETYPES, BOSSES, Kind, levelSpec } from './levels';
+import { ARCHETYPES, BOSSES, DRONE_PATTERNS, Kind, levelSpec } from './levels';
 import type { BossAttack, BossId, BossPhase, BossSpec, DronePattern, LevelNumber, LevelSpec, PickupKind } from './levels';
 
 // This file and levels.ts may use only + - * / and Math.sqrt, imul, floor, min, max, abs (sim.test.ts enforces it).
 // Engine trig differs in the last ulp between Hermes and V8, which would make the verifier prove a slightly different
 // game than the one on the phone. Those operations are correctly rounded by IEEE 754 on every engine.
 
+export const TICKS_PER_SEC = 60;
 export const STEP = 1 / 60;
 export const TRACK_HALF_WIDTH = 4.5;
 export const MAX_BODIES = 512;
 
 export const PLAYER_RADIUS = 0.35;
-const PLAYER_X_LIMIT = TRACK_HALF_WIDTH - 0.5;
+export const PLAYER_X_LIMIT = TRACK_HALF_WIDTH - 0.5;
 const PLAYER_MAX_VX = 9;
 const STEER_GAIN = 10;
 const STEER_ACCEL = 60;
@@ -18,12 +19,12 @@ const COAST_DAMPING = 0.9;
 // A full-width finger drag crosses the track with a little to spare.
 const DRAG_GAIN = 2 * TRACK_HALF_WIDTH * 1.25;
 
-const FIRE_TICKS = 12;
+export const FIRE_TICKS = 12;
 const RAPID_TICKS = 360;
 const HIT_INVULN_TICKS = 90;
 const SHIELD_INVULN_TICKS = 30;
 const PICKUP_SLACK = 0.25;
-const BOLT_SPEED = 28;
+export const BOLT_SPEED = 28;
 const ENEMY_BOLT_SPEED = 8;
 const DEAD = -1;
 
@@ -212,7 +213,7 @@ export interface RunResult {
 /** Headless run through the same createWorld and step the app uses. */
 export function simulate(n: LevelNumber, bot: Bot, maxSteps?: number): RunResult {
   const spec = levelSpec(n);
-  const limit = maxSteps ?? Math.floor((spec.length / spec.scroll + 240) * 60);
+  const limit = maxSteps ?? Math.floor((spec.length / spec.scroll + 240) * TICKS_PER_SEC);
   return run(n, limit, (w) => {
     const x = bot(w).targetX;
     return x === null ? NaN : x;
@@ -391,7 +392,7 @@ function runBoss(w: World, boss: Boss, out: SimEvent[]): void {
   bossAttack(w, boss, phase.attacks[boss.attack % phase.attacks.length]);
   out.push({ e: 'enemyFire', x: boss.x, y: boss.y });
   boss.attack++;
-  boss.attackAt = w.tick + Math.floor(phase.attackEvery * 60);
+  boss.attackAt = w.tick + Math.floor(phase.attackEvery * TICKS_PER_SEC);
 }
 
 function bossAttack(w: World, boss: Boss, atk: BossAttack): void {
@@ -442,7 +443,6 @@ function bossAttack(w: World, boss: Boss, atk: BossAttack): void {
   }
 }
 
-const DRONE_PATTERNS: readonly DronePattern[] = ['sine', 'zigzag', 'dive', 'orbit'];
 /** x-driven patterns also write vx, so a reader of WorldView sees the true lateral velocity. */
 const DRONE_MOVES: { readonly [P in DronePattern]: (w: World, i: number) => void } = {
   sine: (w, i) => { const b = w.bodies; driveX(b, i, b.param[i] + 1.6 * sinT(2.4 * b.t[i])); b.vy[i] = -1.2; },

@@ -1,7 +1,9 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 const ALLOWED_MATH = new Set(['sqrt', 'imul', 'floor', 'min', 'max', 'abs']);
 function disallowed(source: string): string[] {
@@ -15,9 +17,22 @@ test('the determinism checker flags trig, pow, and random but ignores comments',
   assert.deepEqual(disallowed('const a = Math.sin(x) + Math.floor(y) ** 2; // Math.cos\n/* Math.random */ Math.pow(2, 3);'), ['sin', 'pow', '**']);
 });
 
-for (const file of ['sim.ts', 'levels.ts']) {
-  test(`${file} uses only + - * / sqrt imul floor min max abs from Math`, () => {
-    assert.deepEqual(disallowed(readFileSync(new URL(file, import.meta.url), 'utf8')), []);
+const srcDir = dirname(fileURLToPath(import.meta.url));
+const mathSources: string[] = [];
+const simFile = join(srcDir, 'sim.ts');
+if (existsSync(simFile)) mathSources.push(simFile);
+const simDir = join(srcDir, 'sim');
+if (existsSync(simDir) && statSync(simDir).isDirectory()) {
+  for (const name of readdirSync(simDir).filter((entry) => entry.endsWith('.ts')).sort()) {
+    mathSources.push(join(simDir, name));
+  }
+}
+mathSources.push(join(srcDir, 'levels.ts'));
+
+for (const file of mathSources) {
+  const label = relative(join(srcDir, '..'), file);
+  test(`${label} uses only + - * / sqrt imul floor min max abs from Math`, () => {
+    assert.deepEqual(disallowed(readFileSync(file, 'utf8')), []);
   });
 }
 

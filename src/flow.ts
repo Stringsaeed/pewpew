@@ -1,4 +1,4 @@
-import type { LevelNumber } from './levels';
+import { LEVEL_COUNT, type LevelNumber } from './levels';
 import { isUnlocked, type Save } from './save';
 import type { EventOf, Stars } from './sim';
 
@@ -62,7 +62,7 @@ export function reduce(s: Screen, act: Action, save: Save): Screen {
       if (act.a === 'settings') return { s: 'settings', back: 'paused', level: s.level, attempt: s.attempt };
       return s;
     case 'complete':
-      if (act.a === 'next') return s.level === 30 ? { s: 'levels' } : { s: 'play', level: (s.level + 1) as LevelNumber, attempt: 0 };
+      if (act.a === 'next') return s.level === LEVEL_COUNT ? { s: 'levels' } : { s: 'play', level: (s.level + 1) as LevelNumber, attempt: 0 };
       if (act.a === 'retry') return { s: 'play', level: s.level, attempt: 0 };
       if (act.a === 'quit') return { s: 'levels' };
       return s;

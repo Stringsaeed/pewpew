@@ -26,9 +26,12 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "verify": "tsx scripts/verify-levels.ts",
+    "check": "npm run typecheck && npm test && npm run verify && npm run gen:meshes -- --check",
     "gen:meshes": "tsx scripts/gen-meshes.ts",
-    "test": "tsx --test \"src/**/*.test.ts\""
+    "render-song": "tsx scripts/render-song.ts",
+    "sweep": "tsx scripts/ramp-sweep.ts"
   },
   "private": true
 }
