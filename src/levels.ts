@@ -29,7 +29,8 @@ export const ARCHETYPES: { readonly [K in Kind]: Archetype } = {
   [Kind.EnemyBolt]: { role: 'enemyShot', radius: 0.15, hp: 1, score: 0, splitInto: null },
 };
 
-export type DronePattern = 'sine' | 'zigzag' | 'dive' | 'orbit';
+export const DRONE_PATTERNS = ['sine', 'zigzag', 'dive', 'orbit'] as const;
+export type DronePattern = (typeof DRONE_PATTERNS)[number];
 export type BossId = 'warden' | 'hive' | 'core';
 export type BossAttack =
   | { readonly a: 'spread'; readonly bolts: number; readonly arcDeg: number }
@@ -64,6 +65,7 @@ export const BOSSES: { readonly [B in BossId]: BossSpec } = {
   ] },
 };
 
+export const LEVEL_COUNT = 30;
 export type LevelNumber =
   | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15
   | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30;

@@ -1,4 +1,4 @@
-import { ARCHETYPES, BOSSES, Kind, levelSpec } from './levels';
+import { ARCHETYPES, BOSSES, DRONE_PATTERNS, Kind, levelSpec } from './levels';
 import type { BossAttack, BossId, BossPhase, BossSpec, DronePattern, LevelNumber, LevelSpec, PickupKind } from './levels';
 
 // This file and levels.ts may use only + - * / and Math.sqrt, imul, floor, min, max, abs (sim.test.ts enforces it).
@@ -442,7 +442,6 @@ function bossAttack(w: World, boss: Boss, atk: BossAttack): void {
   }
 }
 
-const DRONE_PATTERNS: readonly DronePattern[] = ['sine', 'zigzag', 'dive', 'orbit'];
 /** x-driven patterns also write vx, so a reader of WorldView sees the true lateral velocity. */
 const DRONE_MOVES: { readonly [P in DronePattern]: (w: World, i: number) => void } = {
   sine: (w, i) => { const b = w.bodies; driveX(b, i, b.param[i] + 1.6 * sinT(2.4 * b.t[i])); b.vy[i] = -1.2; },

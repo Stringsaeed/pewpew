@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { LevelNumber } from './levels';
+import { LEVEL_COUNT, type LevelNumber } from './levels';
 import type { Stars } from './sim';
 
 export interface LevelRecord { readonly best: number; readonly stars: 0 | Stars }
@@ -10,7 +10,6 @@ export interface Save {
   readonly music: boolean; readonly sfx: boolean;
 }
 export const SAVE_KEY = 'pewpew/save/v1';
-const LEVEL_COUNT = 30;
 const FRESH_RECORD: LevelRecord = { best: 0, stars: 0 };
 
 function freshSave(): Save {
