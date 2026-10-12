@@ -1,0 +1,4 @@
+2026-10-12 16:02:08.664 Df PewPew[89035:155de36] (PewPew.debug.dylib) Successfully installed JSI bindings for react-native-audio-api!
+2026-10-12 16:02:08.762 Df PewPew[89035:155de75] (PewPew.debug.dylib) [AudioSessionManager] Configured audio session: category=AVAudioSessionCategoryPlayback, mode=AVAudioSessionModeDefault, options=0
+2026-10-12 16:02:08.782 Df PewPew[89035:155de75] [com.apple.coreaudio:ddagg]        AggregateDevice.mm:688   Built valid aggregate 145
+2026-10-12 16:02:20.802 Df PewPew[89035:155e48a] (PewPew.debug.dylib) Successfully installed JSI bindings for react-native-audio-api!

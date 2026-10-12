@@ -1,0 +1,16 @@
+[L:0] 2026-10-12T12:02:20.775Z LOG   - | Running "main" with {"rootTag":11,"initialProps":{},"fabric":true}
+[L:1] 2026-10-12T12:03:03.569Z LOG   - | [pewpew] tick level 1 window 1 avg 1.81 ms p95 3.29 ms max 7.95 ms over 600 frames
+[L:2] 2026-10-12T12:03:13.571Z LOG   - | [pewpew] tick level 1 window 2 avg 1.68 ms p95 3.35 ms max 9.47 ms over 600 frames
+[L:3] 2026-10-12T12:03:23.571Z LOG   - | [pewpew] tick level 1 window 3 avg 1.70 ms p95 3.13 ms max 6.81 ms over 600 frames
+[L:4] 2026-10-12T12:03:33.572Z LOG   - | [pewpew] tick level 1 window 4 avg 1.84 ms p95 2.96 ms max 5.39 ms over 600 frames
+[L:5] 2026-10-12T12:04:00.804Z LOG   - | [pewpew] tick level 1 window 1 avg 1.57 ms p95 2.90 ms max 7.11 ms over 600 frames
+[L:6] 2026-10-12T12:04:10.805Z LOG   - | [pewpew] tick level 1 window 2 avg 1.71 ms p95 3.13 ms max 5.77 ms over 600 frames
+[L:7] 2026-10-12T12:04:52.438Z LOG   - | [pewpew] tick level 1 auto window 1 avg 3.16 ms p95 6.88 ms max 9.70 ms over 600 frames
+[L:8] 2026-10-12T12:05:02.438Z LOG   - | [pewpew] tick level 1 auto window 2 avg 3.20 ms p95 6.90 ms max 8.70 ms over 600 frames
+[L:9] 2026-10-12T12:05:12.443Z LOG   - | [pewpew] tick level 1 auto window 3 avg 3.28 ms p95 6.82 ms max 11.45 ms over 600 frames
+[L:10] 2026-10-12T12:05:22.443Z LOG   - | [pewpew] tick level 1 auto window 4 avg 3.22 ms p95 6.68 ms max 9.43 ms over 600 frames
+[L:11] 2026-10-12T12:05:27.461Z LOG   - | [pewpew] level 1 hash e9ab99ad steps 2701
+[L:12] 2026-10-12T12:06:08.588Z LOG   - | [pewpew] tick level 2 auto window 1 avg 1.76 ms p95 3.47 ms max 17.09 ms over 600 frames
+[L:13] 2026-10-12T12:06:18.590Z LOG   - | [pewpew] tick level 2 auto window 2 avg 3.14 ms p95 5.15 ms max 8.43 ms over 600 frames
+[L:14] 2026-10-12T12:06:28.592Z LOG   - | [pewpew] tick level 2 auto window 3 avg 3.01 ms p95 5.22 ms max 14.30 ms over 600 frames
+[L:15] 2026-10-12T12:06:38.590Z LOG   - | [pewpew] tick level 2 auto window 4 avg 3.11 ms p95 5.24 ms max 19.55 ms over 600 frames
