@@ -5,7 +5,7 @@ import { Canvas, useCanvasRef, type NativeCanvas } from 'react-native-webgpu';
 import { reduce, runOf, TITLE, type Action, type Run, type Screen } from './src/flow';
 import { loadSave, parseSave, recordRun, writeSave, type Save } from './src/save';
 import { COAST, STEP, createWorld, dragInput, hudOf, step, type Hud as HudState, type Input, type SimEvent, type World } from './src/sim';
-import { createRenderer, type Renderer } from './src/render';
+import { MAX_PIXEL_RATIO, createRenderer, type Renderer } from './src/render';
 import type { AudioEngine } from './src/audio';
 import { greedyBot } from './src/bot';
 import { createTickTimer, logAutoRun, unlockAll } from './src/dev/qa';
@@ -186,7 +186,7 @@ export default function App() {
         const c = canvasRef.current?.getContext('webgpu') ?? null;
         const canvas = c?.canvas as unknown as NativeCanvas | undefined;
         if (!c || !canvas || canvas.clientWidth === 0 || canvas.clientHeight === 0 || !device) return;
-        const ratio = PixelRatio.get();
+        const ratio = Math.min(PixelRatio.get(), MAX_PIXEL_RATIO);
         canvas.width = Math.round(canvas.clientWidth * ratio);
         canvas.height = Math.round(canvas.clientHeight * ratio);
         c.configure({ device, format, alphaMode: 'opaque' });

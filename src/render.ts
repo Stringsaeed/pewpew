@@ -38,6 +38,8 @@ export interface Renderer {
   dispose(): void;
 }
 
+export const MAX_PIXEL_RATIO = 2;
+
 const UNIFORMS = /* wgsl */ `
 struct U { view: mat4x4f, proj: mat4x4f, res: vec2f, camY: f32, time: f32 };
 @group(0) @binding(0) var<uniform> u: U;
@@ -311,7 +313,7 @@ export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext & { pres
   const passDesc: GPURenderPassDescriptor = { colorAttachments: [colorAttachment], depthStencilAttachment: depthAttachment };
 
   function resize(): boolean {
-    const ratio = PixelRatio.get();
+    const ratio = Math.min(PixelRatio.get(), MAX_PIXEL_RATIO);
     const w = Math.round(canvas.clientWidth * ratio);
     const h = Math.round(canvas.clientHeight * ratio);
     if (w === 0 || h === 0) return false;
