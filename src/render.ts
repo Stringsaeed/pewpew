@@ -27,7 +27,7 @@ export const LOOK: { readonly [K in Kind]: Look } = {
  *  stars  fullscreen triangle, procedural hashed star layers parallaxed by a camera y uniform. No buffers.
  *  mesh   one shared vertex and index buffer holding every MeshData (interleaved pos|normal|color, 36 B), plus one
  *         instance buffer (x, y, rot, scale, tint rgb, flash = 8 f32). Per frame: counting-sort live bodies by MeshId,
- *         one writeBuffer, then drawIndexed(indexCount, n, firstIndex, baseVertex, firstInstance) per non-empty mesh.
+ *         one writeBuffer, then drawIndexed per non-empty mesh with the vertex and instance buffers bound at that mesh's offsets.
  *         Rocket, boss, and wormhole are appended from the player, boss, and wormholeY scalars. Lambert plus emissive vertex color.
  *  glow   instanced quads, additive blend, no depth write: bolts, exhaust, explosion particles, shield bubble.
  * Particles live here (CPU SoA, 2048 cap) and spawn from SimEvents; the sim never knows they exist.
@@ -496,11 +496,14 @@ export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext & { pres
     pass.draw(3);
     if (meshSlots > 0) {
       pass.setPipeline(meshPipe);
-      pass.setVertexBuffer(0, vertexBuf);
-      pass.setVertexBuffer(1, meshInstBuf);
       pass.setIndexBuffer(indexBuf, 'uint16');
       for (let m = 0; m < counts.length; m++) {
-        if (counts[m] > 0) pass.drawIndexed(indexCountOf[m], counts[m], firstIndex[m], baseVertex[m], starts[m]);
+        if (counts[m] === 0) continue;
+        // Dawn rejects a nonzero baseVertex or firstInstance unless the device enabled 'indirect-first-instance',
+        // so both offsets go into the vertex buffer bindings and the renderer works with whatever device it is given.
+        pass.setVertexBuffer(0, vertexBuf, baseVertex[m] * 36);
+        pass.setVertexBuffer(1, meshInstBuf, starts[m] * INSTANCE_FLOATS * 4);
+        pass.drawIndexed(indexCountOf[m], counts[m], firstIndex[m], 0, 0);
       }
     }
     if (glowCount > 0) {
