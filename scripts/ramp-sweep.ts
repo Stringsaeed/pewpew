@@ -6,7 +6,7 @@
  * With --write-seeds it sets each row's seed to the first candidate whose greedyBot lives lost equals the rounded mean
  * and, from level 4 up, on which idleBot loses, so the shipped layout is a typical sample of its row that meets every
  * verifier property. The current seed is candidate 0, so a rerun keeps a seed that still qualifies.
- *   npx tsx .audit/u2-ramp-sweep.ts [N=40] [--write-seeds]
+ *   npm run sweep -- [N=40] [--write-seeds]
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { LEVELS } from '../src/levels';
