@@ -124,7 +124,7 @@ export default function App() {
     let renderer: Renderer | null = null;
     let device: GPUDevice | null = null;
     let format: GPUTextureFormat;
-    let ctx: GPUCanvasContext | null = null;
+    let ctx: (GPUCanvasContext & { present(): void }) | null = null;
 
     const onEnded = (ev: SimEvent) => {
       if (ev.e !== 'won' && ev.e !== 'lost') return;

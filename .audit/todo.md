@@ -9,7 +9,7 @@
   - [ ] U3 mesh generator script + checked-in meshes
   - [ ] U4 renderer: pipelines (mesh instanced, particles, starfield), camera, HUD overlay
   - [ ] U5 audio: synth engine, SFX patches, 4 music tiers
-  - [ ] U6 screens: title, level select, pause, level complete, game over, settings; persistence
+  - [x] U6 screens VERIFIED on iPhone 17 Pro sim with stubs, merged c3ab86f
   - [ ] U7 polish: juice, difficulty tuning from verifier stats, perf check on sim
 - [ ] Phase D: audit trail kept in .audit/decisions.tsv (commit it)
 - [ ] Phase E: verify whole against predicate on the simulator; cross-model review of trail; reply

@@ -76,7 +76,7 @@ export const step = (w: World, input: Input, out: SimEvent[]) => (stubWorlds.has
 export const hudOf = (w: WorldView, prev: Hud | null) => (stubWorlds.has(w) ? stubHud(w, prev) : realHudOf(w, prev));
 export const dragInput = (anchorX: number, dxFrac: number): Input => (simIsStub ? { targetX: anchorX + dxFrac * 9 } : realDragInput(anchorX, dxFrac));
 
-export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext, format: GPUTextureFormat): Renderer {
+export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext & { present(): void }, format: GPUTextureFormat): Renderer {
   try { return realCreateRenderer(device, ctx, format); } catch (e) { if (!isUnimplemented(e)) throw e; }
   let t = 0;
   return {
