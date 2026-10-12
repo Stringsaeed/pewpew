@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { color, font, space } from './theme';
 
-/** Shared frame for the screens that float over the scene: pause, complete, game over, settings. */
 export function Panel({ title, tint = color.cyan, children }: { readonly title: string; readonly tint?: string; readonly children: ReactNode }) {
   return (
     <View style={styles.scrim}>

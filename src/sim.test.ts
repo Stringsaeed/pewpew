@@ -4,7 +4,6 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const ALLOWED_MATH = new Set(['sqrt', 'imul', 'floor', 'min', 'max', 'abs']);
-/** Math members and `**` used in code, ignoring comments. */
 function disallowed(source: string): string[] {
   const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
   const found = [...code.matchAll(/Math\s*(?:\.\s*(\w+)|\[)/g)].map((m) => m[1] ?? '[computed]');

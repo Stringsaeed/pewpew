@@ -161,8 +161,6 @@ export function createWorld(n: LevelNumber): World {
 
 /**
  * Advance one STEP. Appends events to `out`; the caller clears it once per rendered frame, after several steps.
- * Order: snapshot px/py, steer and well pull, scroll (held in 'boss'), spawn from track, fire, move bodies by kind,
- * collide by role, despawn behind camera, phase transition.
  */
 export function step(w: World, input: Input, out: SimEvent[]): void {
   if (w.phase.p === 'won' || w.phase.p === 'lost') return;

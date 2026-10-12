@@ -14,7 +14,6 @@ export function logAutoRun(w: World): void {
 
 const FRAMES = 600;
 
-/** Collects whole rAF tick durations and logs average and p95 for each consecutive FRAMES-frame window of a run. */
 export function createTickTimer() {
   const ms = new Float64Array(FRAMES);
   let n = 0, window = 0;
