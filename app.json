@@ -25,6 +25,9 @@
       "favicon": "./assets/favicon.png"
     },
     "newArchEnabled": true,
-    "plugins": []
+    "plugins": [
+      "react-native-audio-api",
+      "./plugins/with-ios-scene-delegate"
+    ]
   }
 }
