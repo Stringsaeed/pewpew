@@ -4,10 +4,10 @@ import { StatusBar } from 'expo-status-bar';
 import { Canvas, useCanvasRef, type NativeCanvas } from 'react-native-webgpu';
 import { reduce, runOf, TITLE, type Action, type Run, type Screen } from './src/flow';
 import { loadSave, parseSave, recordRun, writeSave, type Save } from './src/save';
-import { COAST, STEP, type Hud as HudState, type Input, type SimEvent, type World } from './src/sim';
-import { createAudio, createRenderer, createWorld, dragInput, hudOf, step } from './src/ui/stubs';
+import { COAST, STEP, createWorld, dragInput, hudOf, step, type Hud as HudState, type Input, type SimEvent, type World } from './src/sim';
+import { createRenderer, type Renderer } from './src/render';
 import type { AudioEngine } from './src/audio';
-import type { Renderer } from './src/render';
+import { createAudioOrSilent } from './src/dev/silentAudio';
 import { Complete } from './src/ui/Complete';
 import { GameOver } from './src/ui/GameOver';
 import { Hud } from './src/ui/Hud';
@@ -47,7 +47,7 @@ export default function App() {
   const [hud, setHud] = useState<HudState | null>(null);
 
   const audioRef = useRef<AudioEngine | null>(null);
-  audioRef.current ??= createAudio();
+  audioRef.current ??= createAudioOrSilent();
   const audio = audioRef.current;
 
   const loop = useRef<Loop>({ world: null, key: null, playing: false, input: COAST, events: [], acc: 0, last: 0 }).current;
