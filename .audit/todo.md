@@ -6,8 +6,8 @@
 - [ ] Phase C: Run the loop, one verified unit at a time
   - [x] U1 scaffold + webgpu triangle + beep on simulator (spike) VERIFIED b1b8e96
   - [ ] U2 sim core: types, level table, step(), events; headless verifier bot for 30 levels
-  - [ ] U3 mesh generator script + checked-in meshes
-  - [ ] U4 renderer: pipelines (mesh instanced, particles, starfield), camera, HUD overlay
+  - [x] U3 meshes VERIFIED byte-identical rerun, merged
+  - [x] U4 renderer VERIFIED on iPhone 17 sim, merged
   - [ ] U5 audio: synth engine, SFX patches, 4 music tiers
   - [x] U6 screens VERIFIED on iPhone 17 Pro sim with stubs, merged c3ab86f
   - [ ] U7 polish: juice, difficulty tuning from verifier stats, perf check on sim
