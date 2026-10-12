@@ -1,4 +1,3 @@
-import { createRequire } from 'node:module';
 import type { SimEvent } from './sim';
 import { tierOf } from './levels';
 import {
@@ -6,7 +5,6 @@ import {
   type Env, type MusicId, type Patch, type PatchId, type Sfx, type SfxId, type Song,
 } from './sound';
 
-const requireRn = createRequire(import.meta.url);
 
 /** exponentialRampToValueAtTime rejects 0. The envelope uses this floor instead of silence. */
 export const AMP_FLOOR = 0.0001;
@@ -214,7 +212,8 @@ interface Play {
 }
 
 function loadRn(): typeof import('react-native-audio-api') {
-  return requireRn('react-native-audio-api') as typeof import('react-native-audio-api');
+  // A plain require keeps react-native-audio-api out of Node test and script imports; Metro resolves it in the app.
+  return require('react-native-audio-api') as typeof import('react-native-audio-api');
 }
 
 function defaultFactory(): AudioFactory {
