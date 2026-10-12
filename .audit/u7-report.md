@@ -36,7 +36,7 @@ One word in `src/sim.ts`. `hashWorld` is now exported so the device log uses the
 ## Open
 
 - **Audio landed after my merge.** `game` now has `merge u5-audio` (2adaea3, 1a3f265, 0814c17), which this branch does not contain. I kept to my brief and did not merge it. To retire the fallback, merge `game`, change the App import to `import { createAudio } from './src/audio'`, call `createAudio()` in place of `createAudioOrSilent()`, and delete `src/dev/silentAudio.ts`. Then check on the device that sound plays and that `debugger-log-registry` stays clean.
-- **Coast after release** (step 3) needs a product decision. You could raise the coast damping, for example to 0.9 per step (about 0.002 per second, so the rocket stops within roughly 0.15 units). Or you could keep the current momentum on purpose, because it is what gives wells their bite. Changing it affects idleBot outcomes only.
+- **Coast after release** (step 3) needs a product decision. You could raise the coast damping, for example to 0.9 per step (0.002 per second, so a full-speed release drifts about 1.5 units instead of 10). Or you could keep the current momentum on purpose, because it is what gives wells their bite. Changing it affects idleBot outcomes only.
 - `.argent/` is not in `.gitignore`, which belongs to another unit.
 
 ## Commits (on u6-screens, after merging game at 7bd68a6)
