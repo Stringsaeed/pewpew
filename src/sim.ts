@@ -14,7 +14,7 @@ const PLAYER_X_LIMIT = TRACK_HALF_WIDTH - 0.5;
 const PLAYER_MAX_VX = 9;
 const STEER_GAIN = 10;
 const STEER_ACCEL = 60;
-const COAST_DAMPING = 0.985;
+const COAST_DAMPING = 0.9;
 // A full-width finger drag crosses the track with a little to spare.
 const DRAG_GAIN = 2 * TRACK_HALF_WIDTH * 1.25;
 

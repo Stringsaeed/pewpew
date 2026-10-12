@@ -9,7 +9,7 @@ import { createRenderer, type Renderer } from './src/render';
 import type { AudioEngine } from './src/audio';
 import { greedyBot } from './src/bot';
 import { createTickTimer, logAutoRun, unlockAll } from './src/dev/qa';
-import { createAudioOrSilent } from './src/dev/silentAudio';
+import { createAudio } from './src/audio';
 import { Complete } from './src/ui/Complete';
 import { GameOver } from './src/ui/GameOver';
 import { Hud } from './src/ui/Hud';
@@ -53,7 +53,7 @@ export default function App() {
   const [hud, setHud] = useState<HudState | null>(null);
 
   const audioRef = useRef<AudioEngine | null>(null);
-  audioRef.current ??= createAudioOrSilent();
+  audioRef.current ??= createAudio();
   const audio = audioRef.current;
 
   const loop = useRef<Loop>({ world: null, key: null, playing: false, input: COAST, auto: false, botOnly: true, events: [], acc: 0, last: 0 }).current;
