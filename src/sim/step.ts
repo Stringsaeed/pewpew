@@ -1,14 +1,12 @@
 import { ARCHETYPES, BOSSES, DRONE_PATTERNS, Kind, levelSpec } from '../levels';
-import type { BossAttack, BossPhase, BossSpec, DronePattern, LevelNumber, LevelSpec, PickupKind } from '../levels';
+import type { BossAttack, BossPhase, BossSpec, DronePattern, LevelNumber, PickupKind } from '../levels';
 import {
   AIM_SPREAD, BOLT_RANGE, BOLT_SPEED, BOSS_DIST, BOSS_GRACE_TICKS, BOSS_R, BOSS_SCORE_PER_HP, BOSS_SWEEP,
   COAST_DAMPING, DEAD, DESPAWN_BEHIND, DRONE_ANCHOR_LIMIT, ENEMY_BOLT_SPEED, FIRE_TICKS,
-  HIT_INVULN_TICKS, PICKUP_SLACK, PLAYER_MAX_VX, PLAYER_RADIUS, PLAYER_X_LIMIT, RAPID_TICKS,
-  ROW_DY, ROW_GAP, SHIELD_INVULN_TICKS, SPAWN_AHEAD, STEER_ACCEL, STEER_GAIN, STEP, TICKS_PER_SEC,
-  TRACK_END_CLEAR, TRACK_HALF_WIDTH, TRACK_START, WELL_REACH_Y,
+  HIT_INVULN_TICKS, PICKUP_SLACK, PLAYER_RADIUS, PLAYER_X_LIMIT, RAPID_TICKS,
+  SHIELD_INVULN_TICKS, SPAWN_AHEAD, STEP, TICKS_PER_SEC, TRACK_HALF_WIDTH, WELL_REACH_Y,
 } from './rules';
 import { PI, TWO_PI, clamp, cosT, rand, sinT } from './math';
-import type { Rng } from './math';
 import { COAST, steerVelocity } from './input';
 import type { Input } from './input';
 import { add, createWorld, remove } from './world';
@@ -17,10 +15,6 @@ import type { Bodies, Boss, Player, SimEvent, Stars, World, WorldView } from './
 // This file and levels.ts may use only + - * / and Math.sqrt, imul, floor, min, max, abs (sim.test.ts enforces it).
 // Engine trig differs in the last ulp between Hermes and V8, which would make the verifier prove a slightly different
 // game than the one on the phone. Those operations are correctly rounded by IEEE 754 on every engine.
-
-export interface Spawn { readonly y: number; readonly x: number; readonly kind: Kind; readonly variant: number; readonly param: number }
-/** Compiled from (LevelSpec, seed) once at createWorld, sorted by y. */
-export type Track = readonly Spawn[];
 
 /**
  * Advance one STEP. Appends events to `out`; the caller clears it once per rendered frame, after several steps.
@@ -431,74 +425,4 @@ function transition(w: World, out: SimEvent[]): void {
     w.phase = { p: 'won', stars };
     out.push({ e: 'won', score: w.score, stars });
   }
-}
-
-/**
- * Stratified placement on rows ROW_DY apart. Each row first picks a gap whose centre random-walks no faster than the
- * rocket can follow, then places its hazards (and any well) outside that gap, so a 1.6-unit path always exists.
- */
-export function compileTrack(spec: LevelSpec): Track {
-  const s: Rng = { rng: spec.seed | 0 };
-  const out: Spawn[] = [];
-  const mix: readonly (readonly [Kind, number])[] = [
-    [Kind.Asteroid, spec.mix.asteroid ?? 0], [Kind.Mine, spec.mix.mine ?? 0], [Kind.Drone, spec.mix.drone ?? 0],
-  ];
-  const total = mix.reduce((sum, [, wt]) => sum + wt, 0);
-  const pickKind = (u: number): Kind => {
-    let acc = u * total;
-    for (const [k, wt] of mix) { if (acc < wt) return k; acc -= wt; }
-    return Kind.Asteroid;
-  };
-  const rows = Math.floor((spec.length - TRACK_END_CLEAR - TRACK_START) / ROW_DY) + 1;
-  const wellRows = new Set<number>();
-  for (let k = 0; k < spec.wells; k++) wellRows.add(Math.floor((k + 0.5) * rows / spec.wells));
-  const reach = 0.5 * PLAYER_MAX_VX * ROW_DY / spec.scroll;
-  const gapLimit = PLAYER_X_LIMIT - ROW_GAP / 2;
-  const perRow = spec.density / 100 * ROW_DY;
-  const pickupPerRow = [
-    [Kind.Crystal, spec.pickups.crystal / 100 * ROW_DY], [Kind.Shield, spec.pickups.shield / 100 * ROW_DY],
-    [Kind.Rapid, spec.pickups.rapid / 100 * ROW_DY],
-  ] as const;
-  const pickupOwed = [0, 0, 0];
-  let gapX = 0, owed = 0;
-
-  const outsideGap = (r: number): number => {
-    const lo = -TRACK_HALF_WIDTH + r, hi = TRACK_HALF_WIDTH - r;
-    const left = Math.max(0, gapX - ROW_GAP / 2 - r - lo);
-    const right = Math.max(0, hi - (gapX + ROW_GAP / 2 + r));
-    const u = rand(s) * (left + right);
-    return u < left ? lo + u : gapX + ROW_GAP / 2 + r + (u - left);
-  };
-
-  for (let row = 0; row < rows; row++) {
-    const y = TRACK_START + row * ROW_DY;
-    gapX = clamp(gapX + (rand(s) * 2 - 1) * reach, -gapLimit, gapLimit);
-    owed += perRow;
-    const n = Math.floor(owed);
-    owed -= n;
-    if (wellRows.has(row)) {
-      out.push({ y, x: outsideGap(ARCHETYPES[Kind.Well].radius), kind: Kind.Well, variant: 0, param: spec.wellPull });
-    }
-    for (let k = 0; k < n; k++) {
-      const kind = pickKind(rand(s));
-      const x = outsideGap(ARCHETYPES[kind].radius);
-      if (kind === Kind.Asteroid) out.push({ y, x, kind, variant: Math.floor(rand(s) * 4), param: (rand(s) - 0.5) * 0.6 });
-      else if (kind === Kind.Drone) {
-        const pattern = spec.drones[Math.floor(rand(s) * spec.drones.length)];
-        const ax = clamp(x, -DRONE_ANCHOR_LIMIT, DRONE_ANCHOR_LIMIT);
-        out.push({ y, x: ax, kind, variant: DRONE_PATTERNS.indexOf(pattern), param: ax });
-      } else out.push({ y, x, kind, variant: 0, param: 0 });
-    }
-    let slot = 0;
-    pickupPerRow.forEach(([kind, rate], k) => {
-      pickupOwed[k] += rate;
-      while (pickupOwed[k] >= 1) {
-        pickupOwed[k] -= 1;
-        const x = kind === Kind.Crystal ? clamp(gapX + (rand(s) - 0.5) * 1.2, -PLAYER_X_LIMIT, PLAYER_X_LIMIT)
-          : (rand(s) * 2 - 1) * (PLAYER_X_LIMIT - 0.5);
-        out.push({ y: y + ROW_DY / 2 + 0.8 * slot++, x, kind, variant: 0, param: 0 });
-      }
-    });
-  }
-  return out.sort((a, b) => a.y - b.y);
 }

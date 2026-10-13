@@ -31,10 +31,9 @@ export {
   simulate,
   step,
 } from './step';
+export type { Spawn, Track } from './track';
 export type {
   Bot,
   Hud,
   RunResult,
-  Spawn,
-  Track,
 } from './step';

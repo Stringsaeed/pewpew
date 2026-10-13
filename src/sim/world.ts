@@ -1,8 +1,8 @@
 import { ARCHETYPES, Kind, levelSpec } from '../levels';
 import type { BossId, LevelNumber, LevelSpec, PickupKind } from '../levels';
 import { MAX_BODIES } from './rules';
-import { compileTrack } from './step';
-import type { Track } from './step';
+import { compileTrack } from './track';
+import type { Track } from './track';
 
 /** Struct-of-arrays pool, dense in [0, count). Removal swaps the last body in, so indices are not identities. */
 export interface Bodies {
