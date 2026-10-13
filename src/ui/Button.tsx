@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, type Insets, type StyleProp, type ViewStyle } from 'react-native';
 import { color, font, space } from './theme';
 
 export type Tone = 'primary' | 'ghost' | 'danger';
@@ -11,15 +11,17 @@ interface Props {
   readonly tone?: Tone;
   readonly accessibilityLabel?: string;
   readonly style?: StyleProp<ViewStyle>;
+  readonly hitSlop?: number | Insets;
 }
 
-export function Button({ label, onPress, tone = 'primary', accessibilityLabel, style }: Props) {
+export function Button({ label, onPress, tone = 'primary', accessibilityLabel, style, hitSlop }: Props) {
   const border = TONE[tone];
   const ink = LABEL[tone];
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      hitSlop={hitSlop}
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,

@@ -4,6 +4,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTim
 import { LEVELS, tierOf, type BossId, type LevelNumber } from '../levels';
 import { isUnlocked, type Save } from '../save';
 import { Button } from './Button';
+import { Gear } from './Gear';
 import { color, font, inset, space } from './theme';
 
 const COLUMNS = 5;
@@ -30,9 +31,17 @@ export function LevelSelect({ save, onPick, onBack, onSettings }: Props) {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Button label="BACK" tone="ghost" onPress={onBack} style={styles.small} />
+        <Button label="BACK" tone="ghost" onPress={onBack} style={styles.small} hitSlop={6} />
         <Text accessibilityRole="header" style={styles.title}>LEVELS</Text>
-        <Button label="SET" accessibilityLabel="Settings" tone="ghost" onPress={onSettings} style={styles.small} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+          hitSlop={6}
+          onPress={onSettings}
+          style={({ pressed }) => [styles.gear, pressed && styles.gearPressed]}
+        >
+          {({ pressed }) => <Gear tint={pressed ? color.bg : color.textDim} />}
+        </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {TIERS.map((tier) => {
@@ -129,7 +138,9 @@ const styles = StyleSheet.create({
   root: { flex: 1, paddingTop: inset.top },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SIDE, paddingBottom: space.md },
   title: { fontFamily: font.family, fontSize: font.title, fontWeight: '800', letterSpacing: 4, color: color.cyan },
-  small: { minWidth: 0, paddingVertical: space.sm, paddingHorizontal: space.md },
+  gear: { width: 44, height: 44, borderRadius: 14, borderWidth: 2, borderColor: color.dim, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center' },
+  gearPressed: { backgroundColor: color.dim },
+  small: { minWidth: 0, minHeight: 44, justifyContent: 'center', paddingVertical: space.sm, paddingHorizontal: space.md },
   content: { gap: space.md, paddingBottom: inset.bottom + space.lg },
   tier: { gap: space.sm },
   band: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SIDE, paddingVertical: space.sm, borderBottomWidth: 1 },
