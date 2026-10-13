@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
 import { BOSSES, levelSpec, type LevelNumber } from '../levels';
 import type { Hud as HudState } from '../sim';
 import { Rocket } from './Rocket';
@@ -16,60 +16,95 @@ interface Props {
 
 export function Hud({ hud, level, onPause, auto }: Props) {
   const bossId = hud.bossHp === null ? null : levelSpec(level as LevelNumber).boss;
+  const slots = useRef(hud.lives);
+  slots.current = Math.max(slots.current, hud.lives);
+  const prevLives = useRef(hud.lives);
+  const hurt = useSharedValue(0);
+  useEffect(() => {
+    if (hud.lives < prevLives.current) hurt.value = withSequence(withTiming(1, { duration: 40 }), withTiming(0, { duration: 140 }));
+    prevLives.current = hud.lives;
+  }, [hud.lives, hurt]);
+  const vignette = useAnimatedStyle(() => ({ opacity: hurt.value }));
   return (
-    <View pointerEvents="box-none" style={styles.root}>
-      <View pointerEvents="none" style={styles.topScrim} />
-      <View pointerEvents="box-none" style={styles.row}>
-        <View style={styles.left}>
-          <Score score={hud.score} />
-          <View style={styles.livesRow}>
-            <View accessible accessibilityLabel={`Lives ${hud.lives}`} style={styles.lives}>
-              {Array.from({ length: hud.lives }, (_, i) => <Rocket key={i} />)}
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.vignette, vignette]} />
+      <View pointerEvents="box-none" style={styles.root}>
+        <View pointerEvents="none" style={styles.topScrim} />
+        <View pointerEvents="box-none" style={styles.row}>
+          <View style={styles.left}>
+            <Score score={hud.score} />
+            <View style={styles.livesRow}>
+              <View accessible accessibilityLabel={`Lives ${hud.lives}`} style={styles.lives}>
+                {Array.from({ length: slots.current }, (_, i) => <LifeSlot key={i} alive={i < hud.lives} />)}
+              </View>
+              {hud.shield ? <Chip text="SHIELD" tint={color.cyan} /> : null}
+              {hud.rapid ? <Chip text="RAPID" tint={color.yellow} /> : null}
             </View>
-            {hud.shield ? <Chip text="SHIELD" tint={color.cyan} /> : null}
-            {hud.rapid ? <Chip text="RAPID" tint={color.yellow} /> : null}
           </View>
-        </View>
-        <Text maxFontSizeMultiplier={1.3} style={styles.level}>{`LV ${level}`}</Text>
-        {auto ? (
+          <Text maxFontSizeMultiplier={1.3} style={styles.level}>{`LV ${level}`}</Text>
+          {auto ? (
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityLabel="Auto"
+              accessibilityState={{ checked: auto.on }}
+              hitSlop={8}
+              onPress={auto.onToggle}
+              style={[styles.auto, auto.on && styles.autoOn]}
+            >
+              <Text maxFontSizeMultiplier={1.3} style={[styles.autoText, auto.on && styles.autoTextOn]}>AUTO</Text>
+            </Pressable>
+          ) : null}
           <Pressable
-            accessibilityRole="switch"
-            accessibilityLabel="Auto"
-            accessibilityState={{ checked: auto.on }}
+            accessibilityRole="button"
+            accessibilityLabel="Pause"
             hitSlop={8}
-            onPress={auto.onToggle}
-            style={[styles.auto, auto.on && styles.autoOn]}
+            onPress={onPause}
+            style={({ pressed }) => [styles.pause, pressed && styles.pausePressed]}
           >
-            <Text maxFontSizeMultiplier={1.3} style={[styles.autoText, auto.on && styles.autoTextOn]}>AUTO</Text>
+            <View style={styles.bar} />
+            <View style={styles.bar} />
           </Pressable>
-        ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Pause"
-          hitSlop={8}
-          onPress={onPause}
-          style={({ pressed }) => [styles.pause, pressed && styles.pausePressed]}
-        >
-          <View style={styles.bar} />
-          <View style={styles.bar} />
-        </Pressable>
-      </View>
-      {hud.bossHp !== null ? (
-        <View accessible accessibilityLabel={`${bossId ?? 'Boss'} health ${hud.bossHp} percent`} style={styles.bossBlock}>
-          <Text maxFontSizeMultiplier={1.3} style={styles.bossName}>{bossId === null ? 'BOSS' : bossId.toUpperCase()}</Text>
-          <View style={styles.boss}>
-            <View style={[styles.fill, { width: `${hud.bossHp}%`, backgroundColor: color.threat }]} />
-            {bossId === null ? null : BOSSES[bossId].phases.slice(1).map((p) => (
-              <View key={p.atHpFraction} style={[styles.tick, { left: `${p.atHpFraction * 100}%` }]} />
-            ))}
+        </View>
+        {hud.bossHp !== null ? (
+          <View accessible accessibilityLabel={`${bossId ?? 'Boss'} health ${hud.bossHp} percent`} style={styles.bossBlock}>
+            <Text maxFontSizeMultiplier={1.3} style={styles.bossName}>{bossId === null ? 'BOSS' : bossId.toUpperCase()}</Text>
+            <View style={styles.boss}>
+              <View style={[styles.fill, { width: `${hud.bossHp}%`, backgroundColor: color.threat }]} />
+              {bossId === null ? null : BOSSES[bossId].phases.slice(1).map((p) => (
+                <View key={p.atHpFraction} style={[styles.tick, { left: `${p.atHpFraction * 100}%` }]} />
+              ))}
+            </View>
           </View>
-        </View>
-      ) : (
-        <View accessible accessibilityLabel={`Progress ${hud.progress} percent`} style={styles.track}>
-          <View style={[styles.fill, { width: `${hud.progress}%` }]} />
-        </View>
-      )}
+        ) : (
+          <View accessible accessibilityLabel={`Progress ${hud.progress} percent`} style={styles.track}>
+            <View style={[styles.fill, { width: `${hud.progress}%` }]} />
+          </View>
+        )}
+      </View>
     </View>
+  );
+}
+
+const SLOT_W = 22;
+
+/** One life. When it is lost the rocket turns threat-colored, shrinks away, then its slot collapses. */
+function LifeSlot({ alive }: { readonly alive: boolean }) {
+  const scale = useSharedValue(1);
+  const width = useSharedValue(SLOT_W);
+  useEffect(() => {
+    if (alive) {
+      scale.value = 1;
+      width.value = SLOT_W;
+    } else {
+      scale.value = withTiming(0, { duration: 240 });
+      width.value = withDelay(240, withTiming(0, { duration: 120 }));
+    }
+  }, [alive, scale, width]);
+  const style = useAnimatedStyle(() => ({ width: width.value, transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.View style={[styles.slot, style]}>
+      <Rocket tint={alive ? color.cyan : color.threat} />
+    </Animated.View>
   );
 }
 
@@ -120,7 +155,9 @@ const styles = StyleSheet.create({
   zeros: { color: color.textDim },
   score: { fontFamily: font.family, fontSize: font.score, fontWeight: '800', color: color.cyan, letterSpacing: 2 },
   livesRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  lives: { flexDirection: 'row', gap: space.xs, height: 18 },
+  lives: { flexDirection: 'row', height: 18 },
+  slot: { height: 18, overflow: 'visible' },
+  vignette: { boxShadow: `inset 0 0 60px ${color.threat}` },
   level: { fontFamily: font.family, fontSize: 13, color: color.textDim, letterSpacing: 2, paddingTop: space.sm },
   pause: { width: 44, height: 44, borderRadius: 12, borderWidth: 2, borderColor: color.cyan, flexDirection: 'row', gap: 5, alignItems: 'center', justifyContent: 'center' },
   pausePressed: { backgroundColor: 'rgba(53,240,255,0.35)' },
