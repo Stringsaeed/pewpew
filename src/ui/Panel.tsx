@@ -1,14 +1,33 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
 import { color, font, space } from './theme';
 
-export function Panel({ title, tint = color.cyan, children }: { readonly title: string; readonly tint?: string; readonly children: ReactNode }) {
+interface Props {
+  readonly title: string;
+  readonly tint?: string;
+  /** Three quick 6 px horizontal swings once the panel has landed. */
+  readonly shake?: boolean;
+  readonly children: ReactNode;
+}
+
+const SWING = 6;
+const SWING_MS = 45;
+
+export function Panel({ title, tint = color.cyan, shake = false, children }: Props) {
+  const x = useSharedValue(0);
+  useEffect(() => {
+    if (!shake) return;
+    const swing = (to: number) => withTiming(to, { duration: SWING_MS });
+    x.value = withDelay(220, withSequence(swing(-SWING), swing(SWING), swing(-SWING), swing(SWING), swing(-SWING), swing(SWING), swing(0)));
+  }, [shake, x]);
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   return (
     <View style={styles.scrim}>
-      <View style={[styles.panel, { borderColor: tint, boxShadow: `0 0 18px ${tint}73` }]}>
+      <Animated.View style={[styles.panel, { borderColor: tint, boxShadow: `0 0 18px ${tint}73` }, shakeStyle]}>
         <Text accessibilityRole="header" style={[styles.title, { color: tint, textShadowColor: tint, textShadowRadius: 14, textShadowOffset: { width: 0, height: 0 } }]}>{title}</Text>
         {children}
-      </View>
+      </Animated.View>
     </View>
   );
 }

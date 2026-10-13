@@ -12,11 +12,13 @@ interface Props {
   readonly accessibilityLabel?: string;
   readonly style?: StyleProp<ViewStyle>;
   readonly hitSlop?: number | Insets;
+  /** Overrides the label color of the tone, e.g. a ghost button with magenta text. */
+  readonly ink?: string;
 }
 
-export function Button({ label, onPress, tone = 'primary', accessibilityLabel, style, hitSlop }: Props) {
+export function Button({ label, onPress, tone = 'primary', accessibilityLabel, style, hitSlop, ink: inkOverride }: Props) {
   const border = TONE[tone];
-  const ink = LABEL[tone];
+  const ink = inkOverride ?? LABEL[tone];
   return (
     <Pressable
       accessibilityRole="button"

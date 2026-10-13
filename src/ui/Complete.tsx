@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { LEVELS, type LevelNumber } from '../levels';
 import type { Stars } from '../sim';
@@ -17,8 +17,27 @@ interface Props {
 }
 
 const STAR_STAGGER_MS = 280;
+const COUNT_UP_MS = 600;
+
+/** Eases a score from 0 to `target` over COUNT_UP_MS, starting together with the first star pop. */
+function useCountUp(target: number): number {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    let frame = 0;
+    const t0 = Date.now();
+    const tick = () => {
+      const t = Math.min(1, (Date.now() - t0) / COUNT_UP_MS);
+      setValue(Math.round(target * (1 - (1 - t) ** 3)));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+  return value;
+}
 
 export function Complete({ level, score, stars, best, onNext, onRetry, onLevels }: Props) {
+  const shown = useCountUp(score);
   const pops = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
   useEffect(() => {
     const anim = Animated.stagger(
@@ -29,6 +48,7 @@ export function Complete({ level, score, stars, best, onNext, onRetry, onLevels 
     return () => anim.stop();
   }, [pops, stars]);
 
+  const isBest = score > 0 && score >= best;
   return (
     <Panel title="LEVEL CLEAR" tint={color.green}>
       <View accessible accessibilityLabel={`${stars} of 3 stars`} style={styles.stars}>
@@ -45,7 +65,12 @@ export function Complete({ level, score, stars, best, onNext, onRetry, onLevels 
         ))}
       </View>
       <Text style={styles.sub}>{`LEVEL ${level}`}</Text>
-      <Text accessibilityLabel={`Score ${score}`} style={styles.score}>{String(score).padStart(6, '0')}</Text>
+      <Text accessibilityLabel={`Score ${score}`} style={styles.score}>{String(shown).padStart(6, '0')}</Text>
+      {isBest ? (
+        <View accessible accessibilityLabel="New best" style={styles.badge}>
+          <Text style={styles.badgeText}>NEW BEST</Text>
+        </View>
+      ) : null}
       <Text style={styles.sub}>{`BEST ${best}`}</Text>
       {level < LEVELS.length ? <Button label="NEXT" onPress={onNext} /> : null}
       <Button label="RETRY" tone="ghost" onPress={onRetry} />
@@ -58,5 +83,7 @@ const styles = StyleSheet.create({
   stars: { flexDirection: 'row', gap: space.sm },
   star: { fontFamily: font.family, fontSize: 56 },
   sub: { fontFamily: font.family, fontSize: font.label, letterSpacing: 4, color: color.textDim },
+  badge: { borderWidth: 2, borderColor: color.yellow, borderRadius: 8, paddingHorizontal: space.md, paddingVertical: 2, boxShadow: `0 0 12px ${color.yellow}73` },
+  badgeText: { fontFamily: font.family, fontSize: font.label, fontWeight: '800', letterSpacing: 4, color: color.yellow },
   score: { fontFamily: font.family, fontSize: 36, fontWeight: '800', letterSpacing: 3, color: color.text },
 });
