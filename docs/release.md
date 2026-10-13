@@ -91,3 +91,9 @@ The privacy declaration includes a random installation identifier for update del
 Apple processing, App Review submission, and public availability require separate verification in App Store Connect.
 
 At the October 13 setup check, Apple's **Add for Review** validation reported only `You must choose a build`. TestFlight still showed **No Builds**, although EAS reported the upload finished. No App Review submission was sent. The support and privacy URLs still returned HTTP 404 and must be published before submission.
+
+## Version 1.1.0 evidence
+
+- EAS build: `8166338d-a04b-4f46-a422-2d5ab2566447`, build number 8, finished and auto-submitted (submission `fb2b14ab-c62c-405d-9a80-a4bada31db12`).
+- The Game Center capability was added to the App ID through the App Store Connect API on 2026-10-13, which invalidated the old profile; EAS regenerated it as `Z6V6SPD5K6`. Non-interactive `eas build` skips capability sync, so a new entitlement needs this step or an interactive `eas credentials` run first.
+- Remaining manual step: enable Game Center on the 1.1.0 version page and attach the four leaderboard sets (see game-center.md).
