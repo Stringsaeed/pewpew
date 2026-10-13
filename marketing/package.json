@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "screenshots": "node app-store/screenshots.mjs raw ../docs/app-store/screenshots",
+    "screenshots": "node app-store/screenshots.mjs raw ../docs/app-store/screenshots && node app-store/screenshots.mjs raw ../docs/app-store/screenshots/medium 1206x2622 && node app-store/screenshots.mjs raw/duo ../docs/app-store/screenshots/duo-outer 1398x2034",
+    "creative": "cd .. && node marketing/app-store/creative.mjs docs/app-store/creative",
     "preview": "cd .. && bash marketing/video/app-preview.sh",
     "social": "cd .. && node marketing/video/social.mjs docs/app-store/preview/app-preview.mp4 marketing/out",
     "og": "node og/og.mjs"

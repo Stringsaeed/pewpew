@@ -94,13 +94,14 @@ The site imports the game's sim, renderer, and synth straight from `../src`, so 
 
 ```sh
 cd marketing && npm ci
-npm run screenshots   # 1320x2868 captioned App Store screenshots
+npm run screenshots   # captioned App Store screenshots: 1320x2868, 1206x2622, and iPhone Duo 1398x2034
+npm run creative      # iOS 27 header, search result, and universal creative assets
 npm run preview       # 886x1920 App Store preview, with the game's own soundtrack
 npm run social        # 16:9 and 1:1 launch videos
 npm run og            # 1200x630 social card for the site
 ```
 
-The screenshot script reads the stills in `marketing/raw/`. The preview and social videos need raw simulator recordings and the rendered soundtrack (`npm run render-song`). The header of `marketing/video/app-preview.sh` explains how to capture them.
+The screenshot script reads the stills in `marketing/raw/` (iPhone Duo outer-display stills in `marketing/raw/duo/`). The preview and social videos need raw simulator recordings and the rendered soundtrack (`npm run render-song`). The header of `marketing/video/app-preview.sh` explains how to capture them.
 
 ## Credits
 

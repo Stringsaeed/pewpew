@@ -48,6 +48,6 @@ filters+="[$((a+7)):a]adelay=24600|24600[x1];"
 filters+="[m0][m1][m2][m3][t0][t1][x0][x1]amix=inputs=8:normalize=0,volume=0.9,aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:29,afade=t=out:st=28.4:d=0.6[a]"
 
 ffmpeg -loglevel error -y "${inputs[@]}" -filter_complex "$filters" -map "[v]" -map "[a]" \
-  -c:v libx264 -profile:v high -level 4.2 -pix_fmt yuv420p -r 30 -b:v 10M -maxrate 12M -bufsize 20M -preset slow \
+  -c:v libx264 -profile:v high -level 4.0 -pix_fmt yuv420p -r 30 -b:v 11M -maxrate 12M -bufsize 12M -preset slow \
   -c:a aac -b:a 256k -ar 48000 -ac 2 -t 29 -movflags +faststart "$OUT"
 ffprobe -v error -show_entries stream=codec_name,width,height,r_frame_rate,sample_rate,channels -show_entries format=duration -of compact "$OUT"
