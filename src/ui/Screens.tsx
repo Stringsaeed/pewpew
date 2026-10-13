@@ -1,14 +1,19 @@
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import type { Action, Run, Screen } from '../flow';
+import { levelSpec, tierOf } from '../levels';
 import type { Save } from '../save';
 import type { Hud as HudState } from '../sim';
 import { Complete } from './Complete';
 import { GameOver } from './GameOver';
 import { Hud } from './Hud';
+import { LevelIntro } from './LevelIntro';
 import { LevelSelect } from './LevelSelect';
 import { Pause } from './Pause';
 import { Settings } from './Settings';
 import { Title } from './Title';
+
+const INTRO_MS = 1200;
 
 interface Props {
   readonly save: Save;
@@ -30,9 +35,13 @@ interface Props {
 export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnlockAll, onTouchStart, onTouchMove, onTouchEnd }: Props) {
   const onMenu = screen.s === 'title' || screen.s === 'levels' || (screen.s === 'settings' && run === null);
   const level = run?.level ?? 1;
+  const intro = useIntro(hud, run);
   return (
     <>
       {onMenu ? <View pointerEvents="none" style={styles.dim} /> : null}
+      {intro !== null && hud !== null ? (
+        <LevelIntro sector={tierOf(intro.level)} level={intro.level} warning={levelSpec(intro.level).boss !== null} />
+      ) : null}
       {screen.s === 'title' ? <Title save={save} onPlay={() => act({ a: 'start' })} onSettings={() => act({ a: 'settings' })} /> : null}
       {screen.s === 'levels' ? (
         <LevelSelect
@@ -93,3 +102,23 @@ export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnloc
 const styles = StyleSheet.create({
   dim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(5,5,15,0.35)' },
 });
+
+/** Shows the sector card once per run key, starting the frame `hud` becomes non-null, for 1.2 s. */
+function useIntro(hud: HudState | null, run: Run | null): Run | null {
+  const hudOn = hud !== null;
+  const key = run === null ? null : `${run.level}:${run.attempt}`;
+  const [card, setCard] = useState<string | null>(null);
+  const finished = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hudOn || key === null) return;
+    if (finished.current === key) return;
+    setCard(key);
+    const id = setTimeout(() => {
+      finished.current = key;
+      setCard((current) => (current === key ? null : current));
+    }, INTRO_MS);
+    return () => clearTimeout(id);
+  }, [hudOn, key]);
+  if (run === null || card !== key) return null;
+  return run;
+}
