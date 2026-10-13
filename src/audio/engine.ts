@@ -1,9 +1,9 @@
-import type { SimEvent } from './sim';
-import { tierOf } from './levels';
+import type { SimEvent } from '../sim';
+import { tierOf } from '../levels';
 import {
   EVENT_SFX, SFX, SONGS, patchOf,
   type Env, type MusicId, type Patch, type PatchId, type Sfx, type SfxId, type Song,
-} from './sound';
+} from './data';
 
 
 /** exponentialRampToValueAtTime rejects 0. The envelope uses this floor instead of silence. */

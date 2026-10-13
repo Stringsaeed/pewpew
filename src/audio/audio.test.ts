@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
-import { Kind } from './levels';
-import type { SimEvent } from './sim';
-import { EVENT_SFX, SFX, SONGS, type MusicId, type SfxId } from './sound';
-import { createAudio } from './audio';
+import { Kind } from '../levels';
+import type { SimEvent } from '../sim';
+import { EVENT_SFX, SFX, SONGS, createAudio, type MusicId, type SfxId } from '../audio';
 import {
   createFakeAudio, type FakeBufferSource, type FakeContext, type FakeFilter, type FakeGain, type FakeNode, type FakeOsc,
-} from './testing/fake-audio';
+} from '../testing/fake-audio';
 
 const restores: Array<() => void> = [];
 afterEach(() => { while (restores.length) restores.pop()!(); });

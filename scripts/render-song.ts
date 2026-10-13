@@ -1,6 +1,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { SFX, SONGS, patchOf, type MusicId, type Patch, type SfxId, type Wave } from '../src/sound';
-import { ampAt, cutoffAt, pitchAt, sfxHits, songHits, type Hit } from '../src/audio';
+import {
+  SFX, SONGS, ampAt, cutoffAt, patchOf, pitchAt, sfxHits, songHits,
+  type Hit, type MusicId, type Patch, type SfxId, type Wave,
+} from '../src/audio';
 
 const RATE = 44100;
 const OUT_DIR = '/tmp/pewpew-audio';
