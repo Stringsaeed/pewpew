@@ -1,6 +1,6 @@
-import { ARCHETYPES, type BossId } from '../levels';
+import { ARCHETYPES, Kind, type BossId } from '../levels';
 import type { SimEvent, WorldView } from '../sim';
-import { HOLD_LOST, type Fx } from './fx';
+import { BUBBLE_POP_SECONDS, HOLD_LOST, type Fx } from './fx';
 
 export const PARTICLE_CAP = 2048;
 
@@ -70,6 +70,23 @@ export function ringAt(pool: ParticlePool, x: number, y: number, size: number, t
   spawn(pool, x, y, 0, 0, ttl, size, rgb[0], rgb[1], rgb[2], RING, delay);
 }
 
+/**
+ * shieldBlock carries the ship's position, not the impact's, and the body that hit is already gone. The nearest survivor
+ * within reach is the best guess for where it came from; failing that, assume head-on.
+ */
+function impactToward(fx: Fx, world: WorldView | null, x: number, y: number): void {
+  fx.rippleX = 0; fx.rippleY = 1;
+  if (!world) return;
+  const b = world.bodies;
+  let best = 2.5 * 2.5;
+  for (let i = 0; i < b.count; i++) {
+    const role = ARCHETYPES[b.kind[i] as Kind].role;
+    if (role !== 'hazard' && role !== 'enemyShot') continue;
+    const dx = b.x[i] - x, dy = b.y[i] - y, d2 = dx * dx + dy * dy;
+    if (d2 < best && d2 > 1e-6) { best = d2; const inv = 1 / Math.sqrt(d2); fx.rippleX = dx * inv; fx.rippleY = dy * inv; }
+  }
+}
+
 export function applyEvents(pool: ParticlePool, world: WorldView | null, events: readonly SimEvent[], tables: BurstTables, fx: Fx): void {
   for (let i = 0; i < events.length; i++) {
     const ev = events[i];
@@ -93,8 +110,16 @@ export function applyEvents(pool: ParticlePool, world: WorldView | null, events:
         }
         break;
       case 'playerHit': burstAt(pool, ev.x, ev.y, 48, 7, 0.4, 0.9, RED, 0); break;
-      case 'pickup': burstAt(pool, ev.x, ev.y, 22, 4, 0.25, 0.5, tables.burst, ev.kind * 3); break;
-      case 'shieldBlock': burstAt(pool, ev.x, ev.y, 36, 6, 0.3, 0.6, SHIELD_BLUE, 0); break;
+      case 'pickup':
+        burstAt(pool, ev.x, ev.y, 22, 4, 0.25, 0.5, tables.burst, ev.kind * 3);
+        if (ev.kind === Kind.Shield) fx.bubbleAge = 0;
+        break;
+      case 'shieldBlock':
+        burstAt(pool, ev.x, ev.y, 36, 6, 0.3, 0.6, SHIELD_BLUE, 0);
+        impactToward(fx, world, ev.x, ev.y);
+        fx.ripple = 0;
+        fx.dying = BUBBLE_POP_SECONDS;
+        break;
       case 'wormholeOpen': {
         // The sim announces the hole 24 units out, before it can be seen, so the opening waits until it is about to enter the view.
         const wait = world ? Math.max(0, ev.y - world.player.y - HOLE_VISIBLE_AHEAD) / world.spec.scroll : 0;

@@ -7,7 +7,7 @@ type Rgb = Vec3;
 /** Picks a face color from the primitive's natural indices (band and segment, face, cell). */
 type Paint = (a: number, b: number) => Rgb;
 /** Triangle soup: 9 position floats and 3 color floats per triangle. Normals and indices are derived in flatten(). */
-interface RawMesh { readonly pos: number[]; readonly col: number[] }
+interface RawMesh { readonly pos: number[]; readonly col: number[]; /** Normals follow the position instead of the face, for spheres that want to read as round. */ readonly smooth?: boolean }
 type Builder = (rng: () => number) => RawMesh;
 
 const SEED = 0x5eed1e55;
@@ -47,6 +47,8 @@ const PALETTE = {
   bossMagenta: [2.1, 0.2, 1.05] as Rgb,
   bossHot: [2.8, 0.75, 1.9] as Rgb,
   bossEmber: [1.15, 0.12, 0.62] as Rgb,
+  /** The shield bubble is drawn by its own shader; the color is only its tint. */
+  bubble: [0.35, 0.65, 1] as Rgb,
   holeCore: [0, 0, 0] as Rgb,
   photon: [3, 2.7, 2.2] as Rgb,
   /** Accretion disc, inner edge to outer edge: white-hot, amber, deep orange, magenta, violet fading to near-black. Every channel set peaks above 1, so the disc is unlit. */
@@ -403,6 +405,8 @@ const BUILDERS = {
     transform(prism(3, 0.62, 0.34, (s) => (s === 0 ? PALETTE.amberBright : PALETTE.amber)), place([1.3, 0.8, 1], [0, -0.35, 0])),
   ),
   blackhole, accretion, warden, hive, core,
+  // Last, so it draws last (it alone uses the translucent pipeline) and its noise-free rng draws shift no earlier mesh.
+  bubble: (rng) => ({ ...icosphere(3, 0, rng, solid(PALETTE.bubble)), smooth: true }),
 } satisfies Record<string, Builder>;
 
 function flatten(raw: RawMesh): { positions: number[]; normals: number[]; colors: number[]; radius: number } {
@@ -413,10 +417,10 @@ function flatten(raw: RawMesh): { positions: number[]; normals: number[]; colors
     const a: Vec3 = [raw.pos[t], raw.pos[t + 1], raw.pos[t + 2]];
     const b: Vec3 = [raw.pos[t + 3], raw.pos[t + 4], raw.pos[t + 5]];
     const c: Vec3 = [raw.pos[t + 6], raw.pos[t + 7], raw.pos[t + 8]];
-    const n = norm(cross(sub(b, a), sub(c, a)));
+    const face = norm(cross(sub(b, a), sub(c, a)));
     const col = raw.col.slice(t / 3, t / 3 + 3);
     for (const p of [a, b, c]) {
-      normals.push(...n);
+      normals.push(...(raw.smooth ? norm(p) : face));
       colors.push(...col);
       radius = Math.max(radius, Math.hypot(p[0], p[1], p[2]));
     }

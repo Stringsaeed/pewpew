@@ -6,7 +6,7 @@ import { LOOK, type Look } from './look';
 import { MESHES } from './meshes.gen';
 import { HOLD_LOST, HOLD_NONE, HOLD_WON, bossPhaseIndex, createFx, holdProgress, smooth } from './fx';
 import { applyEvents, createPool, emitBossDamage, integrate, spawnExhaust } from './particles';
-import { GLOW, MESH, STARS } from './wgsl';
+import { BUBBLE, GLOW, MESH, STARS } from './wgsl';
 
 export type { Look };
 export { LOOK };
@@ -38,6 +38,7 @@ export interface Renderer {
 }
 
 export const MAX_PIXEL_RATIO = 2;
+const BUBBLE_MESH = MESH_IDS.indexOf('bubble');
 
 export function createRenderer(
   device: GPUDevice,
@@ -93,32 +94,39 @@ export function createRenderer(
   const starsModule = device.createShaderModule({ code: STARS });
   const meshModule = device.createShaderModule({ code: MESH });
   const glowModule = device.createShaderModule({ code: GLOW });
+  const bubbleModule = device.createShaderModule({ code: BUBBLE });
   const starsPipe = device.createRenderPipeline({
     layout,
     vertex: { module: starsModule, entryPoint: 'vs' },
     fragment: { module: starsModule, entryPoint: 'fs', targets: [{ format }] },
     depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'always' },
   });
+  const meshBuffers: GPUVertexBufferLayout[] = [
+    { arrayStride: 36, attributes: [
+      { shaderLocation: 0, offset: 0, format: 'float32x3' },
+      { shaderLocation: 1, offset: 12, format: 'float32x3' },
+      { shaderLocation: 2, offset: 24, format: 'float32x3' },
+    ] },
+    { arrayStride: INSTANCE_FLOATS * 4, stepMode: 'instance', attributes: [
+      { shaderLocation: 3, offset: 0, format: 'float32x4' },
+      { shaderLocation: 4, offset: 16, format: 'float32x4' },
+      { shaderLocation: 5, offset: 32, format: 'float32x4' },
+    ] },
+  ];
   const meshPipe = device.createRenderPipeline({
     layout,
-    vertex: {
-      module: meshModule, entryPoint: 'vs',
-      buffers: [
-        { arrayStride: 36, attributes: [
-          { shaderLocation: 0, offset: 0, format: 'float32x3' },
-          { shaderLocation: 1, offset: 12, format: 'float32x3' },
-          { shaderLocation: 2, offset: 24, format: 'float32x3' },
-        ] },
-        { arrayStride: INSTANCE_FLOATS * 4, stepMode: 'instance', attributes: [
-          { shaderLocation: 3, offset: 0, format: 'float32x4' },
-          { shaderLocation: 4, offset: 16, format: 'float32x4' },
-          { shaderLocation: 5, offset: 32, format: 'float32x4' },
-        ] },
-      ],
-    },
+    vertex: { module: meshModule, entryPoint: 'vs', buffers: meshBuffers },
     fragment: { module: meshModule, entryPoint: 'fs', targets: [{ format }] },
     primitive: { topology: 'triangle-list', cullMode: 'back' },
     depthStencil: { format: DEPTH, depthWriteEnabled: true, depthCompare: 'less' },
+  });
+  // The shield bubble: the same vertex layout, its own shader, additive, no depth write, drawn after everything else.
+  const bubblePipe = device.createRenderPipeline({
+    layout,
+    vertex: { module: bubbleModule, entryPoint: 'vs', buffers: meshBuffers },
+    fragment: { module: bubbleModule, entryPoint: 'fs', targets: [{ format, blend: { color: additive, alpha: additive } }] },
+    primitive: { topology: 'triangle-list', cullMode: 'back' },
+    depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'less' },
   });
   const glowPipe = device.createRenderPipeline({
     layout,
@@ -177,6 +185,9 @@ export function createRenderer(
     fx.flash = Math.max(0, fx.flash - dt);
     fx.cooldown = Math.max(0, fx.cooldown - dt);
     fx.holeAge += dt;
+    fx.bubbleAge += dt;
+    fx.dying = Math.max(0, fx.dying - dt);
+    if (fx.ripple >= 0) fx.ripple += dt;
     if (fx.hold !== HOLD_NONE) fx.holdT += dt;
     applyEvents(pool, world, events, batch.bursts, fx);
     integrate(pool, dt);
@@ -214,7 +225,7 @@ export function createRenderer(
       pass.setPipeline(meshPipe);
       pass.setIndexBuffer(indexBuf, 'uint16');
       for (let m = 0; m < batch.counts.length; m++) {
-        if (batch.counts[m] === 0) continue;
+        if (batch.counts[m] === 0 || m === BUBBLE_MESH) continue;
         // Dawn rejects a nonzero baseVertex or firstInstance unless the device enabled 'indirect-first-instance',
         // so both offsets go into the vertex buffer bindings and the renderer works with whatever device it is given.
         pass.setVertexBuffer(0, vertexBuf, baseVertex[m] * 36);
@@ -226,6 +237,12 @@ export function createRenderer(
       pass.setPipeline(glowPipe);
       pass.setVertexBuffer(0, glowInstBuf);
       pass.draw(4, batch.glowCount);
+    }
+    if (batch.counts[BUBBLE_MESH] > 0) {
+      pass.setPipeline(bubblePipe);
+      pass.setVertexBuffer(0, vertexBuf, baseVertex[BUBBLE_MESH] * 36);
+      pass.setVertexBuffer(1, meshInstBuf, batch.starts[BUBBLE_MESH] * INSTANCE_FLOATS * 4);
+      pass.drawIndexed(indexCountOf[BUBBLE_MESH], batch.counts[BUBBLE_MESH], firstIndex[BUBBLE_MESH], 0, 0);
     }
     pass.end();
     device.queue.submit([encoder.finish()]);

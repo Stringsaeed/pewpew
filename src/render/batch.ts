@@ -1,8 +1,8 @@
 import { ARCHETYPES, Kind, type BossId } from '../levels';
 import { MAX_BODIES, type WorldView } from '../sim';
 import { PITCH_TAN } from './camera';
-import { BLACKHOLE_RADIUS, BLACKHOLE_TILT, BOSS_RADIUS, LOOK, ROCKET_RADIUS } from './look';
-import { HOLD_LOST, HOLD_WON, HOLE_OPEN_SECONDS, bossHeat, createDive, holdProgress, pose, smooth, type Fx } from './fx';
+import { BLACKHOLE_RADIUS, BLACKHOLE_TILT, BOSS_RADIUS, BUBBLE_RADIUS, LOOK, ROCKET_RADIUS } from './look';
+import { BUBBLE_FORM_SECONDS, BUBBLE_POP_SECONDS, HOLD_LOST, HOLD_WON, HOLE_OPEN_SECONDS, RIPPLE_SECONDS, bossHeat, createDive, holdProgress, pose, smooth, type Fx } from './fx';
 import { MESHES, type MeshId } from './meshes.gen';
 import { PARTICLE_CAP, RING, SMOKE, type BurstTables, type ParticlePool } from './particles';
 
@@ -27,7 +27,7 @@ const HALO_Z = -2.6;
 const FLASH_Z = 6;
 
 const MESH_INDEX = Object.fromEntries(MESH_IDS.map((id, i) => [id, i])) as { [M in MeshId]: number };
-const MESH_CAP = MAX_BODIES + 4;
+const MESH_CAP = MAX_BODIES + 5;
 const GLOW_CAP = MAX_BODIES + PARTICLE_CAP + 16;
 const HOLE_SCALE = BLACKHOLE_RADIUS / MESHES.accretion.radius;
 const BOSS_MESH: { readonly [B in BossId]: number } = {
@@ -155,6 +155,8 @@ export function createBatch(): MeshBatch {
     if (diving) pose(dive, p, pl.x, pl.y, 0, world.wormholeY!);
     const rocketOn = rocketShown && (!diving || dive.visible);
     if (rocketOn) counts[MESH_INDEX.rocket]++;
+    const bubbleOn = rocketShown && (pl.shield || fx.dying > 0);
+    if (bubbleOn) counts[MESH_INDEX.bubble]++;
     if (world.boss) counts[BOSS_MESH[world.boss.id]]++;
     if (world.wormholeY !== null) { counts[MESH_INDEX.blackhole]++; counts[MESH_INDEX.accretion]++; }
 
@@ -207,7 +209,16 @@ export function createBatch(): MeshBatch {
       putGlow(0, haloY, r * 1.5, r * 1.5, 1, 0.5, 0.18, 0.2 * grow, GLOW_HALO, HALO_Z);
       putGlow(0, haloY, r * 2.3, r * 2.3, 0.55, 0.3, 1, 0.24 * grow, GLOW_HALO, HALO_Z);
     }
-    if (pl.shield) putGlow(px, py, 1.3, 1.3, 0.35, 0.65, 1, 0.9, GLOW_RING);
+    if (bubbleOn) {
+      // Forming: swells in from 70% with a bright flash. Popping (the sim already dropped the shield): swells out and fades.
+      const form = Math.min(1, fx.bubbleAge / BUBBLE_FORM_SECONDS);
+      const pop = pl.shield ? 0 : 1 - fx.dying / BUBBLE_POP_SECONDS;
+      const swell = (0.7 + 0.3 * (1 - (1 - form) * (1 - form))) * (1 + 0.3 * pop) * (1 + 0.015 * Math.sin(time * 3));
+      const bright = (1 + 1.5 * (1 - form)) * (1 - pop) * (fx.reduceMotion ? 0.85 : 1);
+      const age = fx.ripple >= 0 && fx.ripple < RIPPLE_SECONDS ? fx.ripple : -1;
+      putMesh(cursor[MESH_INDEX.bubble]++, px, py, 0, BUBBLE_RADIUS * swell / MESHES.bubble.radius, 0.35, 0.65, 1, bright,
+        age, 0, fx.rippleX, fx.rippleY);
+    }
     if (fx.hold === HOLD_WON) {
       const flash = smooth(0.62, 0.8, p) * (1 - smooth(0.82, 1, p)) * (fx.reduceMotion ? 0.5 : 1);
       if (flash > 0) putGlow(0, world.wormholeY ?? py, 60, 60, 1, 1, 1, flash, GLOW_FLAT, FLASH_Z);

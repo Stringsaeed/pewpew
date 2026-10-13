@@ -107,6 +107,37 @@ describe('renderer', { concurrency: false }, () => {
     }
   });
 
+  test('the shield bubble draws last in its own pipeline and lingers half a second after a block', () => {
+    const restore = installRandom(5);
+    try {
+      const gpu = createFakeGpu();
+      const renderer = createRenderer(gpu.device, gpu.context, 'bgra8unorm', MAX_PIXEL_RATIO);
+      const world = createWorld(1);
+      world.player.shield = true;
+      const bubble = LAYOUT.find((mesh) => mesh.id === 'bubble')!.baseVertex * 36;
+      const drawsBubble = (event: SimEvent[], dt: number): boolean => {
+        const mark = gpu.calls.length;
+        renderer.frame(world, event, 0, dt);
+        const frame = gpu.calls.slice(mark);
+        const offsets = vertexOffsets(frame, gpu.buffers[0]!.id);
+        const pipelines = frame.filter((call) => call.op === 'setPipeline');
+        if (offsets.includes(bubble)) {
+          assert.equal(offsets[offsets.length - 1], bubble);
+          assert.equal(pipelines.length, 4);
+        }
+        return offsets.includes(bubble);
+      };
+      assert.equal(drawsBubble([], 0.016), true);
+      world.player.shield = false;
+      assert.equal(drawsBubble([{ e: 'shieldBlock', x: 0, y: 0 }], 0.016), true);
+      assert.equal(drawsBubble([], 0.3), true);
+      assert.equal(drawsBubble([], 0.3), false);
+      renderer.dispose();
+    } finally {
+      restore();
+    }
+  });
+
   test('a lost hold hides the ship and keeps drawing the fire', () => {
     const restore = installRandom(9);
     try {
@@ -188,7 +219,7 @@ function play(world: World, frames: number): FrameLog[] {
   return logs;
 }
 
-/** Bodies per mesh, plus the rocket, boss, and black hole the renderer appends to those groups. */
+/** Bodies per mesh, plus the rocket, boss, black hole, and shield bubble the renderer appends to those groups. */
 function instanceCounts(world: World): Map<MeshId, number> {
   const counts = new Map<MeshId, number>();
   for (const id of MESH_IDS) counts.set(id, 0);
@@ -202,6 +233,7 @@ function instanceCounts(world: World): Map<MeshId, number> {
   }
   counts.set('rocket', counts.get('rocket')! + 1);
   if (world.boss) counts.set(world.boss.id, counts.get(world.boss.id)! + 1);
+  if (world.player.shield) counts.set('bubble', counts.get('bubble')! + 1);
   if (world.wormholeY !== null) {
     counts.set('blackhole', counts.get('blackhole')! + 1);
     counts.set('accretion', counts.get('accretion')! + 1);

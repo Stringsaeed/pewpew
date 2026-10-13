@@ -1,6 +1,7 @@
 import { MESHES } from './meshes.gen';
 
 /** Outer radius of the accretion disc in mesh units, as a WGSL float literal. */
+const RIPPLE_LIFE = '0.8';
 const HOLE_OUTER = MESHES.accretion.radius.toFixed(4);
 
 export const UNIFORMS = /* wgsl */ `
@@ -120,5 +121,62 @@ struct VO { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
     k = 1.0;
   }
   return vec4f(rgb * i.rgba.a * k, 0.0);
+}
+`;
+
+/**
+ * The shield bubble. Mesh instance layout, with extras (ripple age or -1, unused, impact x, impact y). Additive: near
+ * invisible facing the camera, bright at grazing angles, a slow hex shimmer, and a ripple from the impact point.
+ */
+export const BUBBLE = UNIFORMS + /* wgsl */ `
+struct VI {
+  @location(0) pos: vec3f, @location(1) nrm: vec3f, @location(2) col: vec3f,
+  @location(3) xyrs: vec4f, @location(4) tf: vec4f, @location(5) ex: vec4f,
+};
+struct VO {
+  @builtin(position) pos: vec4f, @location(0) nrm: vec3f, @location(1) lp: vec3f, @location(2) tint: vec3f,
+  @location(3) bright: f32, @location(4) ripple: vec3f,
+};
+@vertex fn vs(v: VI) -> VO {
+  var o: VO;
+  o.pos = u.proj * u.view * vec4f(v.pos * v.xyrs.w + vec3f(v.xyrs.xy, 0.0), 1.0);
+  o.nrm = v.nrm;
+  o.lp = v.pos;
+  o.tint = v.tf.rgb;
+  o.bright = v.tf.w;
+  o.ripple = vec3f(v.ex.x, v.ex.z, v.ex.w);
+  return o;
+}
+fn hash21(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }
+// x: distance to the nearest hex edge, 0 at a cell centre and 0.5 on the edge. yz: the cell centre.
+fn hexCell(p: vec2f) -> vec3f {
+  let r = vec2f(1.0, 1.7320508);
+  let h = r * 0.5;
+  let a = p - r * floor(p / r) - h;
+  let q = p - h;
+  let b = q - r * floor(q / r) - h;
+  let g = select(b, a, dot(a, a) < dot(b, b));
+  let e = max(dot(abs(g), vec2f(0.5, 0.8660254)), abs(g.x));
+  return vec3f(e, p - g);
+}
+@fragment fn fs(i: VO) -> @location(0) vec4f {
+  let n = normalize(i.nrm);
+  let fres = pow(1.0 - saturate(dot(n, vec3f(0.0, -0.276, 0.961))), 2.4);
+  let c = cos(u.time * 0.25);
+  let s = sin(u.time * 0.25);
+  let rp = vec3f(i.lp.x * c + i.lp.z * s, i.lp.y, -i.lp.x * s + i.lp.z * c);
+  let cell = hexCell(rp.xy * 3.4);
+  let edge = smoothstep(0.4, 0.5, cell.x);
+  let shimmer = 0.5 + 0.5 * sin(u.time * 1.8 + hash21(cell.yz) * 6.2832);
+  let sweep = 0.5 + 0.5 * sin(u.time * 1.1 - rp.y * 2.5 + rp.x * 1.3);
+  let hex = edge * (0.2 + 0.8 * shimmer) * (0.25 + 0.75 * sweep) * (0.12 + 1.1 * fres);
+  var ripple = 0.0;
+  if (i.ripple.x >= 0.0) {
+    let dir = normalize(vec3f(i.ripple.y, i.ripple.z, 0.35));
+    let ang = acos(clamp(dot(normalize(i.lp), dir), -1.0, 1.0));
+    ripple = exp(-pow((ang - i.ripple.x * 4.5) * 3.0, 2.0)) * (1.0 - i.ripple.x / ${RIPPLE_LIFE});
+  }
+  let k = 0.04 + 1.25 * fres + 0.8 * hex + 2.6 * ripple;
+  return vec4f(i.tint * k * i.bright, 0.0);
 }
 `;

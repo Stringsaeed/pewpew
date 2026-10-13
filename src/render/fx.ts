@@ -22,10 +22,18 @@ export interface Fx {
   /** Fractional particles owed to the damaged boss's hull. */
   sparkDebt: number;
   smokeDebt: number;
+  /** Seconds since the last shield block, or -1. The ripple travels from (rippleX, rippleY), a unit vector toward the impact. */
+  ripple: number;
+  rippleX: number;
+  rippleY: number;
+  /** The sim drops the shield the instant it blocks, so the bubble lingers this many seconds to pop. */
+  dying: number;
+  /** Seconds since the bubble formed, for its grow-in. */
+  bubbleAge: number;
 }
 
 export function createFx(): Fx {
-  return { reduceMotion: false, flash: 0, cooldown: 0, hold: HOLD_NONE, holdSeconds: 1, holdT: 0, holdFresh: false, holeAge: 1e3, sparkDebt: 0, smokeDebt: 0 };
+  return { reduceMotion: false, flash: 0, cooldown: 0, hold: HOLD_NONE, holdSeconds: 1, holdT: 0, holdFresh: false, holeAge: 1e3, sparkDebt: 0, smokeDebt: 0, ripple: -1, rippleX: 0, rippleY: 1, dying: 0, bubbleAge: 1e3 };
 }
 
 /** The hold choreography runs on dt, so a shell that slows dt stretches the hold with it. */
@@ -34,6 +42,9 @@ export const holdProgress = (fx: Fx): number => (fx.hold === HOLD_NONE ? 0 : Mat
 /** Fraction of a hold spent flying into the hole. The rest is the flash and the settle. */
 export const DIVE_END = 0.8;
 export const HOLE_OPEN_SECONDS = 0.9;
+export const BUBBLE_POP_SECONDS = 0.5;
+export const RIPPLE_SECONDS = 0.8;
+export const BUBBLE_FORM_SECONDS = 0.3;
 
 export const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 export const smooth = (a: number, b: number, v: number): number => {
