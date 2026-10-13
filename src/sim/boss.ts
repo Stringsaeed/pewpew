@@ -20,11 +20,11 @@ export function runBoss(w: World, boss: Boss, out: SimEvent[]): void {
   const phase = bossPhase(BOSSES[boss.id], boss.hp);
   boss.t += phase.sweepSpeed / BOSS_SWEEP * STEP;
   boss.x = BOSS_SWEEP * sinT(boss.t);
-  if (w.tick < boss.attackAt) return;
+  if (w.tick < boss.attackAtTick) return;
   bossAttack(w, boss, phase.attacks[boss.attack % phase.attacks.length]);
   out.push({ e: 'enemyFire', x: boss.x, y: boss.y });
   boss.attack++;
-  boss.attackAt = w.tick + Math.floor(phase.attackEvery * TICKS_PER_SEC);
+  boss.attackAtTick = w.tick + Math.floor(phase.attackEverySec * TICKS_PER_SEC);
 }
 
 function bossAttack(w: World, boss: Boss, atk: BossAttack): void {

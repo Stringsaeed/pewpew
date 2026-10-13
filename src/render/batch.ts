@@ -221,7 +221,7 @@ export function createBatch(): MeshBatch {
         headX = dive.hx; headY = dive.hy; puff = dive.size;
         nozzleX = dive.x - headX * back; nozzleY = dive.y - headY * back;
       } else {
-        const blink = world.tick < pl.invulnUntil && (world.tick >> 3) % 2 === 0 ? 0.5 : 0;
+        const blink = world.tick < pl.invulnUntilTick && (world.tick >> 3) % 2 === 0 ? 0.5 : 0;
         const bank = Math.max(-0.5, Math.min(0.5, -pl.vx * 0.06));
         putMesh(cursor[MESH_INDEX.rocket]++, px, py, bank, rocketScale, 1, 1, 1, blink);
         headX = 0; headY = 1; puff = 1;

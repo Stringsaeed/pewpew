@@ -41,7 +41,7 @@ export interface BossPhase {
   /** The phase takes over once boss hp / BossSpec.hp is at or below this fraction. */
   readonly atHpFraction: number;
   readonly sweepSpeed: number;
-  readonly attackEvery: number; // seconds
+  readonly attackEverySec: number;
   readonly attacks: readonly [BossAttack, ...BossAttack[]]; // cycled in order
 }
 export interface BossSpec {
@@ -51,17 +51,17 @@ export interface BossSpec {
 }
 export const BOSSES: { readonly [B in BossId]: BossSpec } = {
   warden: { hp: 60, phases: [
-    { atHpFraction: 1, sweepSpeed: 1.5, attackEvery: 1.6, attacks: [{ a: 'spread', bolts: 5, arcDeg: 60 }, { a: 'mines', count: 3 }] },
-    { atHpFraction: 0.4, sweepSpeed: 2.0, attackEvery: 1.2, attacks: [{ a: 'spread', bolts: 7, arcDeg: 80 }, { a: 'aimed', bolts: 3 }, { a: 'mines', count: 3 }] },
+    { atHpFraction: 1, sweepSpeed: 1.5, attackEverySec: 1.6, attacks: [{ a: 'spread', bolts: 5, arcDeg: 60 }, { a: 'mines', count: 3 }] },
+    { atHpFraction: 0.4, sweepSpeed: 2.0, attackEverySec: 1.2, attacks: [{ a: 'spread', bolts: 7, arcDeg: 80 }, { a: 'aimed', bolts: 3 }, { a: 'mines', count: 3 }] },
   ] },
   hive: { hp: 100, phases: [
-    { atHpFraction: 1, sweepSpeed: 2.0, attackEvery: 1.4, attacks: [{ a: 'drones', count: 2, pattern: 'orbit' }, { a: 'aimed', bolts: 3 }] },
-    { atHpFraction: 0.5, sweepSpeed: 2.6, attackEvery: 1.1, attacks: [{ a: 'drones', count: 3, pattern: 'zigzag' }, { a: 'aimed', bolts: 4 }, { a: 'spread', bolts: 5, arcDeg: 70 }] },
+    { atHpFraction: 1, sweepSpeed: 2.0, attackEverySec: 1.4, attacks: [{ a: 'drones', count: 2, pattern: 'orbit' }, { a: 'aimed', bolts: 3 }] },
+    { atHpFraction: 0.5, sweepSpeed: 2.6, attackEverySec: 1.1, attacks: [{ a: 'drones', count: 3, pattern: 'zigzag' }, { a: 'aimed', bolts: 4 }, { a: 'spread', bolts: 5, arcDeg: 70 }] },
   ] },
   core: { hp: 110, phases: [
-    { atHpFraction: 1, sweepSpeed: 2.6, attackEvery: 1.2, attacks: [{ a: 'spread', bolts: 9, arcDeg: 120 }, { a: 'aimed', bolts: 5 }, { a: 'mines', count: 4 }] },
-    { atHpFraction: 0.6, sweepSpeed: 3.0, attackEvery: 1.0, attacks: [{ a: 'drones', count: 3, pattern: 'dive' }, { a: 'spread', bolts: 11, arcDeg: 140 }, { a: 'aimed', bolts: 5 }] },
-    { atHpFraction: 0.25, sweepSpeed: 3.5, attackEvery: 0.85, attacks: [{ a: 'spread', bolts: 11, arcDeg: 150 }, { a: 'mines', count: 3 }, { a: 'aimed', bolts: 4 }] },
+    { atHpFraction: 1, sweepSpeed: 2.6, attackEverySec: 1.2, attacks: [{ a: 'spread', bolts: 9, arcDeg: 120 }, { a: 'aimed', bolts: 5 }, { a: 'mines', count: 4 }] },
+    { atHpFraction: 0.6, sweepSpeed: 3.0, attackEverySec: 1.0, attacks: [{ a: 'drones', count: 3, pattern: 'dive' }, { a: 'spread', bolts: 11, arcDeg: 140 }, { a: 'aimed', bolts: 5 }] },
+    { atHpFraction: 0.25, sweepSpeed: 3.5, attackEverySec: 0.85, attacks: [{ a: 'spread', bolts: 11, arcDeg: 150 }, { a: 'mines', count: 3 }, { a: 'aimed', bolts: 4 }] },
   ] },
 };
 

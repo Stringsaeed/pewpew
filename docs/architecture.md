@@ -7,24 +7,61 @@ The level is a compiled track and the world is a flat pool. This document explai
 Three callers drive the design. They are the app shell, the CI verifier, and the menu screens.
 
 ```ts
-// src/shell/loop.ts advance() is the input-to-pixels step (shell -> src/sim -> src/render)
-const onTouchStart = (e) => { drag.anchorX = loop.world!.player.x; drag.fx = e.nativeEvent.pageX; };
-const onTouchMove  = (e) => { loop.input = dragInput(drag.anchorX, (e.nativeEvent.pageX - drag.fx) / width); };
-const onTouchEnd   = () => { loop.input = COAST; };
+// App.tsx writes input. useGpu calls advance once per rAF.
+onTouchStart = (e) => press(loop, e.nativeEvent.pageX);
+onTouchMove  = (e) => drag(loop, e.nativeEvent.pageX, width);
+onTouchEnd   = () => release(loop);
 
-function frame(now: number) {
-  loop.acc += Math.min((now - loop.last) / 1000, 0.1); loop.last = now;
-  while (screen.s === 'play' && loop.acc >= STEP) { step(loop.world!, loop.input, loop.events); loop.acc -= STEP; }
-  renderer.frame(loop.world, loop.events, loop.acc / STEP, dt);
-  audio.events(loop.events);
-  for (const ev of loop.events) if (ev.e === 'won' || ev.e === 'lost') onEnded(ev);
+// src/shell/loop.ts. dt is clamped to 0.1 s. At most MAX_STEPS_PER_FRAME (4)
+// steps run, then a leftover accumulator is dropped. A loss holds the world
+// for LOSS_HOLD_MS (1 s) and a win for WIN_HOLD_MS (1.4 s). During that beat
+// render dt is multiplied by SLOW_MOTION (0.3). ended fires once, when the
+// hold reaches zero. The save is not here: App's terminal sink calls commitSave.
+export function advance(loop: Loop, now: number, sinks: Sinks): void {
+  const dtMs = Math.min(now - loop.last, 100);
+  const dt = dtMs / 1000;
+  loop.last = now;
+  const world = loop.world;
+  let finished: Hold | null = null;
+  if (loop.hold) {
+    loop.hold.leftMs -= dtMs;
+    if (loop.hold.leftMs <= 0) { finished = loop.hold; loop.hold = null; }
+  }
+  if (loop.playing && loop.hold === null && finished === null && world) {
+    loop.acc += dt;
+    let steps = 0;
+    while (loop.acc >= STEP && steps < MAX_STEPS_PER_FRAME) {
+      if (!loop.auto) loop.botOnly = false;
+      step(world, loop.auto ? greedyBot(world) : loop.input, loop.events);
+      loop.acc -= STEP;
+      steps += 1;
+    }
+    if (loop.acc >= STEP) loop.acc = 0;
+  }
+  let started: EventOf<'won'> | EventOf<'lost'> | null = null;
+  if (loop.hold === null && finished === null) {
+    for (const ev of loop.events) if (ev.e === 'won' || ev.e === 'lost') { started = ev; break; }
+  }
+  const slow = loop.hold !== null || finished !== null || started !== null;
+  sinks.render(world, loop.events, loop.acc / STEP, slow ? dt * SLOW_MOTION : dt);
+  sinks.audio(loop.events);
+  if (finished) sinks.ended(finished.ev);
+  for (const ev of loop.events) if (ev.e !== 'won' && ev.e !== 'lost') sinks.ended(ev);
+  if (started) {
+    const totalMs = started.e === 'lost' ? LOSS_HOLD_MS : WIN_HOLD_MS;
+    setPlaying(loop, false);
+    sinks.hold?.(started.e, (totalMs / 1000) * SLOW_MOTION);
+    sinks.terminal?.(started);
+    const leftMs = totalMs - dtMs;
+    if (leftMs <= 0) sinks.ended(started);
+    else loop.hold = { kind: started.e, leftMs, ev: started };
+  }
   loop.events.length = 0;
-  setHud((h) => hudOf(loop.world!, h));            // same object back means no re-render
+  if (world) {
+    const next = hudOf(world, loop.hud); // same object back means no re-render
+    if (next !== loop.hud) { loop.hud = next; sinks.hud(next); }
+  }
 }
-const onEnded = (ev) => {
-  dispatch({ a: 'ended', result: ev });
-  if (ev.e === 'won') setSave((s) => { const n = recordRun(s, level, ev.score, ev.stars); void writeSave(n); return n; });
-};
 ```
 
 ```ts
@@ -52,12 +89,12 @@ The shape is non-obvious for three reasons. Hermes punishes per-frame allocation
 
 ### Module map
 
-Internals stay unexported, so nothing outside a module can import them. Audio is the directory `src/audio`. The renderer is the directory `src/render`.
+Internals stay unexported, so nothing outside a module can import them. Callers import the `src/sim`, `src/render`, and `src/audio` barrels, not a file inside them. `src/boundaries.test.ts` fails `npm test` when that slips; `*.test.ts` may deep-import. Audio is the directory `src/audio`. The renderer is the directory `src/render`.
 
 | File | Owns | Imports |
 |---|---|---|
-| `src/levels.ts` | `Kind`, `Role`, `ARCHETYPES`, `BossPhase`, `BOSSES` (3), `LevelSpec`, `TrackLevel`, `BossLevel`, `Decade`, `LevelTable`, `RAMP`, `defineLevels`, `LEVELS` (30 rows), `levelSpec`, `tierOf` | nothing |
-| `src/sim/index.ts` | the public barrel. Callers import this module and nothing under `src/sim/` | the other `src/sim` modules |
+| `src/levels.ts` | `Kind`, `Role`, `ARCHETYPES`, `DRONE_PATTERNS`, `BossPhase`, `BOSSES` (3), `LevelSpec`, `TrackLevel`, `BossLevel`, `Decade`, `LevelTable`, `RAMP`, `defineLevels`, `LEVELS` (30 rows), `LEVEL_COUNT`, `levelSpec`, `tierOf` | nothing |
+| `src/sim/index.ts` | the public barrel, including `RAPID_TICKS`. Callers outside `src/sim` import this module and nothing under `src/sim/` | the other `src/sim` modules |
 | `src/sim/rules.ts` | tuning constants (`STEP`, `TICKS_PER_SEC`, `TRACK_HALF_WIDTH`, `MAX_BODIES`, `COAST_DAMPING`, `BOLT_SPEED`, `FIRE_TICKS`, `PLAYER_X_LIMIT`, `PLAYER_RADIUS`, and the rest) | nothing |
 | `src/sim/math.ts` | `rand` (mulberry32), `sinT`, `cosT`, `clamp`, `PI` | nothing |
 | `src/sim/world.ts` | `World`, `WorldView`, `Bodies`, `Player`, `Boss`, `Phase`, `SimEvent`, `createWorld`, pool add/remove | levels, rules, track |
@@ -72,7 +109,7 @@ Internals stay unexported, so nothing outside a module can import them. Audio is
 | `src/flow.ts` | `Screen`, `Action`, `reduce` | levels, save, sim (types only) |
 | `src/save.ts` | `Save`, `LevelRecord`, `SAVE_KEY`, `parseSave`, `recordRun`, `isUnlocked`, `loadSave`, `writeSave` | AsyncStorage, levels and sim (types) |
 | `src/audio/data.ts` | `PATCHES`, `SFX`, `SONGS`, `EVENT_SFX` (data) | levels, sim (types) |
-| `src/audio/engine.ts` | `AudioEngine`, `createAudio` (the synth engine, sequencer, voice caps, music state) | sim (types), audio data |
+| `src/audio/engine.ts` | `AudioEngine`, `createAudio` (the synth engine, sequencer, voice caps, music state) | levels (`tierOf`), sim (types), audio data. The native backend is a lazy `require('react-native-audio-api')`, not an import |
 | `src/audio/index.ts` | the public audio API, so `src/audio` keeps resolving | data, engine |
 | `src/render/index.ts` | `Renderer`, `createRenderer` (GPU resources, four pipelines, pass, resize, hold and reduce-motion state, dispose) | render modules, sim (types), meshes |
 | `src/render/look.ts` | `Look`, `LOOK`, visual radii, `NEBULA_OCTAVES`, tier tints | levels, sim, meshes (types) |
@@ -82,16 +119,56 @@ Internals stay unexported, so nothing outside a module can import them. Audio is
 | `src/render/fx.ts` | renderer-owned animation state (hold, hole age, bubble, trauma, hit flashes) and the dive pose | levels |
 | `src/render/camera.ts` | view and projection uniforms, shake, zoom | nothing |
 | `src/render/meshes.gen.ts` | `MeshData`, `MeshId`, `MESHES` (generated) | nothing |
-| `src/shell/loop.ts` | mutable `Loop`, `createLoop`, `resetRun`, `setPlaying` (the only writer of `playing`), `advance`, `press`, `drag`, `release`, `rapidRemaining`. Holds a terminal world 1 s on a loss and 1.4 s on a win | sim barrel, `src/sim/rules` (`RAPID_TICKS`), bot, flow (type) |
+| `src/shell/loop.ts` | mutable `Loop`, `createLoop`, `resetRun`, `setPlaying` (the only writer of `playing`), `advance`, `press`, `drag`, `release`, `rapidRemaining`, `RAPID_WINDOW_MS`. Holds a terminal world 1 s on a loss and 1.4 s on a win | sim barrel (`RAPID_TICKS`, `TICKS_PER_SEC`), bot, flow (type) |
 | `src/shell/useGpu.ts` | adapter, device, zero-layout retry, rAF, renderer create and dispose, the one pixel-ratio read, Reduce Motion | react-native, webgpu, render, shell/loop |
 | `src/shell/useSave.ts` | load once, `commitSave` (ref, state, writeSave) | react, save |
 | `src/shell/useAudioLifecycle.ts` | AppState foreground, `active`, menu music, mix from the save toggles | react-native, audio, save |
-| `src/ui/Screens.tsx` | which screen is on the canvas, the sector intro card, game-over best and reached | flow, levels, save, sim (types), ui screens |
+| `src/shell/loop.test.ts` | `advance`, the hold, input, `rapidRemaining` | sim barrel, `src/sim/rules` (tests may deep-import), shell/loop |
+| `src/ui/Screens.tsx` | which screen is on the canvas, the sector intro card, game-over best and reached | flow, levels (`levelSpec`, `tierOf`), save, sim (types), ui screens |
+| `src/ui/Hud.tsx` | score, lives, the RAPID chip, the boss bar | react-native, reanimated, levels (`BOSSES`, `levelSpec`), sim (types), shell/loop (`RAPID_WINDOW_MS`) |
+| `src/ui/Title.tsx` | title screen | react-native, reanimated, save (types), Button, theme |
+| `src/ui/LevelSelect.tsx` | the 30-level grid | react-native, reanimated, levels (`LEVELS`, `tierOf`), save, Button, Gear, theme |
 | `src/ui/LevelIntro.tsx` | `SECTOR n · LEVEL m`, WARNING on a boss level | theme, reanimated |
+| `src/ui/Pause.tsx` | pause menu | Button, Panel, theme |
+| `src/ui/Settings.tsx` | music and sfx toggles | react-native, Button, Panel, theme |
+| `src/ui/Complete.tsx` | level-clear screen | react-native, levels (`LEVELS`), sim (types), Button, Panel, theme |
+| `src/ui/GameOver.tsx` | loss screen | react-native, Button, Panel, theme |
+| `src/ui/Panel.tsx` | modal panel | react, react-native, reanimated, theme |
+| `src/ui/Button.tsx` | button | react-native, theme |
+| `src/ui/Gear.tsx` | settings glyph | react-native, theme |
+| `src/ui/Rocket.tsx` | life icon | react-native, theme |
+| `src/ui/theme.ts` | color, type, spacing | nothing |
 | `src/dev/qa.ts` | `unlockAll`, `logAutoRun`, the tick timer, `createDevTools` (AUTO, `globalThis.pewpew`) | levels, save, sim, shell/loop |
-| `App.tsx` | wiring: screen state, the shell hooks, touch, and dev tools under `__DEV__` | shell, flow, audio, save, ui |
-| `scripts/gen-meshes.ts` | mesh generation (`npm run gen:meshes`) | meshes (types) |
-| `scripts/verify-levels.ts` | the CI proof (`npm run verify`) | levels, sim, bot |
+| `src/testing/fake-gpu.ts` | recording device, encoder, and pass for `createRenderer` under tsx | nothing from `src` |
+| `src/testing/fake-audio.ts` | recording audio graph | audio (types) |
+| `src/testing/render.snapshot.json` | frozen draw log and instance bytes. The render test must reproduce it | data |
+| `src/render.test.ts` | the fake-GPU snapshot and the draw contract | bot, levels, render barrel, `render/meshes.gen` and `sim/world` (test-only deep imports), testing/fake-gpu |
+| `src/sim/sim.test.ts` | sim behavior and the Math ban | levels, sim barrel, bot |
+| `src/audio/audio.test.ts` | synth, sequencer, `EVENT_SFX` | levels, sim (types), audio, testing/fake-audio |
+| `src/save.test.ts` | `parseSave`, `recordRun`, `isUnlocked` | save |
+| `src/flow.test.ts` | `reduce` | flow, save |
+| `src/boundaries.test.ts` | the import rules in this map | node builtins only |
+| `index.ts` | `registerRootComponent(App)` | expo, App |
+| `App.tsx` | wiring: screen state, the shell hooks, touch, and dev tools under `__DEV__` | shell, flow, audio, save, sim (types), ui. `src/dev` only from here, `src/shell`, and `src/dev` |
+| `scripts/gen-meshes.ts` | mesh generation (`npm run gen:meshes`). Writes `src/render/meshes.gen.ts`. `--check` fails if that file would change | `node:fs` and `node:path` only. Nothing from `src` |
+| `scripts/render-song.ts` | writes every song and effect to `/tmp/pewpew-audio` (`npm run render-song`) | `src/audio` (`SFX`, `SONGS`, `envelopePlan`, `midiHz`, `patchOf`, `sfxHits`, `songHits`) |
+| `scripts/verify-levels.ts` | the CI proof (`npm run verify`), including the golden file | levels, sim, bot |
+| `scripts/verify-levels.golden.txt` | expected hash, steps, score, and stars for all 30 levels | data |
+| `scripts/ramp-sweep.ts` | seed tuning (`npm run sweep`). `--write-seeds` rewrites `src/levels.ts` | levels, sim, bot |
+
+### Where to edit
+
+| Task | Files, in order | Gate |
+|---|---|---|
+| Tune a level | `src/levels.ts` (that row; `BOSSES` when the level is 10, 20, or 30). `defineLevels` and `RAMP` reject a bad edit | `npm run check`. `scripts/verify-levels.golden.txt` must still match. A deliberate layout change updates it with `npm run verify -- --update-golden` |
+| Add a hazard kind | `src/levels.ts` (`Kind`, `ARCHETYPES`, mix weights), `src/sim/step.ts` if it moves or collides on its own, `src/render/look.ts` (`LOOK`), `scripts/gen-meshes.ts` (rewrites `src/render/meshes.gen.ts`), `src/audio/data.ts` if it needs a sound | `npm run check` (golden file and `gen:meshes --check`). `src/testing/render.snapshot.json` if the draws change. Device smoke for a new shader or mesh |
+| Add a boss attack | `src/levels.ts` (`BossAttack`, then the phase `attacks` list), `src/sim/boss.ts` (`bossAttack`) | `npm run check`. The golden file moves, because the fight changes |
+| Add a drone pattern | `src/levels.ts` (`DRONE_PATTERNS`), `src/sim/drones.ts` (`DRONE_MOVES`) | `npm run check`. The golden file moves |
+| Add a sound or song | `src/audio/data.ts` (`PATCHES`, `SFX`, `SONGS`, `EVENT_SFX`). `src/audio/engine.ts` only if the voice model changes | `npm run check`. Listen with `npm run render-song`. Device smoke for audibility |
+| Change a look or mesh | `src/render/look.ts` for tints and radii, `scripts/gen-meshes.ts` for geometry, `src/render/wgsl.ts` for a shader | `npm run check`. The render snapshot if instance layout or draw counts change. Device smoke for a shader (the fake GPU does not compile WGSL) |
+| Add a HUD element or screen | `src/sim/hud.ts` when it is a new visible fact, the component in `src/ui/`, `src/ui/Screens.tsx` to mount it, `src/flow.ts` when it is a new screen | `npm run check`. Device smoke for the screen |
+| Change the frame loop or hold timing | `src/shell/loop.ts` (`MAX_STEPS_PER_FRAME`, `LOSS_HOLD_MS`, `WIN_HOLD_MS`, `SLOW_MOTION`), `src/shell/loop.test.ts`, then `src/render/fx.ts` and `src/render/index.ts` if the choreography changes | `npm run check`. Device smoke if the beat changes |
+| Add a dev tool | `src/dev/qa.ts` (`createDevTools`), then `App.tsx` under `__DEV__` | `npm run check`. Device smoke under `__DEV__` |
 
 
 ### Data first
@@ -99,7 +176,7 @@ Internals stay unexported, so nothing outside a module can import them. Audio is
 - *A level is a table row plus a fixed seed, compiled once into a `Track`.* `createWorld` runs `compileTrack(spec)` into a y-sorted `Spawn[]`. Every row carries its own `seed`, so the verifier proves the exact layout players fly, not a random sample. Spawning at runtime is a cursor walk. Per-level rules exist only in `LEVELS` and `BOSSES`, and `compileTrack` is the only reader of density, mix, and wells.
 - *Entities live in one dense struct-of-arrays pool.* `Bodies` has 512 slots and uses swap-remove. There's no per-entity object and no GC churn in Hermes. The renderer iterates `0..count` and counting-sorts by mesh straight into the instance buffer. Static per-kind facts (`radius`, `hp`, `score`, `splitInto`, `role`) live in `ARCHETYPES`, and collision switches on `role`, never on `kind`. The player, the boss, and the wormhole are scalars on `World`, because they're unique and need stable identity, which swap-remove indices can't give.
 - *The run phase is a 4-variant union* (`fly | boss | won | lost`). Terminal phases make `step` a no-op, so a double-dispatched end or an extra step is harmless. Invulnerability, rapid fire, and the shield are tick deadlines or a boolean on `Player`, not phases, because they overlap with any phase.
-- *A boss is a list of health-gated phases.* `BossSpec.phases` is a non-empty tuple whose first entry has `atHpFraction: 1`. Each `BossPhase` sets `sweepSpeed`, `attackEvery`, and a non-empty `attacks` cycle. The sim picks the last phase whose fraction is at or above the boss's remaining health, so phase is derived from `hp` and never stored.
+- *A boss is a list of health-gated phases.* `BossSpec.phases` is a non-empty tuple whose first entry has `atHpFraction: 1`. Each `BossPhase` sets `sweepSpeed`, `attackEverySec`, and a non-empty `attacks` cycle. The sim picks the last phase whose fraction is at or above the boss's remaining health, so phase is derived from `hp` and never stored.
 - *Screen flow is a separate pure reducer* (`flow.ts`, 7 screens). Invalid actions return the same screen. The `play` screen carries `(level, attempt)`, and the shell rebuilds the `World` when that key changes, so "retry" can't reuse a dead world.
 - *Input is one value per step*, `{ targetX: number | null }`. The human's relative drag and the bot both produce it. `null` means the finger is up. The rocket then coasts and gravity wells get full authority, which is what makes wells dangerous. The drag mapping (`dragInput`) lives in the sim, so the bot and the human share one input model.
 - *Events form a discriminated union appended to a caller-owned buffer.* `step` appends and the shell clears once per rendered frame, so events from several steps in one frame aren't lost.
@@ -122,7 +199,7 @@ The sim uses a mulberry32 RNG (`Math.imul`, which is exact) and only `+ - * / sq
 
 ### Renderer contract
 
-`frame(world | null, events, alpha, dt)` runs once per rAF. It reads positions, interpolating `px` to `x` by `alpha` so 120 Hz ProMotion doesn't judder at a 60 Hz sim. It maps `kind` through `LOOK` to a `MeshId` and batches by mesh. One shared vertex and index buffer holds all meshes, and one instance buffer is written once per frame. Then a `drawIndexed` runs per non-empty mesh, with the vertex and instance buffers bound at that mesh's offsets. There are four pipelines. `stars` is procedural and bufferless: three hashed star layers, a per-tier value-noise nebula (`NEBULA_OCTAVES`, the one per-pixel cost this layer adds), and speed lines from the nearest layer stretching with scroll speed. `mesh` is instanced, with a hemisphere ambient, Lambert, a rim light, emissive vertex color (any channel above 1 is unlit), a heat column (damage tint on bodies, accent brightening on bosses) and depth. `glow` draws additive billboards in five shapes (spot, ring, orb, halo, flat) for bolts, exhaust, particles, halos, and the flash. `bubble` draws the shield, a smooth icosphere, additively with no depth write: fresnel rim, hex shimmer, a ripple from the impact point. Particles are renderer-owned state spawned from events, so the sim stays lean and they never affect determinism. The HUD is React Native views fed by `hudOf(world, prev)`, which returns `prev` itself when nothing visible changed.
+`frame(world | null, events, alpha, dt)` runs once per rAF. It reads positions, interpolating `px` to `x` by `alpha` so 120 Hz ProMotion doesn't judder at a 60 Hz sim. It maps `kind` through `LOOK` to a `MeshId` and batches by mesh. One shared vertex and index buffer holds all meshes, and one instance buffer is written once per frame. Stars is one `draw(3)`. Each non-empty mesh except the bubble then gets a `drawIndexed` whose `baseVertex` and `firstInstance` stay 0: Dawn rejects a nonzero value unless the device enabled `indirect-first-instance`, so the vertex buffer is bound at that mesh's byte offset and the instance buffer at that mesh's start. Glow is one `draw(4, count)`. The bubble pipeline draws last, with the same offset binding. There are four pipelines. `stars` is procedural and bufferless: three hashed star layers, a per-tier value-noise nebula (`NEBULA_OCTAVES`, the one per-pixel cost this layer adds), and speed lines from the nearest layer stretching with scroll speed. `mesh` is instanced, with a hemisphere ambient, Lambert, a rim light, emissive vertex color (any channel above 1 is unlit), a heat column (damage tint on bodies, accent brightening on bosses) and depth. `glow` draws additive billboards in five shapes (spot, ring, orb, halo, flat) for bolts, exhaust, particles, halos, and the flash. `bubble` draws the shield, a smooth icosphere, additively with no depth write: fresnel rim, hex shimmer, a ripple from the impact point. Particles are renderer-owned state spawned from events, so the sim stays lean and they never affect determinism. The HUD is React Native views fed by `hudOf(world, prev)`, which returns `prev` itself when nothing visible changed.
 
 Mesh and glow instances are 12 floats: `(x, y, rot, scale)`, `(r, g, b, flash or alpha)`, then three extras. Mesh extras are `(heat, mode, a, b)`; the mode column picks the vertex transform (tumble, flat, tilted disc, dive). The black hole is two meshes, `blackhole` (horizon and photon ring) and `accretion` (a banded emissive disc the shader tilts and spins), plus a halo drawn behind the disc so the core stays black. The three bosses are authored in world units around the sim's bolt origin `(boss.x, boss.y - 1.4)`, so every launch point is on the mesh.
 
@@ -166,7 +243,7 @@ Three architecture candidates competed in an arena. The coordinator and a gpt-5.
 
 - All 30 level rows. Candidate 2's ramp was adapted to candidate 1's `LevelSpec`. Scroll and length kept candidate 2's values. Density changed from hazards per unit to hazards per 100 units. Gravity wells moved out of the hazard mix into the `wells` count, and the per-tier well counts became a running maximum so every `RAMP` column is monotone across the campaign. Drone patterns `cross` and `escort` became `zigzag` and `orbit`. The fixed per-row `seed` replaced candidate 2's caller-selected seeds.
 - The load-time validator. `defineCampaign` became `defineLevels`.
-- Boss phases. `BossPhaseSpec` became `BossPhase` (`atHpFraction`, `sweepSpeed`, `attackEvery`, `attacks`), and it replaced candidate 1's flat `sweepSpeed`, `attackEvery`, and `attacks` on `BossSpec`.
+- Boss phases. `BossPhaseSpec` became `BossPhase` (`atHpFraction`, `sweepSpeed`, `attackEverySec`, `attacks`), and it replaced candidate 1's flat `sweepSpeed`, `attackEverySec`, and `attacks` on `BossSpec`.
 
 **Grafts from candidate 3.**
 
@@ -206,6 +283,6 @@ Three architecture candidates competed in an arena. The coordinator and a gpt-5.
 
 ## Follow-ups
 
-- Rename fields to carry their units (`scrollUnitsPerSec`, `attackEverySec`) and split the shared `Bodies` columns `variant`, `t`, and `param` per kind, as the comment review proposed.
+- Split the shared `Bodies` columns `variant`, `t`, and `param` per kind, as the comment review proposed. LevelSpec columns keep their names; each one already has a unit comment.
 - Run the Android emulator and a physical iPhone pass, and a release build.
 - Decide whether to keep momentum after a finger lift (coast damping is 0.9 per step) once people have played it.

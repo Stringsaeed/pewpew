@@ -202,11 +202,11 @@ test('rapidRemaining is the fraction of the rapid window left', () => {
   assert.ok(world);
   assert.equal(rapidRemaining(null), 0);
   assert.equal(rapidRemaining(world), 0);
-  world.player.rapidUntil = world.tick + RAPID_TICKS / 2;
+  world.player.rapidUntilTick = world.tick + RAPID_TICKS / 2;
   assert.equal(rapidRemaining(world), 0.5);
-  world.player.rapidUntil = world.tick + RAPID_TICKS;
+  world.player.rapidUntilTick = world.tick + RAPID_TICKS;
   assert.equal(rapidRemaining(world), 1);
-  world.tick = world.player.rapidUntil;
+  world.tick = world.player.rapidUntilTick;
   assert.equal(rapidRemaining(world), 0);
 });
 
