@@ -1,5 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { LEVELS, type LevelNumber } from '../levels';
+import { LEVELS, tierOf, type BossId, type LevelNumber } from '../levels';
 import { isUnlocked, type Save } from '../save';
 import { Button } from './Button';
 import { color, font, inset, space } from './theme';
@@ -7,6 +7,11 @@ import { color, font, inset, space } from './theme';
 const COLUMNS = 5;
 const GAP = space.sm;
 const SIDE = space.md;
+const TIERS = [1, 2, 3] as const;
+/** Nebula tints from the audit: each tier's header band and divider. */
+const TIER_TINT = { 1: '#2a1450', 2: '#0c3a44', 3: '#3e0c22' } as const;
+const TIER_LINE = { 1: '#7a46d6', 2: '#2aa6bf', 3: '#d63a76' } as const;
+const BOSS_NAME: Record<BossId, string> = { warden: 'WARDEN', hive: 'HIVE', core: 'CORE' };
 
 interface Props {
   readonly save: Save;
@@ -25,11 +30,34 @@ export function LevelSelect({ save, onPick, onBack, onSettings }: Props) {
         <Text accessibilityRole="header" style={styles.title}>LEVELS</Text>
         <Button label="SET" accessibilityLabel="Settings" tone="ghost" onPress={onSettings} style={styles.small} />
       </View>
-      <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
-        {LEVELS.map((spec) => {
-          const rec = save.levels[spec.n - 1];
-          const open = isUnlocked(save, spec.n);
-          return <Tile key={spec.n} n={spec.n} size={tile} stars={rec.stars} best={rec.best} open={open} boss={spec.boss !== null} onPick={onPick} />;
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {TIERS.map((tier) => {
+          const specs = LEVELS.filter((l) => tierOf(l.n) === tier);
+          const earned = specs.reduce((sum, l) => sum + save.levels[l.n - 1].stars, 0);
+          return (
+            <View key={tier} style={styles.tier}>
+              <View
+                accessible
+                accessibilityRole="header"
+                accessibilityLabel={`Sector ${tier}, ${earned} of ${specs.length * 3} stars`}
+                style={[styles.band, { backgroundColor: TIER_TINT[tier], borderBottomColor: TIER_LINE[tier] }]}
+              >
+                <Text maxFontSizeMultiplier={1.3} style={styles.bandText}>{`SECTOR ${tier}`}</Text>
+                <Text maxFontSizeMultiplier={1.3} style={styles.bandStars}>{`★ ${earned}/${specs.length * 3}`}</Text>
+              </View>
+              <View style={styles.grid}>
+                {specs.map((spec) => {
+                  const rec = save.levels[spec.n - 1];
+                  return (
+                    <Tile
+                      key={spec.n} n={spec.n} size={tile} stars={rec.stars} best={rec.best}
+                      open={isUnlocked(save, spec.n)} boss={spec.boss} onPick={onPick}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          );
         })}
       </ScrollView>
     </View>
@@ -38,12 +66,12 @@ export function LevelSelect({ save, onPick, onBack, onSettings }: Props) {
 
 interface TileProps {
   readonly n: LevelNumber; readonly size: number; readonly stars: number; readonly best: number;
-  readonly open: boolean; readonly boss: boolean; readonly onPick: (n: LevelNumber) => void;
+  readonly open: boolean; readonly boss: BossId | null; readonly onPick: (n: LevelNumber) => void;
 }
 
 function Tile({ n, size, stars, best, open, boss, onPick }: TileProps) {
-  const accent = boss ? color.magenta : color.cyan;
-  const label = `Level ${n}${boss ? ', boss' : ''}, ${open ? `${stars} of 3 stars${best > 0 ? `, best ${best}` : ''}` : 'locked'}`;
+  const accent = boss !== null ? color.magenta : color.cyan;
+  const label = `Level ${n}${boss !== null ? `, boss ${BOSS_NAME[boss]}` : ''}, ${open ? `${stars} of 3 stars${best > 0 ? `, best ${best}` : ''}` : 'locked'}`;
   return (
     <Pressable
       accessibilityRole="button"
@@ -62,6 +90,7 @@ function Tile({ n, size, stars, best, open, boss, onPick }: TileProps) {
       ]}
     >
       <Text maxFontSizeMultiplier={1.3} style={[styles.num, { color: open ? accent : color.dim }]}>{n}</Text>
+      {boss !== null ? <Text maxFontSizeMultiplier={1.3} style={[styles.bossName, { color: open ? accent : color.textDim }]}>{BOSS_NAME[boss]}</Text> : null}
       {open ? (
         <Text maxFontSizeMultiplier={1.3} style={styles.stars}>
           <Text maxFontSizeMultiplier={1.3} style={styles.earned}>{'★'.repeat(stars)}</Text>
@@ -86,7 +115,13 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SIDE, paddingBottom: space.md },
   title: { fontFamily: font.family, fontSize: font.title, fontWeight: '800', letterSpacing: 4, color: color.cyan },
   small: { minWidth: 0, paddingVertical: space.sm, paddingHorizontal: space.md },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, paddingHorizontal: SIDE, paddingBottom: inset.bottom + space.lg },
+  content: { gap: space.md, paddingBottom: inset.bottom + space.lg },
+  tier: { gap: space.sm },
+  band: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SIDE, paddingVertical: space.sm, borderBottomWidth: 1 },
+  bandText: { fontFamily: font.family, fontSize: font.body, fontWeight: '800', letterSpacing: 4, color: color.text },
+  bandStars: { fontFamily: font.family, fontSize: font.body, fontWeight: '700', letterSpacing: 2, color: color.yellow },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, paddingHorizontal: SIDE },
+  bossName: { fontFamily: font.family, fontSize: 10, fontWeight: '700', letterSpacing: 1 },
   tile: { borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center', gap: 2 },
   num: { fontFamily: font.family, fontSize: 20, fontWeight: '800' },
   stars: { fontFamily: font.family, fontSize: 13, letterSpacing: 1 },
