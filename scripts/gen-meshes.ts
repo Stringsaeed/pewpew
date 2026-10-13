@@ -21,7 +21,7 @@ const PALETTE = {
   fin: [1, 0.15, 0.6] as Rgb,
   steel: [0.38, 0.4, 0.5] as Rgb,
   flame: [2, 0.9, 0.25] as Rgb,
-  rock: [[0.42, 0.38, 0.52], [0.5, 0.45, 0.62], [0.36, 0.32, 0.46], [0.56, 0.5, 0.66]] as readonly Rgb[],
+  rock: [[0.47, 0.43, 0.59], [0.6, 0.54, 0.74], [0.35, 0.31, 0.49], [0.68, 0.61, 0.8]] as readonly Rgb[],
   /** Threat orange, the one hue for anything that hurts: mine cores, drones, enemy bolts, the boss bar. */
   mineCore: [1.9, 0.5, 0.16] as Rgb,
   mineSpike: [0.55, 0.55, 0.65] as Rgb,

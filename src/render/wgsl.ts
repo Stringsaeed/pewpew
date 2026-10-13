@@ -84,13 +84,18 @@ fn rotY(r: f32) -> mat3x3f { return mat3x3f(vec3f(cos(r), 0.0, -sin(r)), vec3f(0
   return o;
 }
 @fragment fn fs(i: VO) -> @location(0) vec4f {
-  let lam = max(dot(normalize(i.nrm), normalize(vec3f(-0.45, 0.55, 0.7))), 0.0);
-  let lit = i.col * (0.3 + 0.7 * lam);
+  let n = normalize(i.nrm);
+  let lam = max(dot(n, normalize(vec3f(-0.45, 0.55, 0.7))), 0.0);
+  // Cool hemisphere ambient (violet from below, blue from above) and a rim light along the view direction, so shadow
+  // sides keep their silhouette against the backdrop. Black stays black: the rim scales with the surface's own luminance.
+  let ambient = mix(vec3f(0.22, 0.16, 0.30), vec3f(0.20, 0.28, 0.42), n.y * 0.5 + 0.5);
+  let rim = pow(1.0 - saturate(dot(n, vec3f(0.0, -0.276, 0.961))), 3.0) * vec3f(0.35, 0.45, 0.8) * saturate(dot(i.col, vec3f(0.3, 0.5, 0.2)) * 6.0);
+  let lit = i.col * (ambient + 0.7 * lam) + rim;
   let emissive = step(1.0001, max(i.col.r, max(i.col.g, i.col.b)));
   let glow = i.col * (0.7 * (1.0 + 0.6 * i.heat) * (1.0 + i.pulse * sin(u.time * 6.5 + i.lp.x * 3.0 + i.lp.y * 2.0))) + i.heat * vec3f(0.1, 0.28, 0.2);
   // The accretion disc (mode 2) dims toward its outer edge instead of ending in a hard violet rim. It keeps a trace, so the edge never reads as a black plate against the halo.
-  let rim = select(1.0, mix(1.0, 0.16, smoothstep(0.5, 1.0, length(i.lp.xy) / ${HOLE_OUTER})), i.mode > 1.5 && i.mode < 2.5);
-  return vec4f(mix(lit, glow, emissive) * rim + vec3f(i.flash), 1.0);
+  let edgeFade = select(1.0, mix(1.0, 0.16, smoothstep(0.5, 1.0, length(i.lp.xy) / ${HOLE_OUTER})), i.mode > 1.5 && i.mode < 2.5);
+  return vec4f(mix(lit, glow, emissive) * edgeFade + vec3f(i.flash), 1.0);
 }
 `;
 
