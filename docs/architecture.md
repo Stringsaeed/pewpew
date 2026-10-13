@@ -57,7 +57,17 @@ Each module is one file, so its internals stay file-local and nothing outside ca
 | File | Owns | Imports |
 |---|---|---|
 | `src/levels.ts` | `Kind`, `Role`, `ARCHETYPES`, `BossPhase`, `BOSSES` (3), `LevelSpec`, `TrackLevel`, `BossLevel`, `Decade`, `LevelTable`, `RAMP`, `defineLevels`, `LEVELS` (30 rows), `levelSpec`, `tierOf` | nothing |
-| `src/sim.ts` | `World`, `WorldView`, `step`, `createWorld`, `Input`, `dragInput`, `COAST`, `SimEvent`, `hudOf`, `simulate`, `replay`, the track compiler | levels (types) |
+| `src/sim/index.ts` | the public barrel. Callers import this module and nothing under `src/sim/` | the other `src/sim` modules |
+| `src/sim/rules.ts` | tuning constants (`STEP`, `TICKS_PER_SEC`, `TRACK_HALF_WIDTH`, `MAX_BODIES`, `COAST_DAMPING`, `BOLT_SPEED`, `FIRE_TICKS`, `PLAYER_X_LIMIT`, `PLAYER_RADIUS`, and the rest) | nothing |
+| `src/sim/math.ts` | `rand` (mulberry32), `sinT`, `cosT`, `clamp`, `PI` | nothing |
+| `src/sim/world.ts` | `World`, `WorldView`, `Bodies`, `Player`, `Boss`, `Phase`, `SimEvent`, `createWorld`, pool add/remove | levels, rules, track |
+| `src/sim/input.ts` | `Input`, `COAST`, `dragInput`, `steerVelocity` | rules, math |
+| `src/sim/track.ts` | `Spawn`, `Track`, `compileTrack` | levels, rules, math |
+| `src/sim/drones.ts` | `DRONE_MOVES`, `driveX`, `droneClock` | rules, math, world (types) |
+| `src/sim/boss.ts` | `bossPhase`, `runBoss`, `bossAttack` | levels, rules, math, world, drones |
+| `src/sim/step.ts` | `step` and its stages (steer, wells, spawn, fire, move, collide, despawn, transition) | levels, rules, math, world, input, drones, boss |
+| `src/sim/run.ts` | `Bot`, `RunResult`, `simulate`, `replay`, `hashWorld` | levels, rules, world, input, step |
+| `src/sim/hud.ts` | `Hud`, `hudOf` | levels, world (types) |
 | `src/bot.ts` | `greedyBot`, `idleBot` | sim |
 | `src/flow.ts` | `Screen`, `Action`, `reduce` | levels, save, sim (types only) |
 | `src/save.ts` | `Save`, `LevelRecord`, `SAVE_KEY`, `parseSave`, `recordRun`, `isUnlocked`, `loadSave`, `writeSave` | AsyncStorage, levels and sim (types) |
@@ -82,7 +92,7 @@ Each module is one file, so its internals stay file-local and nothing outside ca
 
 ### Invariants the compiler or the loader enforces
 
-- `WorldView` maps typed arrays to `ArrayLike<number>` and every field to `readonly`. The renderer, HUD, and bots receive a `WorldView`. A `@ts-expect-error` block in `sim.ts` proves that `view.bodies.x[0] = 1` and `view.player.x = 1` fail to compile, so brief requirement 3 is a build failure, not a review comment.
+- `WorldView` maps typed arrays to `ArrayLike<number>` and every field to `readonly`. The renderer, HUD, and bots receive a `WorldView`. A `@ts-expect-error` block in `src/sim/world.ts` proves that `view.bodies.x[0] = 1` and `view.player.x = 1` fail to compile, so brief requirement 3 is a build failure, not a review comment.
 - `LEVELS` has type `LevelTable`, which is three `Decade` tuples. Each `Decade` is nine `TrackLevel` rows (`boss: null`) and one `BossLevel` row (`boss: BossId`). A boss on level 9 or a missing boss on level 20 fails to compile.
 - `defineLevels` runs when `levels.ts` loads and throws if the table has the wrong length, an `n` out of order, a boss off 10, 20, or 30, a missing or non-positive mix weight, or a `RAMP` column marked `'nondecreasing'` that decreases. The app and the verifier can't load a bad table.
 - `EVENT_SFX: { [E in EventName]: ... }`, `LOOK: { [K in Kind]: Look }`, `ARCHETYPES: { [K in Kind]: ... }`, `MESHES: { [M in MeshId]: MeshData }`, and `RAMP: { [numeric column of LevelSpec]: ... }` are exhaustive mapped types. Adding an event, kind, mesh, or level column fails the build until every table covers it.
@@ -94,7 +104,7 @@ Every `RAMP` column rises or holds from level 1 to level 30. Scroll goes from 6.
 
 ### Determinism
 
-The sim uses a mulberry32 RNG (`Math.imul`, which is exact) and only `+ - * / sqrt`, which IEEE 754 makes bit-identical across engines. `Math.sin`, `Math.cos`, `Math.pow`, and `Math.random` are banned in `sim.ts` and `levels.ts`, and drone patterns use a polynomial `sinT`. Without this ban the verifier would prove a game that differs by an ulp from the phone's, and the divergence compounds over 3,000 steps. `replay(n, inputs)` proves determinism from the input stream alone.
+The sim uses a mulberry32 RNG (`Math.imul`, which is exact) and only `+ - * / sqrt`, which IEEE 754 makes bit-identical across engines. `Math.sin`, `Math.cos`, `Math.pow`, and `Math.random` are banned in `src/sim` and `levels.ts`, and drone patterns use a polynomial `sinT`. Without this ban the verifier would prove a game that differs by an ulp from the phone's, and the divergence compounds over 3,000 steps. `replay(n, inputs)` proves determinism from the input stream alone.
 
 ### Renderer contract
 
@@ -155,7 +165,7 @@ Three architecture candidates competed in an arena. The coordinator and a gpt-5.
 
 ## Tradeoffs accepted
 
-- We accept fat files (`render.ts` with inline WGSL, `sim.ts` holding all rules) in exchange for the three-file trace from input to pixels and file-local internals.
+- We accept a fat file (`render.ts` with inline WGSL) in exchange for the trace from input to pixels and file-local internals. The sim's rules live under `src/sim`, and callers still enter through one barrel.
 - We accept a trig ban and a homemade `sinT` in the sim in exchange for the verifier proving the same bits the phone runs.
 - We accept fixed layouts per level, with no replay variety, in exchange for "verified" meaning this exact level and for fair per-level best scores.
 - We accept swap-remove, under which body indices aren't identities, in exchange for dense iteration. Events carry positions, not indices, and anything needing identity (the player, the boss) is a scalar.
