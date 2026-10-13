@@ -41,7 +41,19 @@ const config: ExpoConfig = {
   web: {
     favicon: './assets/favicon.png',
   },
-  plugins: ['react-native-audio-api', './plugins/with-ios-scene-delegate'],
+  plugins: [
+    [
+      'react-native-audio-api',
+      {
+        // The library links recording APIs, so App Store Connect requires a microphone purpose string even though
+        // the game only plays sound and never asks for the microphone.
+        iosMicrophonePermission: 'PewPew does not record audio and never asks for the microphone. The sound library it uses includes recording support.',
+        // The game suspends its audio context when it leaves the foreground, so it needs no background audio mode.
+        iosBackgroundMode: false,
+      },
+    ],
+    './plugins/with-ios-scene-delegate',
+  ],
   extra: {
     eas: {
       projectId: '7331076e-619c-48de-a566-bbe0158c0b13',
