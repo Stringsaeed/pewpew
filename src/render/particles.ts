@@ -40,6 +40,10 @@ const SHIELD_BLUE = Float32Array.of(0.35, 0.65, 1);
 const HOLE_GOLD = Float32Array.of(1, 0.7, 0.3);
 const HOLE_VIOLET = Float32Array.of(0.7, 0.4, 1);
 const HOLE_VISIBLE_AHEAD = 17;
+const THREAT = Float32Array.of(1, 0.38, 0.15);
+/** Where enemy bolts leave, relative to the firer. The boss bolt origin is the sim's (boss.x, boss.y - 1.4). */
+const BOSS_MUZZLE_DY = -1.4;
+const DRONE_MUZZLE_DY = -0.4;
 const SHIP_FIRE = Float32Array.of(1, 0.55, 0.15);
 
 export function createPool(): ParticlePool {
@@ -92,6 +96,22 @@ export function applyEvents(pool: ParticlePool, world: WorldView | null, events:
     const ev = events[i];
     switch (ev.e) {
       case 'start': fx.holeAge = -1e3; break;
+      case 'fire': {
+        // A 60 ms flash at the nose and two sparks, so the ship feels like it shoots.
+        const k = fx.reduceMotion ? 0.5 : 1;
+        spawn(pool, ev.x, ev.y, 0, 0, 0.06, 0.5, 0.3 * k, k, k);
+        for (let j = 0; j < 2; j++) spawn(pool, ev.x, ev.y, (Math.random() - 0.5) * 3, 1 + Math.random() * 2, 0.15, 0.09, 0.3 * k, k, k);
+        break;
+      }
+      case 'enemyFire': {
+        // A 120 ms threat-orange flare where the bolt leaves: a tell for the player as much as an effect.
+        const boss = world?.boss && ev.y === world.boss.y;
+        const y = ev.y + (boss ? BOSS_MUZZLE_DY : DRONE_MUZZLE_DY);
+        const k = fx.reduceMotion ? 0.5 : 1;
+        spawn(pool, ev.x, y, 0, 0, 0.12, boss ? 0.9 : 0.6, THREAT[0] * k, THREAT[1] * k, THREAT[2] * k);
+        for (let j = 0; j < 3; j++) spawn(pool, ev.x, y, (Math.random() - 0.5) * 3, -1 - Math.random() * 2, 0.2, 0.1, THREAT[0] * k, THREAT[1] * k, THREAT[2] * k);
+        break;
+      }
       case 'destroy': {
         if (ev.target === 'boss') {
           const m = world?.boss ? tables.bossMesh[world.boss.id] : tables.core;
