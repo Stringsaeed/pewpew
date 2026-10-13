@@ -7,7 +7,14 @@ import type { ExpoConfig } from 'expo/config';
 const config: ExpoConfig = {
   name: 'PewPew',
   slug: 'pewpew',
+  owner: 'stringsaeed',
   version: '1.0.0',
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
+  updates: {
+    url: 'https://u.expo.dev/7331076e-619c-48de-a566-bbe0158c0b13',
+  },
   orientation: 'portrait',
   icon: './design/rocket-icon/rocket-preview.png',
   userInterfaceStyle: 'dark',
@@ -17,6 +24,9 @@ const config: ExpoConfig = {
     requireFullScreen: true,
     appleTeamId: 'V3HN8HXZYK',
     icon: './design/rocket-icon/PewPew.icon',
+    config: {
+      usesNonExemptEncryption: false,
+    },
   },
   android: {
     adaptiveIcon: {
@@ -32,6 +42,11 @@ const config: ExpoConfig = {
     favicon: './assets/favicon.png',
   },
   plugins: ['react-native-audio-api', './plugins/with-ios-scene-delegate'],
+  extra: {
+    eas: {
+      projectId: '7331076e-619c-48de-a566-bbe0158c0b13',
+    },
+  },
 };
 
 export default config;

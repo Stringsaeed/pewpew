@@ -1,0 +1,33 @@
+{
+  "cli": {
+    "version": ">= 22.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "ios": {
+        "buildConfiguration": "Release"
+      },
+      "channel": "production"
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": true,
+        "buildConfiguration": "Release"
+      },
+      "channel": "preview"
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6822155755",
+        "metadataPath": "./store.config.js",
+        "appleTeamId": "V3HN8HXZYK"
+      }
+    }
+  }
+}
