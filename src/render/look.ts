@@ -5,11 +5,17 @@ import type { MeshId } from './meshes.gen';
 /** Kind to look. 'glow' kinds draw as additive billboards, not meshes. A mesh look picks meshes[variant % length]. */
 export type Look =
   | { readonly draw: 'mesh'; readonly meshes: readonly [MeshId, ...MeshId[]]; readonly tint: readonly [number, number, number] }
-  | { readonly draw: 'glow'; readonly size: number; readonly rgba: readonly [number, number, number, number] };
+  | {
+    readonly draw: 'glow';
+    readonly size: number;
+    readonly rgba: readonly [number, number, number, number];
+    /** Player shots are thin streaks along their travel; enemy shots are fat round orbs, so shape alone separates them. */
+    readonly shape: 'streak' | 'orb';
+  };
 
 /**
  * Mesh kinds are drawn at the archetype hit radius: the batcher scales by ARCHETYPES[kind].radius / mesh.radius.
- * Bolt and enemy-bolt billboards are longer than their colliders (0.12 and 0.15).
+ * Bolt and enemy-bolt billboards are larger than their colliders (0.12 and 0.15).
  */
 export const LOOK: { readonly [K in Kind]: Look } = {
   [Kind.Asteroid]:  { draw: 'mesh', meshes: ['asteroid0', 'asteroid1', 'asteroid2', 'asteroid3'], tint: [1, 1, 1] },
@@ -20,8 +26,8 @@ export const LOOK: { readonly [K in Kind]: Look } = {
   [Kind.Crystal]:   { draw: 'mesh', meshes: ['crystal'], tint: [1, 1, 1] },
   [Kind.Shield]:    { draw: 'mesh', meshes: ['shield'], tint: [1, 1, 1] },
   [Kind.Rapid]:     { draw: 'mesh', meshes: ['rapid'], tint: [1, 1, 1] },
-  [Kind.Bolt]:      { draw: 'glow', size: 0.35, rgba: [0.3, 1, 1, 1] },
-  [Kind.EnemyBolt]: { draw: 'glow', size: 0.4, rgba: [1, 0.3, 0.6, 1] },
+  [Kind.Bolt]:      { draw: 'glow', size: 0.35, rgba: [0.3, 1, 1, 1], shape: 'streak' },
+  [Kind.EnemyBolt]: { draw: 'glow', size: 0.6, rgba: [1, 0.38, 0.15, 1], shape: 'orb' },
 };
 
 /** Rocket hit radius is PLAYER_RADIUS (0.35). The hull is drawn at 0.8, which is 0.8 / 0.35 of the collider. */

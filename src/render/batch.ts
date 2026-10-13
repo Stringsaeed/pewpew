@@ -21,6 +21,8 @@ export const MODE_DIVE = 3;
 const GLOW_Z = 0.4;
 /** Emissive accents on a boss breathe by this fraction, as a wave across the hull. */
 const BOSS_PULSE = 0.22;
+/** A mine's core blinks by this fraction: armed. */
+const MINE_PULSE = 0.55;
 /** Glow quads sit in the plane of the bodies. The hole's halo goes behind the whole accretion disc, so the core stays black and the disc takes no seam. */
 const HALO_Z = -2.6;
 /** In front of every mesh, so the flash covers the near half of the accretion disc too. */
@@ -73,6 +75,11 @@ export function createBatch(): MeshBatch {
   const meshOf = new Int16Array(KIND_COUNT * VARIANTS).fill(-1);
   const scaleOf = new Float32Array(KIND_COUNT * VARIANTS);
   const tintOf = new Float32Array(KIND_COUNT * 3);
+  const pulseOf = new Float32Array(KIND_COUNT);
+  // Billboard kinds: half-extents and glow shape.
+  const glowW = new Float32Array(KIND_COUNT);
+  const glowH = new Float32Array(KIND_COUNT);
+  const glowShape = new Uint8Array(KIND_COUNT);
   const burst = new Float32Array(KIND_COUNT * 3);
   for (let k = 0; k < KIND_COUNT; k++) {
     const look = LOOK[k as Kind];
@@ -87,8 +94,13 @@ export function createBatch(): MeshBatch {
       burst.set(signature(look.meshes[0]), k * 3);
     } else {
       burst.set(look.rgba.slice(0, 3), k * 3);
+      const orb = look.shape === 'orb';
+      glowW[k] = orb ? look.size : look.size * 0.7;
+      glowH[k] = orb ? look.size : look.size * 1.9;
+      glowShape[k] = orb ? GLOW_ORB : GLOW_SPOT;
     }
   }
+  pulseOf[Kind.Mine] = MINE_PULSE;
   const bossBurst = Float32Array.from(MESH_IDS.flatMap((id) => signature(id)));
   const counts = new Uint32Array(MESH_IDS.length);
   const starts = new Uint32Array(MESH_IDS.length);
@@ -144,7 +156,8 @@ export function createBatch(): MeshBatch {
         if (look.draw === 'glow') {
           const x = bodies.px[i] + (bodies.x[i] - bodies.px[i]) * alpha;
           const y = bodies.py[i] + (bodies.y[i] - bodies.py[i]) * alpha;
-          putGlow(x, y, look.size * 0.7, look.size * 1.9, look.rgba[0], look.rgba[1], look.rgba[2], look.rgba[3]);
+          const k = bodies.kind[i];
+          putGlow(x, y, glowW[k], glowH[k], look.rgba[0], look.rgba[1], look.rgba[2], look.rgba[3], glowShape[k]);
         }
       }
     }
@@ -172,7 +185,7 @@ export function createBatch(): MeshBatch {
         bodies.px[i] + (bodies.x[i] - bodies.px[i]) * alpha,
         bodies.py[i] + (bodies.y[i] - bodies.py[i]) * alpha,
         bodies.rot[i], scaleOf[k * VARIANTS + (bodies.variant[i] % VARIANTS)],
-        tintOf[k * 3], tintOf[k * 3 + 1], tintOf[k * 3 + 2], 0);
+        tintOf[k * 3], tintOf[k * 3 + 1], tintOf[k * 3 + 2], 0, 0, MODE_TUMBLE, pulseOf[k]);
     }
 
     const rocketScale = ROCKET_RADIUS / MESHES.rocket.radius;

@@ -42,7 +42,7 @@ fn hash3(p: vec2f) -> vec3f {
 /**
  * Mesh and glow instances are 12 floats: (x, y, rot, scale), (r, g, b, flash or alpha), then three per-draw extras.
  * Mesh extras are (heat, mode, a, b):
- *  mode 0  tumble: spin about z with a bounded wobble about y. Bodies.
+ *  mode 0  tumble: spin about z with a bounded wobble about y. Bodies. a = emissive pulse amplitude (mine cores).
  *  mode 1  flat: spin about z only. Bosses and the event horizon. a = emissive pulse amplitude.
  *  mode 2  disc: spin about its own axis, then tilt about x by b. The accretion disc.
  *  mode 3  dive: roll about the long axis by a, stretch it by b, point it along rot, lift it toward the camera by heat. The rocket falling into the hole.
@@ -65,7 +65,7 @@ fn rotY(r: f32) -> mat3x3f { return mat3x3f(vec3f(cos(r), 0.0, -sin(r)), vec3f(0
   let mode = v.ex.y;
   var m = rotZ(r) * rotY(0.45 * sin(r * 0.7));
   var p = v.pos;
-  var pulse = 0.0;
+  var pulse = select(0.0, v.ex.z, mode < 0.5);
   var lift = 0.0;
   if (mode > 0.5 && mode < 1.5) { m = rotZ(r); pulse = v.ex.z; }
   else if (mode > 1.5 && mode < 2.5) { m = rotX(v.ex.w) * rotZ(r); }
@@ -113,7 +113,7 @@ struct VO { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
   if (i.shape > 0.5 && i.shape < 1.5) {
     k = exp(-pow((d - 0.82) * 10.0, 2.0)) * edge;
   } else if (i.shape > 1.5 && i.shape < 2.5) {
-    rgb = i.rgba.rgb * exp(-d * d * 6.0) + vec3f(1.0) * exp(-d * d * 26.0);
+    rgb = i.rgba.rgb * 1.3 * exp(-d * d * 3.5) + vec3f(1.0) * exp(-d * d * 16.0);
     k = edge;
   } else if (i.shape > 2.5 && i.shape < 3.5) {
     k = smoothstep(0.16, 0.36, d) * exp(-pow((d - 0.36) * 3.0, 2.0)) * edge;
