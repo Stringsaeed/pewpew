@@ -1,4 +1,3 @@
-import { PixelRatio } from 'react-native';
 import type { NativeCanvas } from 'react-native-webgpu';
 import { ARCHETYPES, Kind, type BossId } from './levels';
 import { MESHES, type MeshId } from './meshes.gen';
@@ -153,7 +152,12 @@ function signature(id: MeshId): [number, number, number] {
   return [r / m, g / m, b / m];
 }
 
-export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext & { present(): void }, format: GPUTextureFormat): Renderer {
+export function createRenderer(
+  device: GPUDevice,
+  ctx: GPUCanvasContext & { present(): void },
+  format: GPUTextureFormat,
+  pixelRatio: number,
+): Renderer {
   const canvas = ctx.canvas as unknown as NativeCanvas;
 
   let vertexCount = 0;
@@ -313,9 +317,8 @@ export function createRenderer(device: GPUDevice, ctx: GPUCanvasContext & { pres
   const passDesc: GPURenderPassDescriptor = { colorAttachments: [colorAttachment], depthStencilAttachment: depthAttachment };
 
   function resize(): boolean {
-    const ratio = Math.min(PixelRatio.get(), MAX_PIXEL_RATIO);
-    const w = Math.round(canvas.clientWidth * ratio);
-    const h = Math.round(canvas.clientHeight * ratio);
+    const w = Math.round(canvas.clientWidth * pixelRatio);
+    const h = Math.round(canvas.clientHeight * pixelRatio);
     if (w === 0 || h === 0) return false;
     if (w === width && h === height) return true;
     canvas.width = w;
