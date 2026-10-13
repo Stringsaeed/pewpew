@@ -52,7 +52,7 @@ The shape is non-obvious for three reasons. Hermes punishes per-frame allocation
 
 ### Module map
 
-Each module is one file, so its internals stay file-local and nothing outside can import them.
+Internals stay unexported, so nothing outside a module can import them. Audio is the directory `src/audio`.
 
 | File | Owns | Imports |
 |---|---|---|
@@ -61,8 +61,9 @@ Each module is one file, so its internals stay file-local and nothing outside ca
 | `src/bot.ts` | `greedyBot`, `idleBot` | sim |
 | `src/flow.ts` | `Screen`, `Action`, `reduce` | levels, save, sim (types only) |
 | `src/save.ts` | `Save`, `LevelRecord`, `SAVE_KEY`, `parseSave`, `recordRun`, `isUnlocked`, `loadSave`, `writeSave` | AsyncStorage, levels and sim (types) |
-| `src/sound.ts` | `PATCHES`, `SFX`, `SONGS`, `EVENT_SFX` (data) | levels, sim (types) |
-| `src/audio.ts` | `AudioEngine`, `createAudio` (the synth engine, sequencer, voice caps, music state) | sim (types), sound |
+| `src/audio/data.ts` | `PATCHES`, `SFX`, `SONGS`, `EVENT_SFX` (data) | levels, sim (types) |
+| `src/audio/engine.ts` | `AudioEngine`, `createAudio` (the synth engine, sequencer, voice caps, music state) | sim (types), audio data |
+| `src/audio/index.ts` | the public audio API, so `src/audio` keeps resolving | data, engine |
 | `src/meshes.gen.ts` | `MeshData`, `MeshId`, `MESHES` (generated) | nothing |
 | `src/render.ts` | `Look`, `LOOK`, `Renderer`, `createRenderer` (3 WGSL pipelines, particles) | levels, sim (types), meshes |
 | `App.tsx` | the shell, which owns screen, save, audio, renderer, world, loop, and touch | everything |
@@ -90,7 +91,7 @@ Each module is one file, so its internals stay file-local and nothing outside ca
 
 ### Difficulty ramp
 
-Every `RAMP` column rises or holds from level 1 to level 30. Scroll goes from 6.0 to 11.8 units per second, density from 8 to 33 hazards per 100 units, and length from 270 to 1060 units, so a run lasts 45 s on level 1 and about 90 s on level 30 (bosses add their fight on top). Wells start at level 4 and reach 5 by level 29. Drones appear at level 5 and start firing at level 6. The values were tuned against `npm run verify` and a 41-seed sweep (`.audit/u2-ramp-sweep.txt`), and `defineLevels` keeps every edit monotone.
+Every `RAMP` column rises or holds from level 1 to level 30. Scroll goes from 6.0 to 11.8 units per second, density from 8 to 33 hazards per 100 units, and length from 270 to 1060 units, so a run lasts 45 s on level 1 and about 90 s on level 30 (bosses add their fight on top). Wells start at level 4 and reach 5 by level 29. Drones appear at level 5 and start firing at level 6. The values were tuned against `npm run verify` and a 41-seed sweep (`scripts/ramp-sweep.ts`, log in `.audit/u2-ramp-sweep.txt`), and `defineLevels` keeps every edit monotone.
 
 ### Determinism
 
@@ -102,7 +103,7 @@ The sim uses a mulberry32 RNG (`Math.imul`, which is exact) and only `+ - * / sq
 
 ### Audio contract
 
-`AudioEngine` has four methods, `events(evs)`, `ui(cue)`, `mix(...)`, and `active(on)`. The engine is the single owner of music state. A `start` event selects the song for `tierOf(level)`, `bossEnter` switches to `boss`, and `won` or `lost` plays a stinger and stops. SFX come from the exhaustive `EVENT_SFX` table. A `Patch` is a wave, an ADSR envelope, an optional detune, an optional filter with its own envelope, and an optional pitch sweep. Noise comes from one buffer generated at init. A `Song` is a bpm plus tracker strings (`"C4 - . E4"`) per voice, scheduled by a 25 ms lookahead timer against `ctx.currentTime`. Each SFX has a `maxVoices` cap so 10 lasers a second can't pile up nodes.
+`AudioEngine` has four methods, `events(evs)`, `ui(cue)`, `mix(...)`, and `active(on)`. The engine is the single owner of music state. A `start` event selects the song for `tierOf(level)`, `bossEnter` switches to `boss`, and `won` or `lost` plays a stinger and stops. SFX come from the exhaustive `EVENT_SFX` table. A `Patch` is a wave, an ADSR envelope, an optional detune, an optional filter with its own envelope, and an optional pitch sweep. Noise comes from one buffer generated at init. A `Song` is a bpm plus tracker strings (`"C4 - . E4"`) per voice, scheduled by a 25 ms lookahead timer against `ctx.currentTime`. Each SFX has a `maxVoices` cap so 10 lasers a second can't pile up nodes. `npm run render-song` writes every song and effect to `/tmp/pewpew-audio` as wav; `npm run render-song -- tier1` renders one id.
 
 ### Mesh generator output
 

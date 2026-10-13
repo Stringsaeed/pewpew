@@ -1,5 +1,5 @@
-import { Kind } from './levels';
-import type { EventName, EventOf } from './sim';
+import { Kind } from '../levels';
+import type { EventName, EventOf } from '../sim';
 
 export type Wave = 'square' | 'sawtooth' | 'triangle' | 'sine' | 'noise';
 export interface Env { readonly a: number; readonly d: number; readonly s: number; readonly r: number } // seconds; s is level 0..1
