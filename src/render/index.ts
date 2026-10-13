@@ -1,5 +1,6 @@
 import type { NativeCanvas } from 'react-native-webgpu';
 import { ARCHETYPES, Kind, type BossId } from '../levels';
+import { writeCamera } from './camera';
 import { BOSS_RADIUS, LOOK, ROCKET_RADIUS, WORMHOLE_RADIUS, type Look } from './look';
 import { MESHES, type MeshId } from './meshes.gen';
 import { PARTICLE_CAP, applyEvents, createPool, integrate, spawnExhaust, type BossFlash, type BurstTables } from './particles';
@@ -33,12 +34,6 @@ const MESH_INDEX = Object.fromEntries(MESH_IDS.map((id, i) => [id, i])) as { [M 
 const INSTANCE_FLOATS = 8;
 const MESH_CAP = MAX_BODIES + 3;
 const GLOW_CAP = MAX_BODIES + PARTICLE_CAP + 2;
-const FOV_Y = (50 * Math.PI) / 180;
-const PITCH = (16 * Math.PI) / 180;
-const LOOK_AHEAD = 6.5;
-const VISIBLE_HALF_WIDTH = 5.4;
-const NEAR = 1;
-const FAR = 90;
 const BOSS_MESH: { readonly [B in BossId]: number } = {
   warden: MESH_INDEX.warden, hive: MESH_INDEX.hive, core: MESH_INDEX.core,
 };
@@ -209,28 +204,6 @@ export function createRenderer(
     return true;
   }
 
-  function camera(camY: number): void {
-    const aspect = width / height;
-    const t = Math.tan(FOV_Y / 2);
-    const dist = Math.max(VISIBLE_HALF_WIDTH / (t * aspect), 14);
-    const ty = camY + LOOK_AHEAD;
-    const ey = ty - dist * Math.sin(PITCH);
-    const ez = dist * Math.cos(PITCH);
-    // Eye and target share x = 0, so the basis is right = +x, forward = (0, fy, fz), up = (0, -fz, fy).
-    const fy = (ty - ey) / dist;
-    const fz = -ez / dist;
-    const u = uniforms;
-    u.fill(0);
-    u[0] = 1;
-    u[5] = -fz; u[6] = -fy;
-    u[9] = fy; u[10] = -fz;
-    u[13] = -(-fz * ey + fy * ez); u[14] = fy * ey + fz * ez; u[15] = 1;
-    const f = 1 / t;
-    const nf = 1 / (NEAR - FAR);
-    u[16] = f / aspect; u[21] = f; u[26] = FAR * nf; u[27] = -1; u[30] = NEAR * FAR * nf;
-    u[32] = width; u[33] = height; u[34] = camY; u[35] = time;
-  }
-
   function putMesh(slot: number, x: number, y: number, rot: number, s: number, r: number, g: number, b: number, flash: number) {
     const o = slot * INSTANCE_FLOATS;
     meshInst[o] = x; meshInst[o + 1] = y; meshInst[o + 2] = rot; meshInst[o + 3] = s;
@@ -319,7 +292,7 @@ export function createRenderer(
       putGlow(pool.x[i], pool.y[i], s, s, pool.r[i], pool.g[i], pool.b[i], a);
     }
 
-    camera(camY);
+    writeCamera(uniforms, camY, width, height, time);
     device.queue.writeBuffer(uniformBuf, 0, uniforms);
     if (meshSlots > 0) device.queue.writeBuffer(meshInstBuf, 0, meshInst, 0, meshSlots * INSTANCE_FLOATS);
     if (glowCount > 0) device.queue.writeBuffer(glowInstBuf, 0, glowInst, 0, glowCount * INSTANCE_FLOATS);
