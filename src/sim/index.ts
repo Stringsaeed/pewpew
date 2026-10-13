@@ -24,16 +24,8 @@ export type {
   World,
   WorldView,
 } from './world';
-export {
-  hashWorld,
-  hudOf,
-  replay,
-  simulate,
-  step,
-} from './step';
+export { hudOf, step } from './step';
+export type { Hud } from './step';
 export type { Spawn, Track } from './track';
-export type {
-  Bot,
-  Hud,
-  RunResult,
-} from './step';
+export { hashWorld, replay, simulate } from './run';
+export type { Bot, RunResult } from './run';
