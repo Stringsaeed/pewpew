@@ -9,7 +9,8 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.saeed.pewpew",
-      "requireFullScreen": true
+      "requireFullScreen": true,
+      "appleTeamId": "V3HN8HXZYK"
     },
     "android": {
       "adaptiveIcon": {
