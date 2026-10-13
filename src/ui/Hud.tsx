@@ -16,6 +16,7 @@ export function Hud({ hud, level, onPause, auto }: Props) {
   const bossId = hud.bossHp === null ? null : levelSpec(level as LevelNumber).boss;
   return (
     <View pointerEvents="box-none" style={styles.root}>
+      <View pointerEvents="none" style={styles.topScrim} />
       <View pointerEvents="box-none" style={styles.row}>
         <View style={styles.left}>
           <Text maxFontSizeMultiplier={1.3} accessibilityLabel={`Score ${hud.score}`} style={styles.score}>{String(hud.score).padStart(6, '0')}</Text>
@@ -79,6 +80,8 @@ function Chip({ text, tint }: { readonly text: string; readonly tint: string }) 
 }
 
 const styles = StyleSheet.create({
+  /** Darkens the top band so hazards passing under the score and buttons stay readable. */
+  topScrim: { position: 'absolute', top: 0, left: 0, right: 0, height: 120, experimental_backgroundImage: 'linear-gradient(rgba(5,5,15,0.75), transparent)' },
   root: { position: 'absolute', top: 0, left: 0, right: 0, paddingTop: inset.top - space.sm, paddingHorizontal: space.md, gap: space.sm },
   row: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   left: { gap: space.xs, flexShrink: 1 },
@@ -90,7 +93,7 @@ const styles = StyleSheet.create({
   pausePressed: { backgroundColor: 'rgba(53,240,255,0.35)' },
   auto: { height: 44, paddingHorizontal: space.sm, borderRadius: 12, borderWidth: 2, borderColor: color.dim, justifyContent: 'center' },
   autoOn: { borderColor: color.yellow, backgroundColor: 'rgba(255,210,63,0.2)' },
-  autoText: { fontFamily: font.family, fontSize: 12, fontWeight: '700', letterSpacing: 2, color: color.dim },
+  autoText: { fontFamily: font.family, fontSize: 12, fontWeight: '700', letterSpacing: 2, color: color.textDim },
   autoTextOn: { color: color.yellow },
   bar: { width: 5, height: 16, borderRadius: 1, backgroundColor: color.cyan },
   track: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
