@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { BOSSES, levelSpec, type LevelNumber } from '../levels';
 import type { Hud as HudState } from '../sim';
 import { Rocket } from './Rocket';
@@ -19,7 +21,7 @@ export function Hud({ hud, level, onPause, auto }: Props) {
       <View pointerEvents="none" style={styles.topScrim} />
       <View pointerEvents="box-none" style={styles.row}>
         <View style={styles.left}>
-          <Text maxFontSizeMultiplier={1.3} accessibilityLabel={`Score ${hud.score}`} style={styles.score}>{String(hud.score).padStart(6, '0')}</Text>
+          <Score score={hud.score} />
           <View style={styles.livesRow}>
             <View accessible accessibilityLabel={`Lives ${hud.lives}`} style={styles.lives}>
               {Array.from({ length: hud.lives }, (_, i) => <Rocket key={i} />)}
@@ -71,6 +73,35 @@ export function Hud({ hud, level, onPause, auto }: Props) {
   );
 }
 
+const POP_SCALE = 1.12;
+const POP_GAP_MS = 150;
+
+/** Six digits: leading zeros dim, significant digits cyan. A 1.12x pop on each increase, at most one per 150 ms. */
+function Score({ score }: { readonly score: number }) {
+  const scale = useSharedValue(1);
+  const prev = useRef(score);
+  const lastPop = useRef(0);
+  useEffect(() => {
+    const rose = score > prev.current;
+    prev.current = score;
+    const now = Date.now();
+    if (!rose || now - lastPop.current < POP_GAP_MS) return;
+    lastPop.current = now;
+    scale.value = withSequence(withTiming(POP_SCALE, { duration: 60 }), withTiming(1, { duration: 120 }));
+  }, [score, scale]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const digits = String(score).padStart(6, '0');
+  const zeros = Math.min(/^0*/.exec(digits)![0].length, digits.length - 1);
+  return (
+    <Animated.View style={[styles.scoreBox, style]}>
+      <Text maxFontSizeMultiplier={1.3} accessibilityLabel={`Score ${score}`} style={styles.score}>
+        <Text style={styles.zeros}>{digits.slice(0, zeros)}</Text>
+        {digits.slice(zeros)}
+      </Text>
+    </Animated.View>
+  );
+}
+
 function Chip({ text, tint }: { readonly text: string; readonly tint: string }) {
   return (
     <View accessible accessibilityLabel={`${text} active`} style={[styles.chip, { borderColor: tint }]}>
@@ -85,6 +116,8 @@ const styles = StyleSheet.create({
   root: { position: 'absolute', top: 0, left: 0, right: 0, paddingTop: inset.top - space.sm, paddingHorizontal: space.md, gap: space.sm },
   row: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   left: { gap: space.xs, flexShrink: 1 },
+  scoreBox: { alignSelf: 'flex-start', transformOrigin: 'left center' },
+  zeros: { color: color.textDim },
   score: { fontFamily: font.family, fontSize: font.score, fontWeight: '800', color: color.cyan, letterSpacing: 2 },
   livesRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   lives: { flexDirection: 'row', gap: space.xs, height: 18 },
