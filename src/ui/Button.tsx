@@ -24,6 +24,7 @@ export function Button({ label, onPress, tone = 'primary', accessibilityLabel, s
       style={({ pressed }) => [
         styles.base,
         { borderColor: border, backgroundColor: pressed ? border : 'rgba(255,255,255,0.04)', transform: [{ scale: pressed ? 0.97 : 1 }] },
+        tone === 'primary' && { boxShadow: `0 0 18px ${border}73` },
         style,
       ]}
     >

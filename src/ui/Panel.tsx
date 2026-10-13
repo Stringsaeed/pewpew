@@ -5,8 +5,8 @@ import { color, font, space } from './theme';
 export function Panel({ title, tint = color.cyan, children }: { readonly title: string; readonly tint?: string; readonly children: ReactNode }) {
   return (
     <View style={styles.scrim}>
-      <View style={[styles.panel, { borderColor: tint }]}>
-        <Text accessibilityRole="header" style={[styles.title, { color: tint }]}>{title}</Text>
+      <View style={[styles.panel, { borderColor: tint, boxShadow: `0 0 18px ${tint}73` }]}>
+        <Text accessibilityRole="header" style={[styles.title, { color: tint, textShadowColor: tint, textShadowRadius: 14, textShadowOffset: { width: 0, height: 0 } }]}>{title}</Text>
         {children}
       </View>
     </View>
