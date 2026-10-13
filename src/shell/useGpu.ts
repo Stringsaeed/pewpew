@@ -29,7 +29,7 @@ export function useGpu(canvasRef: CanvasRef, loop: Loop, sinks: Sinks, sample: F
       if (!alive) return;
       reduceRef.current = on;
       setReduceMotion(on);
-      rendererRef.current?.setReduceMotion?.(on);
+      rendererRef.current?.setReduceMotion(on);
     };
     void AccessibilityInfo.isReduceMotionEnabled().then(apply);
     const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', apply);
@@ -51,7 +51,7 @@ export function useGpu(canvasRef: CanvasRef, loop: Loop, sinks: Sinks, sample: F
       ended(ev) { sinksRef.current.ended(ev); },
       hud(next) { sinksRef.current.hud(next); },
       terminal(ev) { sinksRef.current.terminal?.(ev); },
-      hold(kind, seconds) { if (renderer) renderer.hold?.(kind, seconds); },
+      hold(kind, seconds) { renderer?.hold(kind, seconds); },
     };
     const tick = (now: number) => advance(loop, now, bound);
 
@@ -65,7 +65,7 @@ export function useGpu(canvasRef: CanvasRef, loop: Loop, sinks: Sinks, sample: F
         ctx = c;
         renderer = createRenderer(device, ctx, format, Math.min(PixelRatio.get(), MAX_PIXEL_RATIO));
         rendererRef.current = renderer;
-        renderer.setReduceMotion?.(reduceRef.current);
+        renderer.setReduceMotion(reduceRef.current);
         loop.last = now;
         return;
       }

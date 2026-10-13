@@ -99,15 +99,19 @@ test('a loss holds the world for 1s and a win for 1.4s at 0.3x render dt', () =>
   assert.ok(lostWorld);
   lostWorld.player.lives = 0;
   const renderDt: number[] = [];
+  const holds: [string, number][] = [];
   let lost = 0;
   const lossSinks: Sinks = {
     ...quiet(),
     render(_w, _e, _a, dt) { renderDt.push(dt); },
     ended(ev) { if (ev.e === 'lost') lost += 1; },
+    hold(kind, seconds) { holds.push([kind, seconds]); },
   };
   advance(loss, 100, lossSinks);
   const tick = lostWorld.tick;
   assert.equal(lost, 0);
+  // The renderer counts the hold in the slowed dt it receives, so it is told the slowed length.
+  assert.deepEqual(holds, [['lost', 0.3]]);
   assert.equal(loss.world, lostWorld);
   assert.equal(loss.hold?.kind, 'lost');
   assert.equal(renderDt[0], 0.1 * 0.3);

@@ -146,7 +146,8 @@ export function advance(loop: Loop, now: number, sinks: Sinks): void {
   if (started) {
     const totalMs = started.e === 'lost' ? LOSS_HOLD_MS : WIN_HOLD_MS;
     setPlaying(loop, false);
-    sinks.hold?.(started.e, totalMs / 1000);
+    // The renderer counts the hold in the dt it receives, which is already slowed, so the seconds are scaled too.
+    sinks.hold?.(started.e, (totalMs / 1000) * SLOW_MOTION);
     sinks.terminal?.(started);
     const leftMs = totalMs - dtMs;
     if (leftMs <= 0) sinks.ended(started);
