@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
 import { BOSSES, levelSpec, type LevelNumber } from '../levels';
 import type { Hud as HudState } from '../sim';
-import { RAPID_TICKS, TICKS_PER_SEC } from '../sim/rules';
+import { RAPID_WINDOW_MS } from '../shell/loop';
 import { Rocket } from './Rocket';
 import { color, font, inset, space } from './theme';
 
@@ -16,8 +16,6 @@ interface Props {
   /** Rapid window still left, 0..1. The chip drains from here to empty. */
   readonly rapid?: number;
 }
-
-const RAPID_MS = (RAPID_TICKS / TICKS_PER_SEC) * 1000;
 
 export function Hud({ hud, level, onPause, auto, rapid }: Props) {
   const bossId = hud.bossHp === null ? null : levelSpec(level as LevelNumber).boss;
@@ -147,7 +145,7 @@ function Chip({ text, tint, drain }: { readonly text: string; readonly tint: str
   useEffect(() => {
     if (drain === undefined) return;
     scale.value = drain;
-    scale.value = withTiming(0, { duration: drain * RAPID_MS });
+    scale.value = withTiming(0, { duration: drain * RAPID_WINDOW_MS });
   }, [drain, scale]);
   const bar = useAnimatedStyle(() => ({ transform: [{ scaleX: scale.value }] }));
   return (

@@ -1,7 +1,6 @@
 import { greedyBot } from '../bot';
 import type { Run } from '../flow';
-import { COAST, STEP, createWorld, dragInput, hudOf, step, type EventOf, type Hud, type Input, type SimEvent, type World } from '../sim';
-import { RAPID_TICKS } from '../sim/rules';
+import { COAST, RAPID_TICKS, STEP, TICKS_PER_SEC, createWorld, dragInput, hudOf, step, type EventOf, type Hud, type Input, type SimEvent, type World } from '../sim';
 
 export const MAX_STEPS_PER_FRAME = 4;
 export const LOSS_HOLD_MS = 1000;
@@ -92,6 +91,9 @@ export function drag(loop: Loop, pageX: number, width: number): void {
 export function release(loop: Loop): void {
   loop.input = COAST;
 }
+
+/** Full rapid-fire window in milliseconds. The HUD chip drains across this. */
+export const RAPID_WINDOW_MS = (RAPID_TICKS / TICKS_PER_SEC) * 1000;
 
 /** Fraction of the rapid window still left, 0 when the pickup is inactive. Read at React render time; the chip animates the rest. */
 export function rapidRemaining(world: World | null): number {
