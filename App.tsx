@@ -186,12 +186,8 @@ export default function App() {
         const c = canvasRef.current?.getContext('webgpu') ?? null;
         const canvas = c?.canvas as unknown as NativeCanvas | undefined;
         if (!c || !canvas || canvas.clientWidth === 0 || canvas.clientHeight === 0 || !device) return;
-        const ratio = Math.min(PixelRatio.get(), MAX_PIXEL_RATIO);
-        canvas.width = Math.round(canvas.clientWidth * ratio);
-        canvas.height = Math.round(canvas.clientHeight * ratio);
-        c.configure({ device, format, alphaMode: 'opaque' });
         ctx = c;
-        renderer = createRenderer(device, ctx, format);
+        renderer = createRenderer(device, ctx, format, Math.min(PixelRatio.get(), MAX_PIXEL_RATIO));
         loop.last = now;
         return;
       }

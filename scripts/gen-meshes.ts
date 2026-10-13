@@ -390,7 +390,7 @@ function emit(): string {
   ].join('\n');
 }
 
-const out = resolve(__dirname, '../src/meshes.gen.ts');
+const out = resolve(__dirname, '../src/render/meshes.gen.ts');
 const text = emit();
 if (process.argv.includes('--check')) {
   const committed = readFileSync(out, 'utf8');

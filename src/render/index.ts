@@ -1,0 +1,219 @@
+import type { NativeCanvas } from 'react-native-webgpu';
+import type { SimEvent, WorldView } from '../sim';
+import { INSTANCE_FLOATS, MESH_IDS, createBatch } from './batch';
+import { writeCamera } from './camera';
+import { LOOK, type Look } from './look';
+import { MESHES } from './meshes.gen';
+import { applyEvents, createPool, integrate, spawnExhaust, type BossFlash } from './particles';
+import { GLOW, MESH, STARS } from './wgsl';
+
+export type { Look };
+export { LOOK };
+
+/**
+ * Reads WorldView, never writes it. Owns GPU objects and particles. Three pipelines, drawn in order into one pass
+ * with a depth buffer:
+ *  stars  fullscreen triangle, procedural hashed star layers parallaxed by a camera y uniform. No buffers.
+ *  mesh   one shared vertex and index buffer holding every MeshData (interleaved pos|normal|color, 36 B), plus one
+ *         instance buffer (x, y, rot, scale, tint rgb, flash = 8 f32). Per frame: counting-sort live bodies by MeshId,
+ *         one writeBuffer, then drawIndexed per non-empty mesh with the vertex and instance buffers bound at that mesh's offsets.
+ *         Rocket, boss, and wormhole are appended from the player, boss, and wormholeY scalars. Lambert plus emissive vertex color.
+ *  glow   instanced quads, additive blend, no depth write: bolts, exhaust, explosion particles, shield bubble.
+ * Particles live here (CPU SoA, 2048 cap) and spawn from SimEvents; the sim never knows they exist.
+ */
+export interface Renderer {
+  /** world null = menu backdrop (stars only). alpha = leftover accumulator / STEP, for interpolation. */
+  frame(world: WorldView | null, events: readonly SimEvent[], alpha: number, dtSec: number): void;
+  dispose(): void;
+}
+
+export const MAX_PIXEL_RATIO = 2;
+
+export function createRenderer(
+  device: GPUDevice,
+  ctx: GPUCanvasContext & { present(): void },
+  format: GPUTextureFormat,
+  pixelRatio: number,
+): Renderer {
+  const canvas = ctx.canvas as unknown as NativeCanvas;
+
+  let vertexCount = 0;
+  let indexCount = 0;
+  for (const id of MESH_IDS) { vertexCount += MESHES[id].positions.length / 3; indexCount += MESHES[id].indices.length; }
+  const vertexData = new Float32Array(vertexCount * 9);
+  const indexData = new Uint16Array(indexCount + (indexCount & 1));
+  const firstIndex = new Uint32Array(MESH_IDS.length);
+  const indexCountOf = new Uint32Array(MESH_IDS.length);
+  const baseVertex = new Int32Array(MESH_IDS.length);
+  {
+    let v = 0, ix = 0;
+    MESH_IDS.forEach((id, m) => {
+      const { positions, normals, colors, indices } = MESHES[id];
+      firstIndex[m] = ix; indexCountOf[m] = indices.length; baseVertex[m] = v;
+      for (let i = 0; i < positions.length / 3; i++, v++) {
+        vertexData.set(positions.subarray(i * 3, i * 3 + 3), v * 9);
+        vertexData.set(normals.subarray(i * 3, i * 3 + 3), v * 9 + 3);
+        vertexData.set(colors.subarray(i * 3, i * 3 + 3), v * 9 + 6);
+      }
+      indexData.set(indices, ix);
+      ix += indices.length;
+    });
+  }
+  const buffer = (data: Float32Array | Uint16Array, usage: GPUBufferUsageFlags) => {
+    const b = device.createBuffer({ size: data.byteLength, usage: usage | GPUBufferUsage.COPY_DST });
+    device.queue.writeBuffer(b, 0, data);
+    return b;
+  };
+  const vertexBuf = buffer(vertexData, GPUBufferUsage.VERTEX);
+  const indexBuf = buffer(indexData, GPUBufferUsage.INDEX);
+  const batch = createBatch();
+  const meshInstBuf = buffer(batch.meshInst, GPUBufferUsage.VERTEX);
+  const glowInstBuf = buffer(batch.glowInst, GPUBufferUsage.VERTEX);
+  const uniforms = new Float32Array(36);
+  const uniformBuf = buffer(uniforms, GPUBufferUsage.UNIFORM);
+
+  const bindLayout = device.createBindGroupLayout({
+    entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } }],
+  });
+  const layout = device.createPipelineLayout({ bindGroupLayouts: [bindLayout] });
+  const bind = device.createBindGroup({ layout: bindLayout, entries: [{ binding: 0, resource: { buffer: uniformBuf } }] });
+  const DEPTH: GPUTextureFormat = 'depth24plus';
+  const additive: GPUBlendComponent = { srcFactor: 'one', dstFactor: 'one', operation: 'add' };
+
+  const starsModule = device.createShaderModule({ code: STARS });
+  const meshModule = device.createShaderModule({ code: MESH });
+  const glowModule = device.createShaderModule({ code: GLOW });
+  const starsPipe = device.createRenderPipeline({
+    layout,
+    vertex: { module: starsModule, entryPoint: 'vs' },
+    fragment: { module: starsModule, entryPoint: 'fs', targets: [{ format }] },
+    depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'always' },
+  });
+  const meshPipe = device.createRenderPipeline({
+    layout,
+    vertex: {
+      module: meshModule, entryPoint: 'vs',
+      buffers: [
+        { arrayStride: 36, attributes: [
+          { shaderLocation: 0, offset: 0, format: 'float32x3' },
+          { shaderLocation: 1, offset: 12, format: 'float32x3' },
+          { shaderLocation: 2, offset: 24, format: 'float32x3' },
+        ] },
+        { arrayStride: 32, stepMode: 'instance', attributes: [
+          { shaderLocation: 3, offset: 0, format: 'float32x4' },
+          { shaderLocation: 4, offset: 16, format: 'float32x4' },
+        ] },
+      ],
+    },
+    fragment: { module: meshModule, entryPoint: 'fs', targets: [{ format }] },
+    primitive: { topology: 'triangle-list', cullMode: 'back' },
+    depthStencil: { format: DEPTH, depthWriteEnabled: true, depthCompare: 'less' },
+  });
+  const glowPipe = device.createRenderPipeline({
+    layout,
+    vertex: {
+      module: glowModule, entryPoint: 'vs',
+      buffers: [{ arrayStride: 32, stepMode: 'instance', attributes: [
+        { shaderLocation: 0, offset: 0, format: 'float32x4' },
+        { shaderLocation: 1, offset: 16, format: 'float32x4' },
+      ] }],
+    },
+    fragment: { module: glowModule, entryPoint: 'fs', targets: [{ format, blend: { color: additive, alpha: additive } }] },
+    primitive: { topology: 'triangle-strip' },
+    depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'less' },
+  });
+
+  const pool = createPool();
+  const bossFx: BossFlash = { flash: 0, cooldown: 0 };
+
+  let depth: GPUTexture | null = null;
+  let width = 0;
+  let height = 0;
+  let time = 0;
+  let menuY = 0;
+  const colorAttachment: GPURenderPassColorAttachment = {
+    view: undefined as unknown as GPUTextureView,
+    clearValue: { r: 0.01, g: 0.01, b: 0.03, a: 1 },
+    loadOp: 'clear', storeOp: 'store',
+  };
+  const depthAttachment: GPURenderPassDepthStencilAttachment = {
+    view: undefined as unknown as GPUTextureView, depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: 'discard',
+  };
+  const passDesc: GPURenderPassDescriptor = { colorAttachments: [colorAttachment], depthStencilAttachment: depthAttachment };
+
+  function resize(): boolean {
+    const w = Math.round(canvas.clientWidth * pixelRatio);
+    const h = Math.round(canvas.clientHeight * pixelRatio);
+    if (w === 0 || h === 0) return false;
+    if (w === width && h === height) return true;
+    canvas.width = w;
+    canvas.height = h;
+    ctx.configure({ device, format, alphaMode: 'opaque' });
+    depth?.destroy();
+    depth = device.createTexture({ size: [w, h], format: DEPTH, usage: GPUTextureUsage.RENDER_ATTACHMENT });
+    depthAttachment.view = depth.createView();
+    width = w;
+    height = h;
+    return true;
+  }
+
+  function frame(world: WorldView | null, events: readonly SimEvent[], alpha: number, dt: number): void {
+    if (!resize()) return;
+    time += dt;
+    bossFx.flash = Math.max(0, bossFx.flash - dt);
+    bossFx.cooldown = Math.max(0, bossFx.cooldown - dt);
+    applyEvents(pool, world, events, batch.bursts, bossFx);
+    integrate(pool, dt);
+
+    batch.begin();
+    let camY = menuY;
+    if (world) {
+      batch.packWorld(world, alpha, time, bossFx.flash);
+      camY = batch.py;
+      spawnExhaust(pool, batch.px, batch.py, dt);
+    } else {
+      menuY += dt * 2.5;
+    }
+    batch.packParticles(pool);
+
+    writeCamera(uniforms, camY, width, height, time);
+    device.queue.writeBuffer(uniformBuf, 0, uniforms);
+    if (batch.meshSlots > 0) device.queue.writeBuffer(meshInstBuf, 0, batch.meshInst, 0, batch.meshSlots * INSTANCE_FLOATS);
+    if (batch.glowCount > 0) device.queue.writeBuffer(glowInstBuf, 0, batch.glowInst, 0, batch.glowCount * INSTANCE_FLOATS);
+
+    colorAttachment.view = ctx.getCurrentTexture().createView();
+    const encoder = device.createCommandEncoder();
+    const pass = encoder.beginRenderPass(passDesc);
+    pass.setBindGroup(0, bind);
+    pass.setPipeline(starsPipe);
+    pass.draw(3);
+    if (batch.meshSlots > 0) {
+      pass.setPipeline(meshPipe);
+      pass.setIndexBuffer(indexBuf, 'uint16');
+      for (let m = 0; m < batch.counts.length; m++) {
+        if (batch.counts[m] === 0) continue;
+        // Dawn rejects a nonzero baseVertex or firstInstance unless the device enabled 'indirect-first-instance',
+        // so both offsets go into the vertex buffer bindings and the renderer works with whatever device it is given.
+        pass.setVertexBuffer(0, vertexBuf, baseVertex[m] * 36);
+        pass.setVertexBuffer(1, meshInstBuf, batch.starts[m] * INSTANCE_FLOATS * 4);
+        pass.drawIndexed(indexCountOf[m], batch.counts[m], firstIndex[m], 0, 0);
+      }
+    }
+    if (batch.glowCount > 0) {
+      pass.setPipeline(glowPipe);
+      pass.setVertexBuffer(0, glowInstBuf);
+      pass.draw(4, batch.glowCount);
+    }
+    pass.end();
+    device.queue.submit([encoder.finish()]);
+    ctx.present();
+  }
+
+  return {
+    frame,
+    dispose() {
+      for (const b of [vertexBuf, indexBuf, meshInstBuf, glowInstBuf, uniformBuf]) b.destroy();
+      depth?.destroy();
+    },
+  };
+}
