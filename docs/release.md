@@ -38,6 +38,8 @@ eas update --platform ios --channel production --environment production --messag
 
 Release builds check for updates at launch without waiting for the download. Fully close and reopen the app, allow the download, then close and reopen it again to run the update. The embedded bundle remains available offline.
 
+Game Center leaderboards are set up separately; see [game-center.md](game-center.md).
+
 ## App Store listing
 
 `store.config.json` contains the public listing. `store.config.js` adds review contact details when `PEWPEW_APP_REVIEW_PHONE` is set. Sync changes with `eas metadata:push --profile production`. Supply that environment variable when updating review notes. Keep the review phone number out of version control.

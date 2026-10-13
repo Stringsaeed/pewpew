@@ -8,7 +8,7 @@ const config: ExpoConfig = {
   name: 'PewPew',
   slug: 'pewpew',
   owner: 'stringsaeed',
-  version: '1.0.0',
+  version: '1.1.0',
   runtimeVersion: {
     policy: 'appVersion',
   },
@@ -26,6 +26,10 @@ const config: ExpoConfig = {
     icon: './design/rocket-icon/PewPew.icon',
     config: {
       usesNonExemptEncryption: false,
+    },
+    // Game Center leaderboards (modules/game-center). EAS enables the capability on the App ID from this entitlement.
+    entitlements: {
+      'com.apple.developer.game-center': true,
     },
   },
   android: {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type GestureResponderEvent } from 'react-native';
 import type { Action, Run, Screen } from '../flow';
+import { BOARD } from '../leaderboards';
 import { levelSpec, tierOf } from '../levels';
 import type { Save } from '../save';
 import type { Hud as HudState } from '../sim';
@@ -33,10 +34,16 @@ interface Props {
   readonly rapid?: number;
   /** When set, panels fade in instead of zooming. */
   readonly reduceMotion?: boolean;
+  /** Game Center. Absent where it does not exist, which hides every leaderboard button. */
+  readonly ranks?: {
+    readonly show: (board?: string) => void;
+    /** The player's rank on the level just cleared, once known. */
+    readonly current: { readonly level: number; readonly rank: number; readonly total: number } | null;
+  };
 }
 
 /** Which screen is on top of the canvas. The canvas itself stays in App. */
-export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnlockAll, onTouchStart, onTouchMove, onTouchEnd, rapid, reduceMotion }: Props) {
+export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnlockAll, onTouchStart, onTouchMove, onTouchEnd, rapid, reduceMotion, ranks }: Props) {
   const onMenu = screen.s === 'title' || screen.s === 'levels' || (screen.s === 'settings' && run === null);
   const level = run?.level ?? 1;
   const intro = useIntro(hud, run);
@@ -48,7 +55,9 @@ export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnloc
       {intro !== null && hud !== null ? (
         <LevelIntro sector={tierOf(intro.level)} level={intro.level} warning={levelSpec(intro.level).boss !== null} />
       ) : null}
-      {screen.s === 'title' ? <Title save={save} onPlay={() => act({ a: 'start' })} onSettings={() => act({ a: 'settings' })} /> : null}
+      {screen.s === 'title' ? (
+        <Title save={save} onPlay={() => act({ a: 'start' })} onSettings={() => act({ a: 'settings' })} onRanks={ranks ? () => ranks.show(BOARD.score) : undefined} />
+      ) : null}
       {screen.s === 'levels' ? (
         <LevelSelect
           save={save}
@@ -98,6 +107,8 @@ export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnloc
           onNext={() => act({ a: 'next' })}
           onRetry={() => act({ a: 'retry' })}
           onLevels={() => act({ a: 'quit' })}
+          onRanks={ranks ? () => ranks.show(BOARD.level(screen.level)) : undefined}
+          rank={ranks?.current !== null && ranks?.current.level === screen.level ? ranks.current : null}
           reduceMotion={reduceMotion}
         />
       ) : null}

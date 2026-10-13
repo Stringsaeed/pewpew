@@ -6,10 +6,12 @@ import { Canvas, useCanvasRef } from 'react-native-webgpu';
 import { createAudio, type AudioEngine } from './src/audio';
 import { createDevTools, type DevTools } from './src/dev/qa';
 import { reduce, runOf, TITLE, type Action, type Screen } from './src/flow';
+import { allEntries, BOARD, winEntries } from './src/leaderboards';
 import { parseSave, recordRun } from './src/save';
 import type { Hud as HudState, SimEvent } from './src/sim';
 import { createLoop, drag, press, rapidRemaining, release, resetRun, setPlaying, type Sinks } from './src/shell/loop';
 import { useAudioLifecycle } from './src/shell/useAudioLifecycle';
+import { useGameCenter, type GameCenterApi } from './src/shell/useGameCenter';
 import { useGpu } from './src/shell/useGpu';
 import { useSave } from './src/shell/useSave';
 import { Screens } from './src/ui/Screens';
@@ -26,6 +28,11 @@ export default function App() {
   );
   const [hud, setHud] = useState<HudState | null>(null);
   const [autoOn, setAutoOn] = useState(false);
+  const gc = useGameCenter();
+  const gcRef = useRef<GameCenterApi>(gc);
+  gcRef.current = gc;
+  /** The player's rank on the level just cleared; cleared when the next run ends so a stale value never shows. */
+  const [rank, setRank] = useState<{ level: number; rank: number; total: number } | null>(null);
   const audioRef = useRef<AudioEngine | null>(null);
   audioRef.current ??= createAudio();
   const audio = audioRef.current;
@@ -44,6 +51,14 @@ export default function App() {
     }
   }, [screen, run, loop, tools]);
 
+  // Once per sign-in, push every best the save already holds, so progress made offline or signed out catches up.
+  const playerId = gc.player?.id ?? null;
+  const saveLoaded = save !== null;
+  useEffect(() => {
+    if (playerId === null || !saveLoaded || saveRef.current === null) return;
+    void gcRef.current.submit(allEntries(saveRef.current));
+  }, [playerId, saveLoaded, saveRef]);
+
   useAudioLifecycle(audio, run !== null && screen.s !== 'play', onMenu, save, () => {
     if (!loop.playing) return;
     setPlaying(loop, false);
@@ -57,11 +72,19 @@ export default function App() {
       audio(events) { audio.events(events); },
       ended(ev: SimEvent) {
         if (ev.e !== 'won' && ev.e !== 'lost') return;
+        setRank(null);
         dispatch({ a: 'ended', result: ev });
       },
       terminal(ev) {
         const level = loop.world?.spec.n;
-        if (ev.e === 'won' && level !== undefined && saveRef.current) commitSave(recordRun(saveRef.current, level, ev.score, ev.stars));
+        if (ev.e === 'won' && level !== undefined && saveRef.current) {
+          const next = recordRun(saveRef.current, level, ev.score, ev.stars);
+          commitSave(next);
+          const g = gcRef.current;
+          void g.submit(winEntries(next, level))
+            .then(() => g.rank(BOARD.level(level)))
+            .then((entry) => { if (entry !== null) setRank({ level, rank: entry.rank, total: entry.total }); });
+        }
         tools?.logBot(loop);
       },
       hud(next) { setHud(next); },
@@ -89,6 +112,7 @@ export default function App() {
           onTouchEnd={() => release(loop)}
           rapid={rapidRemaining(loop.world)}
           reduceMotion={reduceMotion}
+          ranks={gc.available ? { show: gc.show, current: rank } : undefined}
         />
       )}
     </SafeAreaProvider>
