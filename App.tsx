@@ -7,7 +7,7 @@ import { createDevTools, type DevTools } from './src/dev/qa';
 import { reduce, runOf, TITLE, type Action, type Screen } from './src/flow';
 import { parseSave, recordRun } from './src/save';
 import type { Hud as HudState, SimEvent } from './src/sim';
-import { createLoop, drag, press, release, resetRun, setPlaying, type Sinks } from './src/shell/loop';
+import { createLoop, drag, press, rapidRemaining, release, resetRun, setPlaying, type Sinks } from './src/shell/loop';
 import { useAudioLifecycle } from './src/shell/useAudioLifecycle';
 import { useGpu } from './src/shell/useGpu';
 import { useSave } from './src/shell/useSave';
@@ -85,6 +85,7 @@ export default function App() {
           onTouchStart={(e) => press(loop, e.nativeEvent.pageX)}
           onTouchMove={(e) => drag(loop, e.nativeEvent.pageX, widthRef.current)}
           onTouchEnd={() => release(loop)}
+          rapid={rapidRemaining(loop.world)}
         />
       )}
     </View>

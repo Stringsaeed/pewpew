@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
 import { BOSSES, levelSpec, type LevelNumber } from '../levels';
 import type { Hud as HudState } from '../sim';
+import { RAPID_TICKS, TICKS_PER_SEC } from '../sim/rules';
 import { Rocket } from './Rocket';
 import { color, font, inset, space } from './theme';
 
@@ -12,9 +13,13 @@ interface Props {
   readonly onPause: () => void;
   /** Dev only: the attract-mode toggle. Absent in release. */
   readonly auto?: { readonly on: boolean; readonly onToggle: () => void };
+  /** Rapid window still left, 0..1. The chip drains from here to empty. */
+  readonly rapid?: number;
 }
 
-export function Hud({ hud, level, onPause, auto }: Props) {
+const RAPID_MS = (RAPID_TICKS / TICKS_PER_SEC) * 1000;
+
+export function Hud({ hud, level, onPause, auto, rapid }: Props) {
   const bossId = hud.bossHp === null ? null : levelSpec(level as LevelNumber).boss;
   const slots = useRef(hud.lives);
   slots.current = Math.max(slots.current, hud.lives);
@@ -38,7 +43,7 @@ export function Hud({ hud, level, onPause, auto }: Props) {
                 {Array.from({ length: slots.current }, (_, i) => <LifeSlot key={i} alive={i < hud.lives} />)}
               </View>
               {hud.shield ? <Chip text="SHIELD" tint={color.cyan} /> : null}
-              {hud.rapid ? <Chip text="RAPID" tint={color.yellow} /> : null}
+              {hud.rapid ? <Chip text="RAPID" tint={color.yellow} drain={rapid ?? 0} /> : null}
             </View>
           </View>
           <Text maxFontSizeMultiplier={1.3} style={styles.level}>{`LV ${level}`}</Text>
@@ -137,10 +142,22 @@ function Score({ score }: { readonly score: number }) {
   );
 }
 
-function Chip({ text, tint }: { readonly text: string; readonly tint: string }) {
+function Chip({ text, tint, drain }: { readonly text: string; readonly tint: string; readonly drain?: number }) {
+  const scale = useSharedValue(drain ?? 0);
+  useEffect(() => {
+    if (drain === undefined) return;
+    scale.value = drain;
+    scale.value = withTiming(0, { duration: drain * RAPID_MS });
+  }, [drain, scale]);
+  const bar = useAnimatedStyle(() => ({ transform: [{ scaleX: scale.value }] }));
   return (
     <View accessible accessibilityLabel={`${text} active`} style={[styles.chip, { borderColor: tint }]}>
       <Text maxFontSizeMultiplier={1.3} style={[styles.chipText, { color: tint }]}>{text}</Text>
+      {drain === undefined ? null : (
+        <View style={styles.drainTrack}>
+          <Animated.View style={[styles.drain, { backgroundColor: tint }, bar]} />
+        </View>
+      )}
     </View>
   );
 }
@@ -170,6 +187,8 @@ const styles = StyleSheet.create({
   fill: { height: '100%', backgroundColor: color.green },
   chip: { borderWidth: 1, borderRadius: 8, paddingHorizontal: space.sm, paddingVertical: 2 },
   chipText: { fontFamily: font.family, fontSize: 11, fontWeight: '700', letterSpacing: 2 },
+  drainTrack: { height: 2, marginTop: 2, borderRadius: 1, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  drain: { height: 2, width: '100%', transformOrigin: 'left center' },
   bossBlock: { gap: space.xs },
   bossName: { fontFamily: font.family, fontSize: 11, fontWeight: '800', letterSpacing: 3, color: color.text },
   boss: { height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },

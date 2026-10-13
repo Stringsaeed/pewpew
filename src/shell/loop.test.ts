@@ -2,8 +2,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { COAST, dragInput } from '../sim';
+import { RAPID_TICKS } from '../sim/rules';
 import {
-  MAX_STEPS_PER_FRAME, advance, createLoop, drag, press, release, resetRun, setPlaying,
+  MAX_STEPS_PER_FRAME, advance, createLoop, drag, press, rapidRemaining, release, resetRun, setPlaying,
   type Loop, type Sinks,
 } from './loop';
 
@@ -124,6 +125,20 @@ test('press, drag, and release write the input', () => {
   assert.deepEqual(loop.input, dragInput(anchor, 200 / 400));
   release(loop);
   assert.equal(loop.input, COAST);
+});
+
+test('rapidRemaining is the fraction of the rapid window left', () => {
+  const loop = armed(false);
+  const world = loop.world;
+  assert.ok(world);
+  assert.equal(rapidRemaining(null), 0);
+  assert.equal(rapidRemaining(world), 0);
+  world.player.rapidUntil = world.tick + RAPID_TICKS / 2;
+  assert.equal(rapidRemaining(world), 0.5);
+  world.player.rapidUntil = world.tick + RAPID_TICKS;
+  assert.equal(rapidRemaining(world), 1);
+  world.tick = world.player.rapidUntil;
+  assert.equal(rapidRemaining(world), 0);
 });
 
 test('resetRun rebuilds the world only when the run key changes', () => {

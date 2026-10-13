@@ -29,10 +29,12 @@ interface Props {
   readonly onTouchStart: (e: GestureResponderEvent) => void;
   readonly onTouchMove: (e: GestureResponderEvent) => void;
   readonly onTouchEnd: () => void;
+  /** Rapid window still left, 0..1, so the RAPID chip can drain between hud updates. */
+  readonly rapid?: number;
 }
 
 /** Which screen is on top of the canvas. The canvas itself stays in App. */
-export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnlockAll, onTouchStart, onTouchMove, onTouchEnd }: Props) {
+export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnlockAll, onTouchStart, onTouchMove, onTouchEnd, rapid }: Props) {
   const onMenu = screen.s === 'title' || screen.s === 'levels' || (screen.s === 'settings' && run === null);
   const level = run?.level ?? 1;
   const intro = useIntro(hud, run);
@@ -62,7 +64,7 @@ export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnloc
           onResponderRelease={onTouchEnd}
           onResponderTerminate={onTouchEnd}
         >
-          <Hud hud={hud} level={level} onPause={() => act({ a: 'pause' })} auto={auto} />
+          <Hud hud={hud} level={level} onPause={() => act({ a: 'pause' })} auto={auto} rapid={rapid} />
         </View>
       ) : null}
       {screen.s === 'paused' ? (

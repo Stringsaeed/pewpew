@@ -1,6 +1,7 @@
 import { greedyBot } from '../bot';
 import type { Run } from '../flow';
 import { COAST, STEP, createWorld, dragInput, hudOf, step, type Hud, type Input, type SimEvent, type World } from '../sim';
+import { RAPID_TICKS } from '../sim/rules';
 
 export const MAX_STEPS_PER_FRAME = 4;
 
@@ -74,6 +75,14 @@ export function drag(loop: Loop, pageX: number, width: number): void {
 
 export function release(loop: Loop): void {
   loop.input = COAST;
+}
+
+/** Fraction of the rapid window still left, 0 when the pickup is inactive. Read at React render time; the chip animates the rest. */
+export function rapidRemaining(world: World | null): number {
+  if (world === null) return 0;
+  const left = world.player.rapidUntil - world.tick;
+  if (left <= 0) return 0;
+  return Math.min(1, left / RAPID_TICKS);
 }
 
 /** One rendered frame. `dt` is clamped to 0.1 s, and at most `MAX_STEPS_PER_FRAME` steps run before a leftover accumulator is dropped. */
