@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { LEVELS, tierOf, type BossId, type LevelNumber } from '../levels';
 import { isUnlocked, type Save } from '../save';
 import { Button } from './Button';
@@ -22,6 +24,8 @@ interface Props {
 
 export function LevelSelect({ save, onPick, onBack, onSettings }: Props) {
   const { width } = useWindowDimensions();
+  /** The first open level without stars: the one the player should tap next. */
+  const next = LEVELS.find((l) => isUnlocked(save, l.n) && save.levels[l.n - 1].stars === 0)?.n;
   const tile = (width - SIDE * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
   return (
     <View style={styles.root}>
@@ -51,7 +55,7 @@ export function LevelSelect({ save, onPick, onBack, onSettings }: Props) {
                   return (
                     <Tile
                       key={spec.n} n={spec.n} size={tile} stars={rec.stars} best={rec.best}
-                      open={isUnlocked(save, spec.n)} boss={spec.boss} onPick={onPick}
+                      open={isUnlocked(save, spec.n)} next={spec.n === next} boss={spec.boss} onPick={onPick}
                     />
                   );
                 })}
@@ -66,10 +70,10 @@ export function LevelSelect({ save, onPick, onBack, onSettings }: Props) {
 
 interface TileProps {
   readonly n: LevelNumber; readonly size: number; readonly stars: number; readonly best: number;
-  readonly open: boolean; readonly boss: BossId | null; readonly onPick: (n: LevelNumber) => void;
+  readonly open: boolean; readonly next: boolean; readonly boss: BossId | null; readonly onPick: (n: LevelNumber) => void;
 }
 
-function Tile({ n, size, stars, best, open, boss, onPick }: TileProps) {
+function Tile({ n, size, stars, best, open, next, boss, onPick }: TileProps) {
   const accent = boss !== null ? color.magenta : color.cyan;
   const label = `Level ${n}${boss !== null ? `, boss ${BOSS_NAME[boss]}` : ''}, ${open ? `${stars} of 3 stars${best > 0 ? `, best ${best}` : ''}` : 'locked'}`;
   return (
@@ -83,13 +87,13 @@ function Tile({ n, size, stars, best, open, boss, onPick }: TileProps) {
         {
           width: size, height: size * 1.15,
           borderColor: open ? accent : color.dim,
+          borderStyle: open ? 'solid' : 'dashed',
           backgroundColor: pressed && open ? accent : 'rgba(255,255,255,0.04)',
-          opacity: open ? 1 : 0.45,
           transform: [{ scale: pressed && open ? 0.95 : 1 }],
         },
       ]}
     >
-      <Text maxFontSizeMultiplier={1.3} style={[styles.num, { color: open ? accent : color.dim }]}>{n}</Text>
+      <Text maxFontSizeMultiplier={1.3} style={[styles.num, { color: open ? accent : color.textDim }]}>{n}</Text>
       {boss !== null ? <Text maxFontSizeMultiplier={1.3} style={[styles.bossName, { color: open ? accent : color.textDim }]}>{BOSS_NAME[boss]}</Text> : null}
       {open ? (
         <Text maxFontSizeMultiplier={1.3} style={styles.stars}>
@@ -97,8 +101,19 @@ function Tile({ n, size, stars, best, open, boss, onPick }: TileProps) {
           <Text maxFontSizeMultiplier={1.3} style={styles.empty}>{'☆'.repeat(3 - stars)}</Text>
         </Text>
       ) : <Lock />}
+      {next ? <Pulse tint={accent} /> : null}
     </Pressable>
   );
+}
+
+/** A slow glow ring over the next playable tile. */
+function Pulse({ tint }: { readonly tint: string }) {
+  const v = useSharedValue(0.2);
+  useEffect(() => {
+    v.value = withRepeat(withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.sin) }), -1, true);
+  }, [v]);
+  const style = useAnimatedStyle(() => ({ opacity: v.value }));
+  return <Animated.View pointerEvents="none" style={[styles.pulse, { borderColor: tint, boxShadow: `0 0 14px ${tint}b3` }, style]} />;
 }
 
 function Lock() {
@@ -127,7 +142,8 @@ const styles = StyleSheet.create({
   stars: { fontFamily: font.family, fontSize: 13, letterSpacing: 1 },
   earned: { color: color.yellow },
   empty: { color: color.dim },
+  pulse: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 12, borderWidth: 2 },
   lock: { alignItems: 'center', height: 16, justifyContent: 'flex-end' },
-  shackle: { width: 9, height: 7, borderWidth: 2, borderBottomWidth: 0, borderTopLeftRadius: 5, borderTopRightRadius: 5, borderColor: color.dim },
-  lockBody: { width: 14, height: 9, borderRadius: 2, backgroundColor: color.dim },
+  shackle: { width: 9, height: 7, borderWidth: 2, borderBottomWidth: 0, borderTopLeftRadius: 5, borderTopRightRadius: 5, borderColor: color.textDim },
+  lockBody: { width: 14, height: 9, borderRadius: 2, backgroundColor: color.textDim },
 });
