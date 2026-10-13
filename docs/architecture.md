@@ -52,7 +52,7 @@ The shape is non-obvious for three reasons. Hermes punishes per-frame allocation
 
 ### Module map
 
-Internals stay unexported, so nothing outside a module can import them. Audio is the directory `src/audio`.
+Internals stay unexported, so nothing outside a module can import them. Audio is the directory `src/audio`. The renderer is the directory `src/render`.
 
 | File | Owns | Imports |
 |---|---|---|
@@ -64,8 +64,13 @@ Internals stay unexported, so nothing outside a module can import them. Audio is
 | `src/audio/data.ts` | `PATCHES`, `SFX`, `SONGS`, `EVENT_SFX` (data) | levels, sim (types) |
 | `src/audio/engine.ts` | `AudioEngine`, `createAudio` (the synth engine, sequencer, voice caps, music state) | sim (types), audio data |
 | `src/audio/index.ts` | the public audio API, so `src/audio` keeps resolving | data, engine |
-| `src/meshes.gen.ts` | `MeshData`, `MeshId`, `MESHES` (generated) | nothing |
-| `src/render.ts` | `Look`, `LOOK`, `Renderer`, `createRenderer` (3 WGSL pipelines, particles) | levels, sim (types), meshes |
+| `src/render/index.ts` | `Renderer`, `createRenderer` (GPU resources, pipelines, pass, resize, dispose) | render modules, sim (types), meshes |
+| `src/render/look.ts` | `Look`, `LOOK`, visual radii | levels, sim, meshes (types) |
+| `src/render/wgsl.ts` | uniform struct and the stars, mesh, and glow shaders | nothing |
+| `src/render/batch.ts` | kind-to-mesh tables, counting sort, instance packing | levels, sim, look, meshes, particles |
+| `src/render/particles.ts` | particle pool, event bursts, integration | levels, sim (types), look |
+| `src/render/camera.ts` | view and projection uniforms | nothing |
+| `src/render/meshes.gen.ts` | `MeshData`, `MeshId`, `MESHES` (generated) | nothing |
 | `App.tsx` | the shell, which owns screen, save, audio, renderer, world, loop, and touch | everything |
 | `scripts/gen-meshes.ts` | mesh generation (`npm run gen:meshes`) | meshes (types) |
 | `scripts/verify-levels.ts` | the CI proof (`npm run verify`) | levels, sim, bot |
