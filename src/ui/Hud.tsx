@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { BOSSES, levelSpec, type LevelNumber } from '../levels';
 import type { Hud as HudState } from '../sim';
 import { Rocket } from './Rocket';
 import { color, font, inset, space } from './theme';
@@ -12,13 +13,18 @@ interface Props {
 }
 
 export function Hud({ hud, level, onPause, auto }: Props) {
+  const bossId = hud.bossHp === null ? null : levelSpec(level as LevelNumber).boss;
   return (
     <View pointerEvents="box-none" style={styles.root}>
       <View pointerEvents="box-none" style={styles.row}>
         <View style={styles.left}>
           <Text maxFontSizeMultiplier={1.3} accessibilityLabel={`Score ${hud.score}`} style={styles.score}>{String(hud.score).padStart(6, '0')}</Text>
-          <View accessible accessibilityLabel={`Lives ${hud.lives}`} style={styles.lives}>
-            {Array.from({ length: hud.lives }, (_, i) => <Rocket key={i} />)}
+          <View style={styles.livesRow}>
+            <View accessible accessibilityLabel={`Lives ${hud.lives}`} style={styles.lives}>
+              {Array.from({ length: hud.lives }, (_, i) => <Rocket key={i} />)}
+            </View>
+            {hud.shield ? <Chip text="SHIELD" tint={color.cyan} /> : null}
+            {hud.rapid ? <Chip text="RAPID" tint={color.yellow} /> : null}
           </View>
         </View>
         <Text maxFontSizeMultiplier={1.3} style={styles.level}>{`LV ${level}`}</Text>
@@ -45,18 +51,21 @@ export function Hud({ hud, level, onPause, auto }: Props) {
           <View style={styles.bar} />
         </Pressable>
       </View>
-      <View accessible accessibilityLabel={`Progress ${hud.progress} percent`} style={styles.track}>
-        <View style={[styles.fill, { width: `${hud.progress}%` }]} />
-      </View>
-      <View style={styles.chips}>
-        {hud.shield ? <Chip text="SHIELD" tint={color.cyan} /> : null}
-        {hud.rapid ? <Chip text="RAPID" tint={color.yellow} /> : null}
-      </View>
       {hud.bossHp !== null ? (
-        <View accessible accessibilityLabel={`Boss health ${hud.bossHp} percent`} style={[styles.track, styles.boss]}>
-          <View style={[styles.fill, { width: `${hud.bossHp}%`, backgroundColor: color.magenta }]} />
+        <View accessible accessibilityLabel={`${bossId ?? 'Boss'} health ${hud.bossHp} percent`} style={styles.bossBlock}>
+          <Text maxFontSizeMultiplier={1.3} style={styles.bossName}>{bossId === null ? 'BOSS' : bossId.toUpperCase()}</Text>
+          <View style={styles.boss}>
+            <View style={[styles.fill, { width: `${hud.bossHp}%`, backgroundColor: color.threat }]} />
+            {bossId === null ? null : BOSSES[bossId].phases.slice(1).map((p) => (
+              <View key={p.atHpFraction} style={[styles.tick, { left: `${p.atHpFraction * 100}%` }]} />
+            ))}
+          </View>
         </View>
-      ) : null}
+      ) : (
+        <View accessible accessibilityLabel={`Progress ${hud.progress} percent`} style={styles.track}>
+          <View style={[styles.fill, { width: `${hud.progress}%` }]} />
+        </View>
+      )}
     </View>
   );
 }
@@ -72,8 +81,9 @@ function Chip({ text, tint }: { readonly text: string; readonly tint: string }) 
 const styles = StyleSheet.create({
   root: { position: 'absolute', top: 0, left: 0, right: 0, paddingTop: inset.top - space.sm, paddingHorizontal: space.md, gap: space.sm },
   row: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  left: { gap: space.xs },
+  left: { gap: space.xs, flexShrink: 1 },
   score: { fontFamily: font.family, fontSize: font.score, fontWeight: '800', color: color.cyan, letterSpacing: 2 },
+  livesRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   lives: { flexDirection: 'row', gap: space.xs, height: 18 },
   level: { fontFamily: font.family, fontSize: 13, color: color.textDim, letterSpacing: 2, paddingTop: space.sm },
   pause: { width: 44, height: 44, borderRadius: 12, borderWidth: 2, borderColor: color.cyan, flexDirection: 'row', gap: 5, alignItems: 'center', justifyContent: 'center' },
@@ -85,8 +95,11 @@ const styles = StyleSheet.create({
   bar: { width: 5, height: 16, borderRadius: 1, backgroundColor: color.cyan },
   track: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
   fill: { height: '100%', backgroundColor: color.green },
-  chips: { flexDirection: 'row', gap: space.sm, minHeight: 22 },
   chip: { borderWidth: 1, borderRadius: 8, paddingHorizontal: space.sm, paddingVertical: 2 },
   chipText: { fontFamily: font.family, fontSize: 11, fontWeight: '700', letterSpacing: 2 },
-  boss: { height: 10, borderRadius: 5 },
+  bossBlock: { gap: space.xs },
+  bossName: { fontFamily: font.family, fontSize: 11, fontWeight: '800', letterSpacing: 3, color: color.text },
+  boss: { height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  /** A phase threshold: the boss changes attacks once its bar drains to this mark. */
+  tick: { position: 'absolute', top: 0, bottom: 0, width: 2, marginLeft: -1, backgroundColor: color.text },
 });
