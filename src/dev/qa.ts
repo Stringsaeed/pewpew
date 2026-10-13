@@ -1,5 +1,6 @@
 import { LEVELS } from '../levels';
 import { recordRun, type Save } from '../save';
+import type { Loop } from '../shell/loop';
 import { hashWorld, type World } from '../sim';
 
 /** One star on levels 1..29 unlocks all 30. recordRun max-merges, so real records survive and a second press changes nothing. */
@@ -10,6 +11,39 @@ export function unlockAll(s: Save): Save {
 /** Same hash and hex format as scripts/verify-levels.ts, so a device run greps against .audit/verify-levels.txt. */
 export function logAutoRun(w: World): void {
   console.log(`[pewpew] level ${w.spec.n} hash ${hashWorld(w).toString(16).padStart(8, '0')} steps ${w.tick}`);
+}
+
+export interface DevTools {
+  toggleAuto(): void;
+  unlock(save: Save): Save;
+  resetTimer(): void;
+  logBot(loop: Loop): void;
+  sample(now: number, tick: (now: number) => void): void;
+}
+
+/** Dev-only owner of AUTO, UNLOCK ALL, the tick timer, the bot hash log, and `globalThis.pewpew`. */
+export function createDevTools(loop: Loop, onAuto: (on: boolean) => void): DevTools {
+  (globalThis as { pewpew?: Loop }).pewpew = loop;
+  const timer = createTickTimer();
+  return {
+    toggleAuto() {
+      loop.auto = !loop.auto;
+      onAuto(loop.auto);
+    },
+    unlock(save) { return unlockAll(save); },
+    resetTimer() { timer.reset(); },
+    logBot(live) {
+      if (live.botOnly && live.world) logAutoRun(live.world);
+    },
+    sample(now, tick) {
+      if (!loop.playing || !loop.world) return tick(now);
+      const t0 = performance.now();
+      tick(now);
+      const world = loop.world;
+      if (!world) return;
+      timer.add(performance.now() - t0, world.spec.n, loop.auto);
+    },
+  };
 }
 
 const FRAMES = 600;
