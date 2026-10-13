@@ -74,6 +74,61 @@ describe('renderer', { concurrency: false }, () => {
     }
   });
 
+  test('a won hold dives the rocket into the black hole and a new run ends the hold', () => {
+    const restore = installRandom(7);
+    try {
+      const gpu = createFakeGpu();
+      const renderer = createRenderer(gpu.device, gpu.context, 'bgra8unorm', MAX_PIXEL_RATIO);
+      const world = createWorld(1);
+      world.player.x = 3;
+      world.player.y = 40;
+      world.wormholeY = 40;
+      world.phase = { p: 'won', stars: 3 };
+      renderer.hold('won', 1.4);
+      const rocket = LAYOUT.find((mesh) => mesh.id === 'rocket')!.baseVertex * 36;
+      const hole = LAYOUT.find((mesh) => mesh.id === 'blackhole')!.baseVertex * 36;
+      const seen: { rocket: boolean; hole: boolean }[] = [];
+      for (let i = 0; i < 20; i++) {
+        const mark = gpu.calls.length;
+        renderer.frame(world, [], 0, 0.1);
+        const offsets = vertexOffsets(gpu.calls.slice(mark), gpu.buffers[0]!.id);
+        seen.push({ rocket: offsets.includes(rocket), hole: offsets.includes(hole) });
+      }
+      assert.equal(seen[0]!.rocket, true);
+      assert.equal(seen[19]!.rocket, false);
+      assert.ok(seen.every((frame) => frame.hole));
+      renderer.frame(createWorld(1), [], 0, STEP);
+      const mark = gpu.calls.length;
+      renderer.frame(createWorld(1), [], 0, STEP);
+      assert.ok(vertexOffsets(gpu.calls.slice(mark), gpu.buffers[0]!.id).includes(rocket));
+      renderer.dispose();
+    } finally {
+      restore();
+    }
+  });
+
+  test('a lost hold hides the ship and keeps drawing the fire', () => {
+    const restore = installRandom(9);
+    try {
+      const gpu = createFakeGpu();
+      const renderer = createRenderer(gpu.device, gpu.context, 'bgra8unorm', MAX_PIXEL_RATIO);
+      const world = createWorld(1);
+      world.phase = { p: 'lost' };
+      renderer.hold('lost', 1);
+      const rocket = LAYOUT.find((mesh) => mesh.id === 'rocket')!.baseVertex * 36;
+      for (let i = 0; i < 10; i++) {
+        const mark = gpu.calls.length;
+        renderer.frame(world, [], 0, 0.1);
+        const frame = gpu.calls.slice(mark);
+        assert.equal(vertexOffsets(frame, gpu.buffers[0]!.id).includes(rocket), false);
+        assert.ok(frame.some((call) => call.op === 'draw' && call.vertexCount === 4 && call.instanceCount > 20));
+      }
+      renderer.dispose();
+    } finally {
+      restore();
+    }
+  });
+
   test('level 1 and a boss fight match the draw contract and the snapshot', () => {
     const restore = installRandom(0xdecaf);
     try {
@@ -133,7 +188,7 @@ function play(world: World, frames: number): FrameLog[] {
   return logs;
 }
 
-/** Bodies per mesh, plus the rocket, boss, and wormhole the renderer appends to those groups. */
+/** Bodies per mesh, plus the rocket, boss, and black hole the renderer appends to those groups. */
 function instanceCounts(world: World): Map<MeshId, number> {
   const counts = new Map<MeshId, number>();
   for (const id of MESH_IDS) counts.set(id, 0);
@@ -147,7 +202,10 @@ function instanceCounts(world: World): Map<MeshId, number> {
   }
   counts.set('rocket', counts.get('rocket')! + 1);
   if (world.boss) counts.set(world.boss.id, counts.get(world.boss.id)! + 1);
-  if (world.wormholeY !== null) counts.set('wormhole', counts.get('wormhole')! + 1);
+  if (world.wormholeY !== null) {
+    counts.set('blackhole', counts.get('blackhole')! + 1);
+    counts.set('accretion', counts.get('accretion')! + 1);
+  }
   return counts;
 }
 
@@ -164,6 +222,17 @@ function assertDraws(calls: GpuCall[], counts: Map<MeshId, number>, vertex: numb
     assert.equal(drawn[i]!.offset, groups[i]!.baseVertex * 36);
     assert.equal(drawn[i]!.instances, counts.get(groups[i]!.id));
   }
+}
+
+/** Vertex-buffer offsets of every indexed draw in a frame: one per mesh group drawn. */
+function vertexOffsets(calls: GpuCall[], vertex: number): number[] {
+  const offsets: number[] = [];
+  let offset = -1;
+  for (const call of calls) {
+    if (call.op === 'setVertexBuffer' && call.slot === 0 && call.buffer === vertex) offset = call.offset;
+    if (call.op === 'drawIndexed') offsets.push(offset);
+  }
+  return offsets;
 }
 
 function splitFrames(gpu: FakeGpu): FrameLog[] {

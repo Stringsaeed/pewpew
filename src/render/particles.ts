@@ -1,8 +1,13 @@
 import { ARCHETYPES, type BossId } from '../levels';
 import type { SimEvent, WorldView } from '../sim';
-import { ROCKET_RADIUS } from './look';
+import { HOLD_LOST, type Fx } from './fx';
 
 export const PARTICLE_CAP = 2048;
+
+/** DOT shrinks as it fades. RING grows from a pinprick to full size as it fades. */
+export const DOT = 0;
+export const RING = 1;
+export type ParticleKind = typeof DOT | typeof RING;
 
 export interface ParticlePool {
   count: number;
@@ -10,12 +15,14 @@ export interface ParticlePool {
   readonly y: Float32Array;
   readonly vx: Float32Array;
   readonly vy: Float32Array;
+  /** Seconds left. Above `ttl` the particle is still waiting out its start delay: it neither moves nor draws. */
   readonly life: Float32Array;
   readonly ttl: Float32Array;
   readonly size: Float32Array;
   readonly r: Float32Array;
   readonly g: Float32Array;
   readonly b: Float32Array;
+  readonly kind: Uint8Array;
 }
 
 export interface BurstTables {
@@ -25,27 +32,25 @@ export interface BurstTables {
   readonly core: number;
 }
 
-export interface BossFlash { flash: number; cooldown: number }
-
 const WHITE = Float32Array.of(1, 1, 1);
 const RED = Float32Array.of(1, 0.25, 0.3);
 const SHIELD_BLUE = Float32Array.of(0.35, 0.65, 1);
+const HOLE_GOLD = Float32Array.of(1, 0.7, 0.3);
+const HOLE_VIOLET = Float32Array.of(0.7, 0.4, 1);
+const HOLE_VISIBLE_AHEAD = 17;
+const SHIP_FIRE = Float32Array.of(1, 0.55, 0.15);
 
 export function createPool(): ParticlePool {
-  return {
-    count: 0,
-    x: new Float32Array(PARTICLE_CAP), y: new Float32Array(PARTICLE_CAP),
-    vx: new Float32Array(PARTICLE_CAP), vy: new Float32Array(PARTICLE_CAP),
-    life: new Float32Array(PARTICLE_CAP), ttl: new Float32Array(PARTICLE_CAP), size: new Float32Array(PARTICLE_CAP),
-    r: new Float32Array(PARTICLE_CAP), g: new Float32Array(PARTICLE_CAP), b: new Float32Array(PARTICLE_CAP),
-  };
+  const f = (): Float32Array => new Float32Array(PARTICLE_CAP);
+  return { count: 0, x: f(), y: f(), vx: f(), vy: f(), life: f(), ttl: f(), size: f(), r: f(), g: f(), b: f(), kind: new Uint8Array(PARTICLE_CAP) };
 }
 
-function spawn(pool: ParticlePool, x: number, y: number, vx: number, vy: number, ttl: number, size: number, r: number, g: number, b: number): void {
+function spawn(pool: ParticlePool, x: number, y: number, vx: number, vy: number, ttl: number, size: number, r: number, g: number, b: number,
+  kind: ParticleKind = DOT, delay = 0): void {
   if (pool.count === PARTICLE_CAP) return;
   const i = pool.count++;
   pool.x[i] = x; pool.y[i] = y; pool.vx[i] = vx; pool.vy[i] = vy;
-  pool.life[i] = ttl; pool.ttl[i] = ttl; pool.size[i] = size; pool.r[i] = r; pool.g[i] = g; pool.b[i] = b;
+  pool.life[i] = ttl + delay; pool.ttl[i] = ttl; pool.size[i] = size; pool.r[i] = r; pool.g[i] = g; pool.b[i] = b; pool.kind[i] = kind;
 }
 
 function burstAt(pool: ParticlePool, x: number, y: number, n: number, speed: number, size: number, ttl: number, rgb: Float32Array, o: number): void {
@@ -58,10 +63,16 @@ function burstAt(pool: ParticlePool, x: number, y: number, n: number, speed: num
   }
 }
 
-export function applyEvents(pool: ParticlePool, world: WorldView | null, events: readonly SimEvent[], tables: BurstTables, fx: BossFlash): void {
+/** A shockwave: one particle whose quad grows to `size` while it fades. */
+export function ringAt(pool: ParticlePool, x: number, y: number, size: number, ttl: number, rgb: Float32Array, delay = 0): void {
+  spawn(pool, x, y, 0, 0, ttl, size, rgb[0], rgb[1], rgb[2], RING, delay);
+}
+
+export function applyEvents(pool: ParticlePool, world: WorldView | null, events: readonly SimEvent[], tables: BurstTables, fx: Fx): void {
   for (let i = 0; i < events.length; i++) {
     const ev = events[i];
     switch (ev.e) {
+      case 'start': fx.holeAge = -1e3; break;
       case 'destroy': {
         if (ev.target === 'boss') {
           const m = world?.boss ? tables.bossMesh[world.boss.id] : tables.core;
@@ -82,7 +93,25 @@ export function applyEvents(pool: ParticlePool, world: WorldView | null, events:
       case 'playerHit': burstAt(pool, ev.x, ev.y, 48, 7, 0.4, 0.9, RED, 0); break;
       case 'pickup': burstAt(pool, ev.x, ev.y, 22, 4, 0.25, 0.5, tables.burst, ev.kind * 3); break;
       case 'shieldBlock': burstAt(pool, ev.x, ev.y, 36, 6, 0.3, 0.6, SHIELD_BLUE, 0); break;
+      case 'wormholeOpen': {
+        // The sim announces the hole 24 units out, before it can be seen, so the opening waits until it is about to enter the view.
+        const wait = world ? Math.max(0, ev.y - world.player.y - HOLE_VISIBLE_AHEAD) / world.spec.scroll : 0;
+        fx.holeAge = -wait;
+        ringAt(pool, 0, ev.y, 4.2, 1, HOLE_GOLD, wait);
+        ringAt(pool, 0, ev.y, 3.2, 1, HOLE_VIOLET, wait + 0.18);
+        break;
+      }
       default: break;
+    }
+  }
+  if (fx.holdFresh && world) {
+    fx.holdFresh = false;
+    if (fx.hold === HOLD_LOST) {
+      const p = world.player;
+      burstAt(pool, p.x, p.y, 150, 10, 0.55, 1.2, SHIP_FIRE, 0);
+      burstAt(pool, p.x, p.y, 60, 5, 0.9, 1, RED, 0);
+      ringAt(pool, p.x, p.y, 3.4, 0.9, RED);
+      ringAt(pool, p.x, p.y, 2.4, 0.9, WHITE, 0.12);
     }
   }
 }
@@ -95,20 +124,25 @@ export function integrate(pool: ParticlePool, dt: number): void {
       const j = --pool.count;
       pool.x[i] = pool.x[j]; pool.y[i] = pool.y[j]; pool.vx[i] = pool.vx[j]; pool.vy[i] = pool.vy[j]; pool.life[i] = pool.life[j];
       pool.ttl[i] = pool.ttl[j]; pool.size[i] = pool.size[j]; pool.r[i] = pool.r[j]; pool.g[i] = pool.g[j]; pool.b[i] = pool.b[j];
+      pool.kind[i] = pool.kind[j];
       continue;
     }
-    pool.x[i] += pool.vx[i] * dt; pool.y[i] += pool.vy[i] * dt;
-    pool.vx[i] *= drag; pool.vy[i] *= drag;
+    if (pool.life[i] <= pool.ttl[i]) {
+      pool.x[i] += pool.vx[i] * dt; pool.y[i] += pool.vy[i] * dt;
+      pool.vx[i] *= drag; pool.vy[i] *= drag;
+    }
     i++;
   }
 }
 
-export function spawnExhaust(pool: ParticlePool, px: number, py: number, dt: number): void {
-  const nozzle = py - ROCKET_RADIUS * 0.95;
+/** Puffs leave the nozzle against the heading (hx, hy). `k` scales their size, so a shrinking rocket leaves a thinner trail. */
+export function spawnExhaust(pool: ParticlePool, nx: number, ny: number, hx: number, hy: number, k: number, dt: number): void {
   const puffs = Math.min(8, Math.round(dt * 120));
   for (let i = 0; i < puffs; i++) {
     const heat = Math.random();
-    spawn(pool, px + (Math.random() - 0.5) * 0.18, nozzle, (Math.random() - 0.5) * 0.8, -3 - Math.random() * 3,
-      0.22 + 0.2 * Math.random(), 0.22 + 0.12 * Math.random(), 1, 0.45 + 0.45 * heat, 0.1 + 0.3 * heat * heat);
+    const back = 3 + Math.random() * 3;
+    const sx = (Math.random() - 0.5) * 0.8, sy = (Math.random() - 0.5) * 0.18 * k;
+    spawn(pool, nx + sy * hy, ny - sy * hx, -hx * back + sx * hy, -hy * back - sx * hx,
+      0.22 + 0.2 * Math.random(), (0.22 + 0.12 * Math.random()) * k, 1, 0.45 + 0.45 * heat, 0.1 + 0.3 * heat * heat);
   }
 }

@@ -1,15 +1,17 @@
 const FOV_Y = (50 * Math.PI) / 180;
 const PITCH = (16 * Math.PI) / 180;
+/** A point `dz` behind the plane of the bodies lands `dz * PITCH_TAN` lower on screen; raise it by that much to stay in line. */
+export const PITCH_TAN = Math.tan(PITCH);
 const LOOK_AHEAD = 6.5;
 const VISIBLE_HALF_WIDTH = 5.4;
 const NEAR = 1;
 const FAR = 90;
 
 /** Writes the view and projection into the preallocated 36-float uniform array. No allocation. */
-export function writeCamera(uniforms: Float32Array, camY: number, width: number, height: number, time: number): void {
+export function writeCamera(uniforms: Float32Array, camY: number, width: number, height: number, time: number, zoom = 1): void {
   const aspect = width / height;
   const t = Math.tan(FOV_Y / 2);
-  const dist = Math.max(VISIBLE_HALF_WIDTH / (t * aspect), 14);
+  const dist = Math.max(VISIBLE_HALF_WIDTH / (t * aspect), 14) * zoom;
   const ty = camY + LOOK_AHEAD;
   const ey = ty - dist * Math.sin(PITCH);
   const ez = dist * Math.cos(PITCH);

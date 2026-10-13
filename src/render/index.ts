@@ -4,7 +4,8 @@ import { INSTANCE_FLOATS, MESH_IDS, createBatch } from './batch';
 import { writeCamera } from './camera';
 import { LOOK, type Look } from './look';
 import { MESHES } from './meshes.gen';
-import { applyEvents, createPool, integrate, spawnExhaust, type BossFlash } from './particles';
+import { HOLD_LOST, HOLD_NONE, HOLD_WON, createFx, holdProgress, smooth } from './fx';
+import { applyEvents, createPool, integrate, spawnExhaust } from './particles';
 import { GLOW, MESH, STARS } from './wgsl';
 
 export type { Look };
@@ -17,13 +18,22 @@ export { LOOK };
  *  mesh   one shared vertex and index buffer holding every MeshData (interleaved pos|normal|color, 36 B), plus one
  *         instance buffer (x, y, rot, scale, tint rgb, flash = 8 f32). Per frame: counting-sort live bodies by MeshId,
  *         one writeBuffer, then drawIndexed per non-empty mesh with the vertex and instance buffers bound at that mesh's offsets.
- *         Rocket, boss, and wormhole are appended from the player, boss, and wormholeY scalars. Lambert plus emissive vertex color.
- *  glow   instanced quads, additive blend, no depth write: bolts, exhaust, explosion particles, shield bubble.
+ *         Rocket, boss, and the black hole (horizon plus accretion disc) are appended from the player, boss, and wormholeY
+ *         scalars. Lambert plus emissive vertex color. The instance's mode column picks the transform (see wgsl.ts).
+ *  glow   instanced quads, additive blend, no depth write: bolts, exhaust, explosion particles, rings, halos, shield bubble.
  * Particles live here (CPU SoA, 2048 cap) and spawn from SimEvents; the sim never knows they exist.
  */
 export interface Renderer {
   /** world null = menu backdrop (stars only). alpha = leftover accumulator / STEP, for interpolation. */
   frame(world: WorldView | null, events: readonly SimEvent[], alpha: number, dtSec: number): void;
+  /** Shake off, white flashes at half strength. The shell skips slow motion itself. */
+  setReduceMotion(on: boolean): void;
+  /**
+   * Called once when the sim emits `won` or `lost`. The shell then keeps calling `frame` with the same terminal world
+   * for about `seconds` of the dt it passes (1.4 for won, 1.0 for lost), already scaled for slow motion. Won flies the
+   * rocket into the black hole and ends in a white flash. Lost blows the ship up and hides it.
+   */
+  hold(kind: 'won' | 'lost', seconds: number): void;
   dispose(): void;
 }
 
@@ -99,9 +109,10 @@ export function createRenderer(
           { shaderLocation: 1, offset: 12, format: 'float32x3' },
           { shaderLocation: 2, offset: 24, format: 'float32x3' },
         ] },
-        { arrayStride: 32, stepMode: 'instance', attributes: [
+        { arrayStride: INSTANCE_FLOATS * 4, stepMode: 'instance', attributes: [
           { shaderLocation: 3, offset: 0, format: 'float32x4' },
           { shaderLocation: 4, offset: 16, format: 'float32x4' },
+          { shaderLocation: 5, offset: 32, format: 'float32x4' },
         ] },
       ],
     },
@@ -113,9 +124,10 @@ export function createRenderer(
     layout,
     vertex: {
       module: glowModule, entryPoint: 'vs',
-      buffers: [{ arrayStride: 32, stepMode: 'instance', attributes: [
+      buffers: [{ arrayStride: INSTANCE_FLOATS * 4, stepMode: 'instance', attributes: [
         { shaderLocation: 0, offset: 0, format: 'float32x4' },
         { shaderLocation: 1, offset: 16, format: 'float32x4' },
+        { shaderLocation: 2, offset: 32, format: 'float32x4' },
       ] }],
     },
     fragment: { module: glowModule, entryPoint: 'fs', targets: [{ format, blend: { color: additive, alpha: additive } }] },
@@ -124,7 +136,7 @@ export function createRenderer(
   });
 
   const pool = createPool();
-  const bossFx: BossFlash = { flash: 0, cooldown: 0 };
+  const fx = createFx();
 
   let depth: GPUTexture | null = null;
   let width = 0;
@@ -160,23 +172,33 @@ export function createRenderer(
   function frame(world: WorldView | null, events: readonly SimEvent[], alpha: number, dt: number): void {
     if (!resize()) return;
     time += dt;
-    bossFx.flash = Math.max(0, bossFx.flash - dt);
-    bossFx.cooldown = Math.max(0, bossFx.cooldown - dt);
-    applyEvents(pool, world, events, batch.bursts, bossFx);
+    // A new run, or the menu, ends the hold: the shell never says so.
+    if (fx.hold !== HOLD_NONE && (!world || (world.phase.p !== 'won' && world.phase.p !== 'lost'))) fx.hold = HOLD_NONE;
+    fx.flash = Math.max(0, fx.flash - dt);
+    fx.cooldown = Math.max(0, fx.cooldown - dt);
+    fx.holeAge += dt;
+    if (fx.hold !== HOLD_NONE) fx.holdT += dt;
+    applyEvents(pool, world, events, batch.bursts, fx);
     integrate(pool, dt);
 
     batch.begin();
     let camY = menuY;
+    let zoom = 1;
     if (world) {
-      batch.packWorld(world, alpha, time, bossFx.flash);
+      batch.packWorld(world, alpha, time, fx);
       camY = batch.py;
-      spawnExhaust(pool, batch.px, batch.py, dt);
+      if (batch.exhaust) spawnExhaust(pool, batch.nozzleX, batch.nozzleY, batch.headX, batch.headY, batch.puff, dt);
+      if (fx.hold === HOLD_WON && world.wormholeY !== null) {
+        const e = smooth(0, 0.8, holdProgress(fx));
+        camY += (world.wormholeY - camY) * 0.6 * e;
+        zoom = 1 - 0.14 * e;
+      }
     } else {
       menuY += dt * 2.5;
     }
     batch.packParticles(pool);
 
-    writeCamera(uniforms, camY, width, height, time);
+    writeCamera(uniforms, camY, width, height, time, zoom);
     device.queue.writeBuffer(uniformBuf, 0, uniforms);
     if (batch.meshSlots > 0) device.queue.writeBuffer(meshInstBuf, 0, batch.meshInst, 0, batch.meshSlots * INSTANCE_FLOATS);
     if (batch.glowCount > 0) device.queue.writeBuffer(glowInstBuf, 0, batch.glowInst, 0, batch.glowCount * INSTANCE_FLOATS);
@@ -211,6 +233,13 @@ export function createRenderer(
 
   return {
     frame,
+    setReduceMotion(on) { fx.reduceMotion = on; },
+    hold(kind, seconds) {
+      fx.hold = kind === 'won' ? HOLD_WON : HOLD_LOST;
+      fx.holdSeconds = Math.max(seconds, 0.1);
+      fx.holdT = 0;
+      fx.holdFresh = true;
+    },
     dispose() {
       for (const b of [vertexBuf, indexBuf, meshInstBuf, glowInstBuf, uniformBuf]) b.destroy();
       depth?.destroy();

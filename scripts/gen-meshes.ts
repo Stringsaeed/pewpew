@@ -49,6 +49,10 @@ const PALETTE = {
   shellLight: [0.22, 0.3, 0.52] as Rgb,
   coreRing: [0.1, 0.85, 1] as Rgb,
   coreEye: [1.6, 2, 2] as Rgb,
+  holeCore: [0, 0, 0] as Rgb,
+  photon: [3, 2.7, 2.2] as Rgb,
+  /** Accretion disc, inner edge to outer edge: white-hot, amber, deep orange, magenta, violet. Every channel set peaks above 1, so the disc is unlit. */
+  disc: [[2.8, 2.6, 2.1], [2.5, 2.0, 1.1], [2.2, 1.4, 0.5], [1.9, 0.9, 0.25], [1.6, 0.55, 0.15], [1.4, 0.3, 0.3], [1.2, 0.25, 0.75], [0.8, 0.2, 1.3], [0.5, 0.15, 1.15]] as readonly Rgb[],
 } as const;
 
 function mulberry32(seed: number): () => number {
@@ -222,6 +226,23 @@ function ring(segments: number, major: number, minor: number, tube: number, pain
   return m;
 }
 
+/** Flat annulus in the xy plane facing +z, with equal-width bands from `inner` to `outer`. paint(band, segment). */
+function disc(inner: number, outer: number, segments: number, bands: number, paint: Paint): RawMesh {
+  const m = mesh();
+  const at = (r: number, a: number): Vec3 => [r * Math.cos(a), r * Math.sin(a), 0];
+  for (let j = 0; j < bands; j++) {
+    const r0 = inner + ((outer - inner) * j) / bands;
+    const r1 = inner + ((outer - inner) * (j + 1)) / bands;
+    for (let i = 0; i < segments; i++) {
+      const a0 = (i / segments) * TAU, a1 = ((i + 1) / segments) * TAU;
+      const color = paint(j, i);
+      tri(m, at(r0, a0), at(r0, a1), at(r1, a1), color, [0, 0, 1]);
+      tri(m, at(r0, a0), at(r1, a1), at(r1, a0), color, [0, 0, 1]);
+    }
+  }
+  return m;
+}
+
 const pick = (rng: () => number, colors: readonly Rgb[]): Paint => () => colors[Math.floor(rng() * colors.length)];
 const alternate = (a: Rgb, b: Rgb): Paint => (i) => (i % 2 === 0 ? a : b);
 const ICO_DIRS: readonly Vec3[] = [
@@ -267,10 +288,28 @@ function well(rng: () => number): RawMesh {
   return merge(torus, inner, core);
 }
 
-function wormhole(): RawMesh {
-  const outer = ring(32, 1, 0.2, 10, (i) => (i % 2 === 0 ? PALETTE.white : PALETTE.violet));
-  const inner = ring(24, 0.68, 0.07, 6, (i) => (i % 2 === 0 ? PALETTE.violet : PALETTE.white));
-  return merge(outer, inner);
+/** Event horizon and photon ring, both facing the camera. The renderer tilts and spins `accretion` on its own. */
+function blackhole(): RawMesh {
+  const horizon = prism(48, 1, 0.14, solid(PALETTE.holeCore));
+  // Just proud of the horizon. Any further forward and the camera pitch slides it off the hole.
+  const photon = transform(ring(48, 1.03, 0.06, 6, solid(PALETTE.photon)), place([1, 1, 1], [0, 0, 0.3]));
+  return merge(horizon, photon);
+}
+
+const HOLE_DISC = { inner: 1.25, outer: 2.9 } as const;
+
+/** Flat in the xy plane. Three spiral arms of brighter segments, so the spin reads on an otherwise symmetric disc. */
+function accretion(): RawMesh {
+  const bands = 14;
+  return disc(HOLE_DISC.inner, HOLE_DISC.outer, 56, bands, (j, i) => {
+    const t = (j / (bands - 1)) * (PALETTE.disc.length - 1);
+    const lo = Math.floor(t), hi = Math.min(lo + 1, PALETTE.disc.length - 1);
+    const f = t - lo;
+    const arm = 0.8 + 0.3 * Math.sin(((i + j * 1.6) / 56) * TAU * 3);
+    const c = PALETTE.disc[lo].map((v, k) => (v + (PALETTE.disc[hi][k] - v) * f) * arm) as unknown as Rgb;
+    const peak = Math.max(...c);
+    return peak < 1.05 ? (c.map((v) => (v * 1.05) / peak) as unknown as Rgb) : c;
+  });
 }
 
 function warden(rng: () => number): RawMesh {
@@ -323,7 +362,7 @@ const BUILDERS = {
     transform(prism(3, 0.62, 0.34, (s) => (s === 0 ? PALETTE.amberBright : PALETTE.amber)), place([1.3, 0.8, 1], [0, 0.35, 0])),
     transform(prism(3, 0.62, 0.34, (s) => (s === 0 ? PALETTE.amberBright : PALETTE.amber)), place([1.3, 0.8, 1], [0, -0.35, 0])),
   ),
-  wormhole, warden, hive, core,
+  blackhole, accretion, warden, hive, core,
 } satisfies Record<string, Builder>;
 
 function flatten(raw: RawMesh): { positions: number[]; normals: number[]; colors: number[]; radius: number } {

@@ -28,8 +28,10 @@ export const LOOK: { readonly [K in Kind]: Look } = {
 export const ROCKET_RADIUS = 0.8;
 /** Boss hit radius is 1.4 in the sim. The body is drawn at 2.4, which is 2.4 / 1.4 of the collider. */
 export const BOSS_RADIUS = 2.4;
-/** The wormhole has no collider. This is its drawn radius. */
-export const WORMHOLE_RADIUS = 2.6;
+/** The black hole has no collider. This is the drawn radius of its accretion disc. */
+export const BLACKHOLE_RADIUS = 2.6;
+/** The disc is authored face-on; the shader tilts it about x by this much (radians). Negative puts the near half below the hole. */
+export const BLACKHOLE_TILT = -0.95;
 
 const bolt = LOOK[Kind.Bolt];
 const enemyBolt = LOOK[Kind.EnemyBolt];
