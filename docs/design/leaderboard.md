@@ -26,7 +26,7 @@ Because the proof problem is unsolvable on Game Center, phase 1 accepts client-t
 
 Sets: `pewpew.v1.set.1`, `.2`, `.3` hold levels 1 to 10, 11 to 20, 21 to 30. Campaign and Stars sit outside the sets. Total: 32 boards, 3 sets.
 
-The `v1` token is the balance version. Scores from different level tables are not comparable, and Game Center cannot rescore. When `LEVELS` or scoring in `src/sim.ts` changes in a way that moves scores, bump `LEADERBOARD_VERSION` and create fresh boards. Old boards stay in App Store Connect as history. The ramp was tuned to greedyBot, not to people, so expect at least one bump before launch. Do not create the v1 boards in App Store Connect until human tuning settles.
+The `v1` token is the balance version. Scores from different level tables are not comparable, and Game Center cannot rescore. When `LEVELS` or scoring in `src/sim/` changes in a way that moves scores, bump `LEADERBOARD_VERSION` and create fresh boards. Old boards stay in App Store Connect as history. The ramp was tuned to greedyBot, not to people, so expect at least one bump before launch. Do not create the v1 boards in App Store Connect until human tuning settles.
 
 A script `scripts/gen-leaderboards.ts` prints the 32 board definitions and 3 sets as a table, and optionally creates them through the App Store Connect API (`gameCenterLeaderboards`, `gameCenterLeaderboardSets`) given an API key. Creating 32 boards by hand per version bump is the kind of chore that silently does not happen.
 
@@ -160,7 +160,7 @@ Until 3 exists, `submit` succeeds on the client and nothing appears. That is the
 3. UI: access point, Complete rank line and button, Settings row.
 4. Board creation script against the App Store Connect API, run once per balance version.
 
-Later, not designed here: a verified board on our own backend that replays proofs with the same `src/sim.ts`, achievements (first boss, 90 stars, no-hit level), and Android through Play Games behind the same `GameCenter` interface.
+Later, not designed here: a verified board on our own backend that replays proofs with the same `src/sim/`, achievements (first boss, 90 stars, no-hit level), and Android through Play Games behind the same `GameCenter` interface.
 
 ## Decisions I took
 

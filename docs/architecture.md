@@ -7,7 +7,7 @@ The level is a compiled track and the world is a flat pool. This document explai
 Three callers drive the design. They are the app shell, the CI verifier, and the menu screens.
 
 ```ts
-// App.tsx owns the whole input-to-pixels path (App.tsx -> sim.ts -> render.ts)
+// App.tsx owns the whole input-to-pixels path (App.tsx -> src/sim -> render.ts)
 const onTouchStart = (e) => { drag.anchorX = loop.world!.player.x; drag.fx = e.nativeEvent.pageX; };
 const onTouchMove  = (e) => { loop.input = dragInput(drag.anchorX, (e.nativeEvent.pageX - drag.fx) / width); };
 const onTouchEnd   = () => { loop.input = COAST; };

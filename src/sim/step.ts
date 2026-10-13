@@ -14,7 +14,7 @@ import type { Input } from './input';
 import { add, remove } from './world';
 import type { Player, SimEvent, Stars, World } from './world';
 
-// This file and levels.ts may use only + - * / and Math.sqrt, imul, floor, min, max, abs (sim.test.ts enforces it).
+// Every file in src/sim/ and levels.ts may use only + - * / and Math.sqrt, imul, floor, min, max, abs (sim.test.ts enforces it).
 // Engine trig differs in the last ulp between Hermes and V8, which would make the verifier prove a slightly different
 // game than the one on the phone. Those operations are correctly rounded by IEEE 754 on every engine.
 
