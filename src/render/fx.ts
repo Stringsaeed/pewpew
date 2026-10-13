@@ -32,10 +32,26 @@ export interface Fx {
   bubbleAge: number;
   /** Screen shake energy, 0..1. Offsets scale with its square. Decays on its own and is never added under reduce motion. */
   trauma: number;
+  /** Recent shots that landed on a body: a ring of eight (x, y, kind, seconds left). The body they hit flashes white. */
+  readonly hitX: Float32Array;
+  readonly hitY: Float32Array;
+  readonly hitKind: Uint8Array;
+  readonly hitTtl: Float32Array;
+  hitNext: number;
+  /** Any hit flash still live this frame, so the body loop can skip the scan. */
+  hitLive: boolean;
 }
 
+const HIT_RING = 8;
+/** A hit flashes its body for about two frames. */
+export const HIT_FLASH_SECONDS = 0.045;
+/** A hit event reports the body's position when the shot landed; the body has moved a little by the time it draws. */
+export const HIT_FLASH_REACH = 0.5;
+
 export function createFx(): Fx {
-  return { reduceMotion: false, flash: 0, cooldown: 0, hold: HOLD_NONE, holdSeconds: 1, holdT: 0, holdFresh: false, holeAge: 1e3, sparkDebt: 0, smokeDebt: 0, ripple: -1, rippleX: 0, rippleY: 1, dying: 0, bubbleAge: 1e3, trauma: 0 };
+  return { reduceMotion: false, flash: 0, cooldown: 0, hold: HOLD_NONE, holdSeconds: 1, holdT: 0, holdFresh: false, holeAge: 1e3, sparkDebt: 0, smokeDebt: 0, ripple: -1, rippleX: 0, rippleY: 1, dying: 0, bubbleAge: 1e3, trauma: 0,
+    hitX: new Float32Array(HIT_RING), hitY: new Float32Array(HIT_RING), hitKind: new Uint8Array(HIT_RING), hitTtl: new Float32Array(HIT_RING),
+    hitNext: 0, hitLive: false };
 }
 
 /** The hold choreography runs on dt, so a shell that slows dt stretches the hold with it. */
@@ -119,3 +135,20 @@ export function addTrauma(fx: Fx, amount: number): void {
 /** Smooth pseudo-noise in [-1, 1] from a few incommensurate sines. No allocation, no state. */
 export const wobble = (t: number, seed: number): number =>
   (Math.sin(t * 47.1 + seed) + Math.sin(t * 29.7 + seed * 2.3 + 1.7) + Math.sin(t * 71.3 + seed * 0.7 + 4.1)) / 3;
+
+export function addHitFlash(fx: Fx, kind: number, x: number, y: number): void {
+  const i = fx.hitNext;
+  fx.hitNext = (i + 1) % fx.hitTtl.length;
+  fx.hitX[i] = x; fx.hitY[i] = y; fx.hitKind[i] = kind; fx.hitTtl[i] = HIT_FLASH_SECONDS;
+  fx.hitLive = true;
+}
+
+export function ageHitFlashes(fx: Fx, dt: number): void {
+  let live = false;
+  for (let i = 0; i < fx.hitTtl.length; i++) {
+    if (fx.hitTtl[i] <= 0) continue;
+    fx.hitTtl[i] -= dt;
+    if (fx.hitTtl[i] > 0) live = true;
+  }
+  fx.hitLive = live;
+}

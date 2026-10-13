@@ -6,6 +6,7 @@ import { Kind } from './levels';
 import { MESHES, type MeshId } from './render/meshes.gen';
 import { MAX_PIXEL_RATIO, LOOK, createRenderer } from './render';
 import { STEP, createWorld, step, type SimEvent, type World } from './sim';
+import { add } from './sim/world';
 import { createFakeGpu, type FakeGpu, type GpuCall } from './testing/fake-gpu';
 
 const SNAP = new URL('./testing/render.snapshot.json', import.meta.url);
@@ -132,6 +133,33 @@ describe('renderer', { concurrency: false }, () => {
       assert.ok(shaken[0]! > 0.001 && shaken[1]! > 0.001);
       assert.equal(shaken[2], 0);
       assert.deepEqual(shakeAfter(true), [0, 0, 0]);
+    } finally {
+      restore();
+    }
+  });
+
+  test('a damaged body glows hot and flashes white for two frames when a shot lands', () => {
+    const restore = installRandom(11);
+    try {
+      const gpu = createFakeGpu();
+      const renderer = createRenderer(gpu.device, gpu.context, 'bgra8unorm', MAX_PIXEL_RATIO);
+      const world = createWorld(1);
+      const i = add(world, Kind.Asteroid, 1, 6, 0, 0);
+      world.bodies.hp[i] = 1;
+      // The rocket is slot 0 in the mesh buffer and the asteroid slot 1. Floats 7 and 8 are flash and heat.
+      const slot = (events: SimEvent[], dt: number): { flash: number; heat: number } => {
+        const mark = gpu.writes.length;
+        renderer.frame(world, events, 0, dt);
+        const mesh = gpu.writes.slice(mark).find((_, k) => gpu.calls.filter((call) => call.op === 'writeBuffer')[mark + k]?.buffer === gpu.buffers[2]!.id)!;
+        const floats = new Float32Array(mesh.buffer.slice(0));
+        return { flash: floats[12 + 7]!, heat: floats[12 + 8]! };
+      };
+      const hit: SimEvent = { e: 'hit', target: Kind.Asteroid, x: 1, y: 6 };
+      assert.deepEqual(slot([], 0.016), { flash: 0, heat: Math.fround(1 - 1 / 3) });
+      assert.equal(slot([hit], 0.016).flash, 0.5);
+      assert.equal(slot([], 0.016).flash, 0.5);
+      assert.equal(slot([], 0.1).flash, 0);
+      renderer.dispose();
     } finally {
       restore();
     }

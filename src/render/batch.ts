@@ -2,7 +2,7 @@ import { ARCHETYPES, Kind, type BossId } from '../levels';
 import { MAX_BODIES, type WorldView } from '../sim';
 import { PITCH_TAN } from './camera';
 import { BLACKHOLE_RADIUS, BLACKHOLE_TILT, BOSS_RADIUS, BUBBLE_RADIUS, LOOK, ROCKET_RADIUS } from './look';
-import { BUBBLE_FORM_SECONDS, BUBBLE_POP_SECONDS, HOLD_LOST, HOLD_WON, HOLE_OPEN_SECONDS, RIPPLE_SECONDS, bossHeat, createDive, holdProgress, pose, smooth, type Fx } from './fx';
+import { BUBBLE_FORM_SECONDS, BUBBLE_POP_SECONDS, HIT_FLASH_REACH, HOLD_LOST, HOLD_WON, HOLE_OPEN_SECONDS, RIPPLE_SECONDS, bossHeat, createDive, holdProgress, pose, smooth, type Fx } from './fx';
 import { MESHES, type MeshId } from './meshes.gen';
 import { PARTICLE_CAP, RING, SMOKE, type BurstTables, type ParticlePool } from './particles';
 
@@ -80,6 +80,7 @@ export function createBatch(): MeshBatch {
   const scaleOf = new Float32Array(KIND_COUNT * VARIANTS);
   const tintOf = new Float32Array(KIND_COUNT * 3);
   const pulseOf = new Float32Array(KIND_COUNT);
+  const maxHp = new Int16Array(KIND_COUNT);
   // Billboard kinds: half-extents and glow shape.
   const glowW = new Float32Array(KIND_COUNT);
   const glowH = new Float32Array(KIND_COUNT);
@@ -105,6 +106,7 @@ export function createBatch(): MeshBatch {
     }
   }
   pulseOf[Kind.Mine] = MINE_PULSE;
+  for (let k = 0; k < KIND_COUNT; k++) maxHp[k] = ARCHETYPES[k as Kind].hp;
   const haloOf = new Float32Array(KIND_COUNT);
   for (let k = 0; k < KIND_COUNT; k++) if (ARCHETYPES[k as Kind].role === 'pickup') haloOf[k] = ARCHETYPES[k as Kind].radius * HALO_SCALE;
   const bossBurst = Float32Array.from(MESH_IDS.flatMap((id) => signature(id)));
@@ -194,8 +196,19 @@ export function createBatch(): MeshBatch {
         const pulse = 0.5 + 0.15 * Math.sin(time * HALO_HZ * 6.2832 + x);
         putGlow(x, y, halo, halo, burst[k * 3], burst[k * 3 + 1], burst[k * 3 + 2], pulse);
       }
+      // A body that has taken a shot glows hotter the closer it is to dying, and flashes white when a shot lands on it.
+      const hp = bodies.hp[i], hp0 = maxHp[k];
+      const heat = hp0 > 0 && hp > 0 && hp < hp0 ? 1 - hp / hp0 : 0;
+      let flash = 0;
+      if (fx.hitLive) {
+        for (let j = 0; j < fx.hitTtl.length; j++) {
+          if (fx.hitTtl[j] <= 0 || fx.hitKind[j] !== k) continue;
+          const dx = fx.hitX[j] - x, dy = fx.hitY[j] - y;
+          if (dx * dx + dy * dy < HIT_FLASH_REACH * HIT_FLASH_REACH) { flash = fx.reduceMotion ? 0.25 : 0.5; break; }
+        }
+      }
       putMesh(cursor[m]++, x, y, halo > 0 ? time * PICKUP_SPIN + x : bodies.rot[i], scaleOf[k * VARIANTS + (bodies.variant[i] % VARIANTS)],
-        tintOf[k * 3], tintOf[k * 3 + 1], tintOf[k * 3 + 2], 0, 0, MODE_TUMBLE, pulseOf[k]);
+        tintOf[k * 3], tintOf[k * 3 + 1], tintOf[k * 3 + 2], flash, heat, MODE_TUMBLE, pulseOf[k]);
     }
 
     const rocketScale = ROCKET_RADIUS / MESHES.rocket.radius;

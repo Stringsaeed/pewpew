@@ -1,6 +1,6 @@
 import { ARCHETYPES, Kind, type BossId } from '../levels';
 import type { SimEvent, WorldView } from '../sim';
-import { BUBBLE_POP_SECONDS, HOLD_LOST, addTrauma, type Fx } from './fx';
+import { BUBBLE_POP_SECONDS, HOLD_LOST, addHitFlash, addTrauma, type Fx } from './fx';
 
 export const PARTICLE_CAP = 2048;
 
@@ -126,6 +126,7 @@ export function applyEvents(pool: ParticlePool, world: WorldView | null, events:
       }
       case 'hit':
         burstAt(pool, ev.x, ev.y, 6, 4, 0.2, 0.25, WHITE, 0);
+        if (ev.target !== 'boss') addHitFlash(fx, ev.target, ev.x, ev.y);
         if (ev.target === 'boss' && fx.cooldown <= 0) {
           fx.flash = 0.06;
           fx.cooldown = 0.15;

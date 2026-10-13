@@ -4,7 +4,7 @@ import { INSTANCE_FLOATS, MESH_IDS, createBatch } from './batch';
 import { writeCamera } from './camera';
 import { LOOK, type Look } from './look';
 import { MESHES } from './meshes.gen';
-import { HOLD_LOST, HOLD_NONE, HOLD_WON, SHAKE_REACH, TRAUMA_DECAY, bossPhaseIndex, createFx, holdProgress, smooth, wobble } from './fx';
+import { HOLD_LOST, HOLD_NONE, HOLD_WON, SHAKE_REACH, TRAUMA_DECAY, ageHitFlashes, bossPhaseIndex, createFx, holdProgress, smooth, wobble } from './fx';
 import { applyEvents, createPool, emitBossDamage, integrate, spawnExhaust } from './particles';
 import { BUBBLE, GLOW, MESH, STARS } from './wgsl';
 
@@ -186,6 +186,7 @@ export function createRenderer(
     fx.cooldown = Math.max(0, fx.cooldown - dt);
     fx.holeAge += dt;
     fx.bubbleAge += dt;
+    if (fx.hitLive) ageHitFlashes(fx, dt);
     fx.trauma = Math.max(0, fx.trauma - TRAUMA_DECAY * dt);
     fx.dying = Math.max(0, fx.dying - dt);
     if (fx.ripple >= 0) fx.ripple += dt;
