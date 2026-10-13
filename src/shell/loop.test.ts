@@ -60,17 +60,82 @@ test('events reach render and audio before they are cleared', () => {
   assert.equal(order.at(-1), 'hud');
 });
 
+function pump(loop: Loop, sinks: Sinks, frames: number): void {
+  let now = loop.last;
+  for (let i = 0; i < frames; i++) {
+    now += 100;
+    advance(loop, now, sinks);
+  }
+}
+
 test('won reaches ended exactly once', () => {
   const loop = armed(true);
   const world = loop.world;
   assert.ok(world);
   world.player.y = world.wormholeY ?? world.spec.length;
-  const won: number[] = [];
-  const sinks: Sinks = { ...quiet(), ended(ev) { if (ev.e === 'won') won.push(world.tick); } };
+  const won: string[] = [];
+  const sinks: Sinks = {
+    ...quiet(),
+    ended(ev) { if (ev.e === 'won') won.push('ended'); },
+    terminal(ev) { if (ev.e === 'won') won.push('terminal'); },
+  };
   advance(loop, 100, sinks);
-  advance(loop, 200, sinks);
-  advance(loop, 300, sinks);
-  assert.deepEqual(won, [1]);
+  assert.deepEqual(won, ['terminal']);
+  assert.equal(loop.world, world);
+  assert.equal(loop.playing, false);
+  let now = 100;
+  while (!won.includes('ended') && now < 4000) {
+    now += 100;
+    advance(loop, now, sinks);
+  }
+  assert.deepEqual(won, ['terminal', 'ended']);
+  advance(loop, now + 100, sinks);
+  assert.deepEqual(won, ['terminal', 'ended']);
+});
+
+test('a loss holds the world for 1s and a win for 1.4s at 0.3x render dt', () => {
+  const loss = armed(true);
+  const lostWorld = loss.world;
+  assert.ok(lostWorld);
+  lostWorld.player.lives = 0;
+  const renderDt: number[] = [];
+  let lost = 0;
+  const lossSinks: Sinks = {
+    ...quiet(),
+    render(_w, _e, _a, dt) { renderDt.push(dt); },
+    ended(ev) { if (ev.e === 'lost') lost += 1; },
+  };
+  advance(loss, 100, lossSinks);
+  const tick = lostWorld.tick;
+  assert.equal(lost, 0);
+  assert.equal(loss.world, lostWorld);
+  assert.equal(loss.hold?.kind, 'lost');
+  assert.equal(renderDt[0], 0.1 * 0.3);
+  pump(loss, lossSinks, 9);
+  assert.equal(lost, 1);
+  assert.equal(lostWorld.tick, tick);
+  assert.ok(renderDt.every((dt) => dt === 0.1 * 0.3));
+
+  const win = armed(true);
+  const wonWorld = win.world;
+  assert.ok(wonWorld);
+  wonWorld.player.y = wonWorld.wormholeY ?? wonWorld.spec.length;
+  let won = 0;
+  const winDt: number[] = [];
+  const winSinks: Sinks = {
+    ...quiet(),
+    render(_w, _e, _a, dt) { winDt.push(dt); },
+    ended(ev) { if (ev.e === 'won') won += 1; },
+  };
+  advance(win, 100, winSinks);
+  assert.equal(won, 0);
+  assert.equal(win.hold?.kind, 'won');
+  pump(win, winSinks, 12);
+  assert.equal(won, 0);
+  pump(win, winSinks, 1);
+  assert.equal(won, 1);
+  assert.equal(win.world, wonWorld);
+  assert.equal(winDt[0], 0.1 * 0.3);
 });
 
 test('a human step clears botOnly', () => {

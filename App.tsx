@@ -56,11 +56,12 @@ export default function App() {
       audio(events) { audio.events(events); },
       ended(ev: SimEvent) {
         if (ev.e !== 'won' && ev.e !== 'lost') return;
-        setPlaying(loop, false);
+        dispatch({ a: 'ended', result: ev });
+      },
+      terminal(ev) {
         const level = loop.world?.spec.n;
         if (ev.e === 'won' && level !== undefined && saveRef.current) commitSave(recordRun(saveRef.current, level, ev.score, ev.stars));
         tools?.logBot(loop);
-        dispatch({ a: 'ended', result: ev });
       },
       hud(next) { setHud(next); },
     };
@@ -78,7 +79,7 @@ export default function App() {
           screen={screen}
           hud={hud}
           run={run}
-          act={(a) => { audio.ui('tap'); dispatch(a); }}
+          act={(a) => { if (loop.hold !== null && a.a === 'pause') return; audio.ui('tap'); dispatch(a); }}
           commitSave={commitSave}
           auto={tools === null ? undefined : { on: autoOn, onToggle: tools.toggleAuto }}
           onUnlockAll={tools === null ? undefined : () => commitSave(tools.unlock(save))}

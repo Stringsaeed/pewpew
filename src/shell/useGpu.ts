@@ -33,6 +33,8 @@ export function useGpu(canvasRef: CanvasRef, loop: Loop, sinks: Sinks, sample: F
       audio(events) { sinksRef.current.audio(events); },
       ended(ev) { sinksRef.current.ended(ev); },
       hud(next) { sinksRef.current.hud(next); },
+      terminal(ev) { sinksRef.current.terminal?.(ev); },
+      hold(kind, seconds) { if (renderer) renderer.hold?.(kind, seconds); },
     };
     const tick = (now: number) => advance(loop, now, bound);
 

@@ -1,9 +1,19 @@
 import { greedyBot } from '../bot';
 import type { Run } from '../flow';
-import { COAST, STEP, createWorld, dragInput, hudOf, step, type Hud, type Input, type SimEvent, type World } from '../sim';
+import { COAST, STEP, createWorld, dragInput, hudOf, step, type EventOf, type Hud, type Input, type SimEvent, type World } from '../sim';
 import { RAPID_TICKS } from '../sim/rules';
 
 export const MAX_STEPS_PER_FRAME = 4;
+export const LOSS_HOLD_MS = 1000;
+export const WIN_HOLD_MS = 1400;
+const SLOW_MOTION = 0.3;
+
+export interface Hold {
+  kind: 'won' | 'lost';
+  /** Milliseconds of real time left before `ended`. Whole milliseconds, so the beat does not drift. */
+  leftMs: number;
+  ev: EventOf<'won'> | EventOf<'lost'>;
+}
 
 /** Everything the rAF tick reads and writes. Mutable on purpose: nothing here may cost a React render per frame. */
 export interface Loop {
@@ -22,6 +32,8 @@ export interface Loop {
   /** Rocket x and finger x when the finger went down. Touch updates these; the frame loop does not. */
   anchorX: number;
   fx: number;
+  /** Set on won or lost. The world stays up until this runs out. */
+  hold: Hold | null;
 }
 
 /** Render, then audio, then one `ended` per event, then `hud` only when the visible hud object changes. Keep this object stable: `advance` must not allocate. */
@@ -30,6 +42,9 @@ export interface Sinks {
   audio(events: readonly SimEvent[]): void;
   ended(ev: SimEvent): void;
   hud(next: Hud): void;
+  /** Once, the frame won or lost is seen. The screen waits; the save does not. */
+  terminal?(ev: EventOf<'won'> | EventOf<'lost'>): void;
+  hold?(kind: 'won' | 'lost', seconds: number): void;
 }
 
 const runKey = (run: Run | null) => (run === null ? null : `${run.level}:${run.attempt}`);
@@ -37,7 +52,7 @@ const runKey = (run: Run | null) => (run === null ? null : `${run.level}:${run.a
 export function createLoop(): Loop {
   return {
     world: null, key: null, playing: false, input: COAST, auto: false, botOnly: true,
-    events: [], acc: 0, last: 0, hud: null, anchorX: 0, fx: 0,
+    events: [], acc: 0, last: 0, hud: null, anchorX: 0, fx: 0, hold: null,
   };
 }
 
@@ -60,6 +75,7 @@ export function resetRun(loop: Loop, run: Run | null): boolean {
   loop.acc = 0;
   loop.events.length = 0;
   loop.hud = null;
+  loop.hold = null;
   return true;
 }
 
@@ -87,10 +103,21 @@ export function rapidRemaining(world: World | null): number {
 
 /** One rendered frame. `dt` is clamped to 0.1 s, and at most `MAX_STEPS_PER_FRAME` steps run before a leftover accumulator is dropped. */
 export function advance(loop: Loop, now: number, sinks: Sinks): void {
-  const dt = Math.min((now - loop.last) / 1000, 0.1);
+  const dtMs = Math.min(now - loop.last, 100);
+  const dt = dtMs / 1000;
   loop.last = now;
   const world = loop.world;
-  if (loop.playing && world) {
+
+  let finished: Hold | null = null;
+  if (loop.hold) {
+    loop.hold.leftMs -= dtMs;
+    if (loop.hold.leftMs <= 0) {
+      finished = loop.hold;
+      loop.hold = null;
+    }
+  }
+
+  if (loop.playing && loop.hold === null && finished === null && world) {
     loop.acc += dt;
     let steps = 0;
     while (loop.acc >= STEP && steps < MAX_STEPS_PER_FRAME) {
@@ -101,9 +128,30 @@ export function advance(loop: Loop, now: number, sinks: Sinks): void {
     }
     if (loop.acc >= STEP) loop.acc = 0;
   }
-  sinks.render(world, loop.events, loop.acc / STEP, dt);
+
+  let started: EventOf<'won'> | EventOf<'lost'> | null = null;
+  if (loop.hold === null && finished === null) {
+    for (const ev of loop.events) {
+      if (ev.e === 'won' || ev.e === 'lost') { started = ev; break; }
+    }
+  }
+  const slow = loop.hold !== null || finished !== null || started !== null;
+  sinks.render(world, loop.events, loop.acc / STEP, slow ? dt * SLOW_MOTION : dt);
   sinks.audio(loop.events);
-  for (const ev of loop.events) sinks.ended(ev);
+  if (finished) sinks.ended(finished.ev);
+  for (const ev of loop.events) {
+    if (ev.e === 'won' || ev.e === 'lost') continue;
+    sinks.ended(ev);
+  }
+  if (started) {
+    const totalMs = started.e === 'lost' ? LOSS_HOLD_MS : WIN_HOLD_MS;
+    setPlaying(loop, false);
+    sinks.hold?.(started.e, totalMs / 1000);
+    sinks.terminal?.(started);
+    const leftMs = totalMs - dtMs;
+    if (leftMs <= 0) sinks.ended(started);
+    else loop.hold = { kind: started.e, leftMs, ev: started };
+  }
   loop.events.length = 0;
   if (world) {
     const next = hudOf(world, loop.hud);
