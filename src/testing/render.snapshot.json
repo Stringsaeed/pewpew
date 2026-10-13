@@ -35,12 +35,12 @@
         {
           "op": "createBuffer",
           "buffer": 3,
-          "size": 123648
+          "size": 148224
         },
         {
           "op": "writeBuffer",
           "buffer": 3,
-          "byteLength": 123648
+          "byteLength": 148224
         },
         {
           "op": "createBuffer",
@@ -505,12 +505,12 @@
         {
           "op": "createBuffer",
           "buffer": 3,
-          "size": 123648
+          "size": 148224
         },
         {
           "op": "writeBuffer",
           "buffer": 3,
-          "byteLength": 123648
+          "byteLength": 148224
         },
         {
           "op": "createBuffer",

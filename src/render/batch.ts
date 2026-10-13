@@ -23,6 +23,10 @@ const GLOW_Z = 0.4;
 const BOSS_PULSE = 0.22;
 /** A mine's core blinks by this fraction: armed. */
 const MINE_PULSE = 0.55;
+/** Pickups spin at this rate (rad/s) and sit in a halo: matte means rock, hot means threat, haloed means take it. */
+const PICKUP_SPIN = 3.2;
+const HALO_SCALE = 3.1;
+const HALO_HZ = 2;
 /** Glow quads sit in the plane of the bodies. The hole's halo goes behind the whole accretion disc, so the core stays black and the disc takes no seam. */
 const HALO_Z = -2.6;
 /** In front of every mesh, so the flash covers the near half of the accretion disc too. */
@@ -30,7 +34,7 @@ const FLASH_Z = 6;
 
 const MESH_INDEX = Object.fromEntries(MESH_IDS.map((id, i) => [id, i])) as { [M in MeshId]: number };
 const MESH_CAP = MAX_BODIES + 5;
-const GLOW_CAP = MAX_BODIES + PARTICLE_CAP + 16;
+const GLOW_CAP = 2 * MAX_BODIES + PARTICLE_CAP + 16;
 const HOLE_SCALE = BLACKHOLE_RADIUS / MESHES.accretion.radius;
 const BOSS_MESH: { readonly [B in BossId]: number } = {
   warden: MESH_INDEX.warden, hive: MESH_INDEX.hive, core: MESH_INDEX.core,
@@ -101,6 +105,8 @@ export function createBatch(): MeshBatch {
     }
   }
   pulseOf[Kind.Mine] = MINE_PULSE;
+  const haloOf = new Float32Array(KIND_COUNT);
+  for (let k = 0; k < KIND_COUNT; k++) if (ARCHETYPES[k as Kind].role === 'pickup') haloOf[k] = ARCHETYPES[k as Kind].radius * HALO_SCALE;
   const bossBurst = Float32Array.from(MESH_IDS.flatMap((id) => signature(id)));
   const counts = new Uint32Array(MESH_IDS.length);
   const starts = new Uint32Array(MESH_IDS.length);
@@ -181,10 +187,14 @@ export function createBatch(): MeshBatch {
       const m = bodyMesh[i];
       if (m < 0) continue;
       const k = bodies.kind[i];
-      putMesh(cursor[m]++,
-        bodies.px[i] + (bodies.x[i] - bodies.px[i]) * alpha,
-        bodies.py[i] + (bodies.y[i] - bodies.py[i]) * alpha,
-        bodies.rot[i], scaleOf[k * VARIANTS + (bodies.variant[i] % VARIANTS)],
+      const x = bodies.px[i] + (bodies.x[i] - bodies.px[i]) * alpha;
+      const y = bodies.py[i] + (bodies.y[i] - bodies.py[i]) * alpha;
+      const halo = haloOf[k];
+      if (halo > 0) {
+        const pulse = 0.5 + 0.15 * Math.sin(time * HALO_HZ * 6.2832 + x);
+        putGlow(x, y, halo, halo, burst[k * 3], burst[k * 3 + 1], burst[k * 3 + 2], pulse);
+      }
+      putMesh(cursor[m]++, x, y, halo > 0 ? time * PICKUP_SPIN + x : bodies.rot[i], scaleOf[k * VARIANTS + (bodies.variant[i] % VARIANTS)],
         tintOf[k * 3], tintOf[k * 3 + 1], tintOf[k * 3 + 2], 0, 0, MODE_TUMBLE, pulseOf[k]);
     }
 
