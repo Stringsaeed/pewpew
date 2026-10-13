@@ -4,8 +4,12 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSequence, wi
 import { BOSSES, levelSpec, type LevelNumber } from '../levels';
 import type { Hud as HudState } from '../sim';
 import { RAPID_WINDOW_MS } from '../shell/loop';
+import { useEdges } from './edges';
 import { Rocket } from './Rocket';
-import { color, font, inset, space } from './theme';
+import { color, font, space } from './theme';
+
+/** How far the top scrim reaches below the safe area. */
+const SCRIM_BELOW = 62;
 
 interface Props {
   readonly hud: HudState;
@@ -28,11 +32,13 @@ export function Hud({ hud, level, onPause, auto, rapid }: Props) {
     prevLives.current = hud.lives;
   }, [hud.lives, hurt]);
   const vignette = useAnimatedStyle(() => ({ opacity: hurt.value }));
+  const edges = useEdges();
+  const safe = { paddingTop: edges.top - space.sm, paddingLeft: edges.left, paddingRight: edges.right };
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.vignette, vignette]} />
-      <View pointerEvents="box-none" style={styles.root}>
-        <View pointerEvents="none" style={styles.topScrim} />
+      <View pointerEvents="box-none" style={[styles.root, safe]}>
+        <View pointerEvents="none" style={[styles.topScrim, { height: edges.top + SCRIM_BELOW }]} />
         <View pointerEvents="box-none" style={styles.row}>
           <View style={styles.left}>
             <Score score={hud.score} />
@@ -162,8 +168,8 @@ function Chip({ text, tint, drain }: { readonly text: string; readonly tint: str
 
 const styles = StyleSheet.create({
   /** Darkens the top band so hazards passing under the score and buttons stay readable. */
-  topScrim: { position: 'absolute', top: 0, left: 0, right: 0, height: 120, experimental_backgroundImage: 'linear-gradient(rgba(5,5,15,0.75), transparent)' },
-  root: { position: 'absolute', top: 0, left: 0, right: 0, paddingTop: inset.top - space.sm, paddingHorizontal: space.md, gap: space.sm },
+  topScrim: { position: 'absolute', top: 0, left: 0, right: 0, experimental_backgroundImage: 'linear-gradient(rgba(5,5,15,0.75), transparent)' },
+  root: { position: 'absolute', top: 0, left: 0, right: 0, gap: space.sm },
   row: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   left: { gap: space.xs, flexShrink: 1 },
   scoreBox: { alignSelf: 'flex-start', transformOrigin: 'left center' },

@@ -4,15 +4,15 @@ import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, wi
 import { LEVELS, tierOf, type BossId, type LevelNumber } from '../levels';
 import { isUnlocked, type Save } from '../save';
 import { Button } from './Button';
+import { useEdges } from './edges';
 import { Gear } from './Gear';
-import { color, font, inset, space } from './theme';
+import { color, font, space } from './theme';
 
 const COLUMNS = 5;
 const FADE_MS = 160;
 const STAGGER_MS = 12;
 const STAGGER_CAP_MS = 300;
 const GAP = space.sm;
-const SIDE = space.md;
 const TIERS = [1, 2, 3] as const;
 /** Nebula tints from the audit: each tier's header band and divider. */
 const TIER_TINT = { 1: '#2a1450', 2: '#0c3a44', 3: '#3e0c22' } as const;
@@ -28,12 +28,14 @@ interface Props {
 
 export function LevelSelect({ save, onPick, onBack, onSettings }: Props) {
   const { width } = useWindowDimensions();
+  const edges = useEdges();
   /** The first open level without stars: the one the player should tap next. */
   const next = LEVELS.find((l) => isUnlocked(save, l.n) && save.levels[l.n - 1].stars === 0)?.n;
-  const tile = (width - SIDE * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
+  const tile = (width - edges.left - edges.right - GAP * (COLUMNS - 1)) / COLUMNS;
+  const sides = { paddingLeft: edges.left, paddingRight: edges.right };
   return (
-    <Animated.View entering={FadeIn.duration(FADE_MS)} exiting={FadeOut.duration(FADE_MS)} style={styles.root}>
-      <View style={styles.header}>
+    <Animated.View entering={FadeIn.duration(FADE_MS)} exiting={FadeOut.duration(FADE_MS)} style={[styles.root, { paddingTop: edges.top }]}>
+      <View style={[styles.header, sides]}>
         <Button label="BACK" tone="ghost" onPress={onBack} style={styles.small} hitSlop={6} />
         <Text accessibilityRole="header" style={styles.title}>LEVELS</Text>
         <Pressable
@@ -46,7 +48,7 @@ export function LevelSelect({ save, onPick, onBack, onSettings }: Props) {
           {({ pressed }) => <Gear tint={pressed ? color.bg : color.textDim} />}
         </Pressable>
       </View>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: edges.bottom + space.lg }]} showsVerticalScrollIndicator={false}>
         {TIERS.map((tier) => {
           const specs = LEVELS.filter((l) => tierOf(l.n) === tier);
           const earned = specs.reduce((sum, l) => sum + save.levels[l.n - 1].stars, 0);
@@ -56,12 +58,12 @@ export function LevelSelect({ save, onPick, onBack, onSettings }: Props) {
                 accessible
                 accessibilityRole="header"
                 accessibilityLabel={`Sector ${tier}, ${earned} of ${specs.length * 3} stars`}
-                style={[styles.band, { backgroundColor: TIER_TINT[tier], borderBottomColor: TIER_LINE[tier] }]}
+                style={[styles.band, sides, { backgroundColor: TIER_TINT[tier], borderBottomColor: TIER_LINE[tier] }]}
               >
                 <Text maxFontSizeMultiplier={1.3} style={styles.bandText}>{`SECTOR ${tier}`}</Text>
                 <Text maxFontSizeMultiplier={1.3} style={styles.bandStars}>{`★ ${earned}/${specs.length * 3}`}</Text>
               </View>
-              <View style={styles.grid}>
+              <View style={[styles.grid, sides]}>
                 {specs.map((spec) => {
                   const rec = save.levels[spec.n - 1];
                   return (
@@ -140,18 +142,18 @@ function Lock() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, paddingTop: inset.top },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SIDE, paddingBottom: space.md },
+  root: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: space.md },
   title: { fontFamily: font.family, fontSize: font.title, fontWeight: '800', letterSpacing: 4, color: color.cyan },
   gear: { width: 44, height: 44, borderRadius: 14, borderWidth: 2, borderColor: color.dim, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center' },
   gearPressed: { backgroundColor: color.dim },
   small: { minWidth: 0, minHeight: 44, justifyContent: 'center', paddingVertical: space.sm, paddingHorizontal: space.md },
-  content: { gap: space.md, paddingBottom: inset.bottom + space.lg },
+  content: { gap: space.md },
   tier: { gap: space.sm },
-  band: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SIDE, paddingVertical: space.sm, borderBottomWidth: 1 },
+  band: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: space.sm, borderBottomWidth: 1 },
   bandText: { fontFamily: font.family, fontSize: font.body, fontWeight: '800', letterSpacing: 4, color: color.text },
   bandStars: { fontFamily: font.family, fontSize: font.body, fontWeight: '700', letterSpacing: 2, color: color.yellow },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, paddingHorizontal: SIDE },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   bossName: { fontFamily: font.family, fontSize: 10, fontWeight: '700', letterSpacing: 1 },
   tile: { borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center', gap: 2 },
   num: { fontFamily: font.family, fontSize: 20, fontWeight: '800' },

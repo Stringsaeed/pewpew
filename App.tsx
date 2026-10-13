@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 import { Canvas, useCanvasRef } from 'react-native-webgpu';
 import { createAudio, type AudioEngine } from './src/audio';
 import { createDevTools, type DevTools } from './src/dev/qa';
@@ -70,7 +71,7 @@ export default function App() {
   const reduceMotion = useGpu(canvasRef, loop, sinksRef.current, tools?.sample ?? null);
 
   return (
-    <View style={styles.root}>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics} style={styles.root}>
       <StatusBar style="light" />
       <Canvas ref={canvasRef} style={StyleSheet.absoluteFill} />
       {save === null ? null : (
@@ -90,7 +91,7 @@ export default function App() {
           reduceMotion={reduceMotion}
         />
       )}
-    </View>
+    </SafeAreaProvider>
   );
 }
 
