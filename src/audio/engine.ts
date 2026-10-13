@@ -71,10 +71,15 @@ export function parseToken(tok: string): Token {
   if (tok === '.') return { k: 'rest' };
   const m = /^([A-G])(#|b)?([0-8])$/.exec(tok);
   if (!m) throw new Error(`bad token ${tok}`);
-  let semi = SEMI[m[1]!]!;
+  const letter = m[1];
+  const octave = m[3];
+  if (letter === undefined || octave === undefined) throw new Error(`bad token ${tok}`);
+  const base = SEMI[letter];
+  if (base === undefined) throw new Error(`bad token ${tok}`);
+  let semi = base;
   if (m[2] === '#') semi += 1;
   else if (m[2] === 'b') semi -= 1;
-  return { k: 'note', midi: (Number(m[3]) + 1) * 12 + semi };
+  return { k: 'note', midi: (Number(octave) + 1) * 12 + semi };
 }
 
 export function parseSteps(steps: string): Token[] {
@@ -84,10 +89,14 @@ export function parseSteps(steps: string): Token[] {
 function spansOf(steps: readonly Token[]): { index: number; midi: number; durSteps: number }[] {
   const out: { index: number; midi: number; durSteps: number }[] = [];
   for (let i = 0; i < steps.length; i++) {
-    const step = steps[i]!;
-    if (step.k !== 'note') continue;
+    const step = steps[i];
+    if (step === undefined || step.k !== 'note') continue;
     let durSteps = 1;
-    while (i + durSteps < steps.length && steps[i + durSteps]!.k === 'hold') durSteps += 1;
+    while (i + durSteps < steps.length) {
+      const next = steps[i + durSteps];
+      if (next === undefined || next.k !== 'hold') break;
+      durSteps += 1;
+    }
     out.push({ index: i, midi: step.midi, durSteps });
   }
   return out;
@@ -100,9 +109,13 @@ export function songColumns(song: Song): Cell[][] {
   const stepDur = 60 / song.bpm / 4;
   const cols: Cell[][] = Array.from({ length: n }, () => []);
   parsed.forEach((steps, vi) => {
-    const patch = song.voices[vi]!.patch;
+    const voice = song.voices[vi];
+    if (voice === undefined) throw new Error(`unequal voices in song at ${song.bpm} bpm`);
+    const patch = voice.patch;
     for (const span of spansOf(steps)) {
-      cols[span.index]!.push({ patch, midi: span.midi, dur: span.durSteps * stepDur });
+      const col = cols[span.index];
+      if (col === undefined) throw new Error(`unequal voices in song at ${song.bpm} bpm`);
+      col.push({ patch, midi: span.midi, dur: span.durSteps * stepDur });
     }
   });
   return cols;
@@ -136,32 +149,6 @@ export function envelopePlan(when: number, dur: number, env: Env, peak: number):
   const tD = Math.min(tA + env.d, tEnd);
   const tR = tEnd + Math.max(env.r, 0.001);
   return { floor, top, sus, t0, tA, tD, tEnd, tR };
-}
-
-export function ampAt(t: number, dur: number, env: Env, peak: number): number {
-  const p = envelopePlan(0, dur, env, peak);
-  if (t < 0 || t >= p.tR) return 0;
-  if (t < p.tA && p.tA > p.t0) return p.floor * (p.top / p.floor) ** (t / p.tA);
-  if (t < p.tD && p.tD > p.tA) return p.top * (p.sus / p.top) ** ((t - p.tA) / (p.tD - p.tA));
-  if (t < p.tEnd) return p.sus;
-  return p.sus * (p.floor / p.sus) ** ((t - p.tEnd) / (p.tR - p.tEnd));
-}
-
-export function pitchAt(t: number, midi: number, sweep: Patch['sweep'], cents = 0): number {
-  const f0 = midiHz(midi) * 2 ** (cents / 1200);
-  if (!sweep || sweep.time <= 0) return f0;
-  const f1 = f0 * 2 ** (sweep.semis / 12);
-  const u = Math.min(Math.max(t, 0) / sweep.time, 1);
-  return f0 * (f1 / f0) ** u;
-}
-
-export function cutoffAt(t: number, filter: NonNullable<Patch['filter']>, env: Env): number {
-  const f0 = Math.max(20, filter.hz);
-  if (filter.envHz === undefined) return f0;
-  const f1 = Math.max(20, filter.hz + filter.envHz);
-  const span = Math.max(env.a + env.d, 0.001);
-  const u = Math.min(Math.max(t, 0), span) / span;
-  return f0 * (f1 / f0) ** u;
 }
 
 function applyEnvelope(param: ParamLike, plan: EnvelopePlan): void {
@@ -316,7 +303,11 @@ export function createAudio(factory: AudioFactory = defaultFactory()): AudioEngi
   function playSfx(id: SfxId, when: number): void {
     const sfx = SFX[id];
     const list = (capped.get(id) ?? []).filter((voice) => voice.until > when);
-    while (list.length >= sfx.maxVoices) list.shift()!.stop(when);
+    while (list.length >= sfx.maxVoices) {
+      const oldest = list.shift();
+      if (oldest === undefined) break;
+      oldest.stop(when);
+    }
     let until = when;
     const stops: Array<(t: number) => void> = [];
     for (const note of sfx.notes) {

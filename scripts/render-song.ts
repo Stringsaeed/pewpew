@@ -1,8 +1,34 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import {
-  SFX, SONGS, ampAt, cutoffAt, patchOf, pitchAt, sfxHits, songHits,
-  type Hit, type MusicId, type Patch, type SfxId, type Wave,
+  SFX, SONGS, envelopePlan, midiHz, patchOf, sfxHits, songHits,
+  type Env, type Hit, type MusicId, type Patch, type SfxId, type Wave,
 } from '../src/audio';
+
+function ampAt(t: number, dur: number, env: Env, peak: number): number {
+  const p = envelopePlan(0, dur, env, peak);
+  if (t < 0 || t >= p.tR) return 0;
+  if (t < p.tA && p.tA > p.t0) return p.floor * (p.top / p.floor) ** (t / p.tA);
+  if (t < p.tD && p.tD > p.tA) return p.top * (p.sus / p.top) ** ((t - p.tA) / (p.tD - p.tA));
+  if (t < p.tEnd) return p.sus;
+  return p.sus * (p.floor / p.sus) ** ((t - p.tEnd) / (p.tR - p.tEnd));
+}
+
+function pitchAt(t: number, midi: number, sweep: Patch['sweep'], cents = 0): number {
+  const f0 = midiHz(midi) * 2 ** (cents / 1200);
+  if (!sweep || sweep.time <= 0) return f0;
+  const f1 = f0 * 2 ** (sweep.semis / 12);
+  const u = Math.min(Math.max(t, 0) / sweep.time, 1);
+  return f0 * (f1 / f0) ** u;
+}
+
+function cutoffAt(t: number, filter: NonNullable<Patch['filter']>, env: Env): number {
+  const f0 = Math.max(20, filter.hz);
+  if (filter.envHz === undefined) return f0;
+  const f1 = Math.max(20, filter.hz + filter.envHz);
+  const span = Math.max(env.a + env.d, 0.001);
+  const u = Math.min(Math.max(t, 0), span) / span;
+  return f0 * (f1 / f0) ** u;
+}
 
 const RATE = 44100;
 const OUT_DIR = '/tmp/pewpew-audio';
