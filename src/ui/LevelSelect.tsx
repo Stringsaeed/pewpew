@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { LEVELS, tierOf, type BossId, type LevelNumber } from '../levels';
 import { isUnlocked, type Save } from '../save';
 import { Button } from './Button';
@@ -8,6 +8,9 @@ import { Gear } from './Gear';
 import { color, font, inset, space } from './theme';
 
 const COLUMNS = 5;
+const FADE_MS = 160;
+const STAGGER_MS = 12;
+const STAGGER_CAP_MS = 300;
 const GAP = space.sm;
 const SIDE = space.md;
 const TIERS = [1, 2, 3] as const;
@@ -29,7 +32,7 @@ export function LevelSelect({ save, onPick, onBack, onSettings }: Props) {
   const next = LEVELS.find((l) => isUnlocked(save, l.n) && save.levels[l.n - 1].stars === 0)?.n;
   const tile = (width - SIDE * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
   return (
-    <View style={styles.root}>
+    <Animated.View entering={FadeIn.duration(FADE_MS)} exiting={FadeOut.duration(FADE_MS)} style={styles.root}>
       <View style={styles.header}>
         <Button label="BACK" tone="ghost" onPress={onBack} style={styles.small} hitSlop={6} />
         <Text accessibilityRole="header" style={styles.title}>LEVELS</Text>
@@ -73,7 +76,7 @@ export function LevelSelect({ save, onPick, onBack, onSettings }: Props) {
           );
         })}
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -86,32 +89,34 @@ function Tile({ n, size, stars, best, open, next, boss, onPick }: TileProps) {
   const accent = boss !== null ? color.magenta : color.cyan;
   const label = `Level ${n}${boss !== null ? `, boss ${BOSS_NAME[boss]}` : ''}, ${open ? `${stars} of 3 stars${best > 0 ? `, best ${best}` : ''}` : 'locked'}`;
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !open }}
-      onPress={open ? () => onPick(n) : undefined}
-      style={({ pressed }) => [
-        styles.tile,
-        {
-          width: size, height: size * 1.15,
-          borderColor: open ? accent : color.dim,
-          borderStyle: open ? 'solid' : 'dashed',
-          backgroundColor: pressed && open ? accent : 'rgba(255,255,255,0.04)',
-          transform: [{ scale: pressed && open ? 0.95 : 1 }],
-        },
-      ]}
-    >
-      <Text maxFontSizeMultiplier={1.3} style={[styles.num, { color: open ? accent : color.textDim }]}>{n}</Text>
-      {boss !== null ? <Text maxFontSizeMultiplier={1.3} style={[styles.bossName, { color: open ? accent : color.textDim }]}>{BOSS_NAME[boss]}</Text> : null}
-      {open ? (
-        <Text maxFontSizeMultiplier={1.3} style={styles.stars}>
-          <Text maxFontSizeMultiplier={1.3} style={styles.earned}>{'★'.repeat(stars)}</Text>
-          <Text maxFontSizeMultiplier={1.3} style={styles.empty}>{'☆'.repeat(3 - stars)}</Text>
-        </Text>
-      ) : <Lock />}
-      {next ? <Pulse tint={accent} /> : null}
-    </Pressable>
+    <Animated.View entering={FadeIn.duration(FADE_MS).delay(Math.min((n - 1) * STAGGER_MS, STAGGER_CAP_MS))}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ disabled: !open }}
+        onPress={open ? () => onPick(n) : undefined}
+        style={({ pressed }) => [
+          styles.tile,
+          {
+            width: size, height: size * 1.15,
+            borderColor: open ? accent : color.dim,
+            borderStyle: open ? 'solid' : 'dashed',
+            backgroundColor: pressed && open ? accent : 'rgba(255,255,255,0.04)',
+            transform: [{ scale: pressed && open ? 0.95 : 1 }],
+          },
+        ]}
+      >
+        <Text maxFontSizeMultiplier={1.3} style={[styles.num, { color: open ? accent : color.textDim }]}>{n}</Text>
+        {boss !== null ? <Text maxFontSizeMultiplier={1.3} style={[styles.bossName, { color: open ? accent : color.textDim }]}>{BOSS_NAME[boss]}</Text> : null}
+        {open ? (
+          <Text maxFontSizeMultiplier={1.3} style={styles.stars}>
+            <Text maxFontSizeMultiplier={1.3} style={styles.earned}>{'★'.repeat(stars)}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.empty}>{'☆'.repeat(3 - stars)}</Text>
+          </Text>
+        ) : <Lock />}
+        {next ? <Pulse tint={accent} /> : null}
+      </Pressable>
+    </Animated.View>
   );
 }
 

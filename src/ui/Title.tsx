@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import type { Save } from '../save';
 import { Button } from './Button';
 import { color, font, space } from './theme';
@@ -14,7 +15,7 @@ interface Props {
 export function Title({ save, onPlay, onSettings }: Props) {
   const total = save.levels.reduce((sum, r) => sum + r.stars, 0);
   return (
-    <View style={styles.root}>
+    <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(160)} style={styles.root}>
       <View style={styles.logoBlock}>
         <View style={styles.logoBox}>
           <Text accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.logo, styles.logoGhost]}>PEWPEW</Text>
@@ -29,7 +30,7 @@ export function Title({ save, onPlay, onSettings }: Props) {
       <Text accessibilityLabel={`Best total stars ${total} of ${save.levels.length * 3}`} style={styles.total}>
         {`BEST TOTAL  ★ ${total} / ${save.levels.length * 3}`}
       </Text>
-    </View>
+    </Animated.View>
   );
 }
 
