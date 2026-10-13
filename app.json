@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "PewPew",
+    "slug": "pewpew",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.saeed.pewpew",
+      "requireFullScreen": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.saeed.pewpew"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "newArchEnabled": true,
+    "plugins": [
+      "react-native-audio-api",
+      "./plugins/with-ios-scene-delegate"
+    ]
+  }
+}

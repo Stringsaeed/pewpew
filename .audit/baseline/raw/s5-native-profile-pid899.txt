@@ -1,0 +1,632 @@
+samples (1 ms each) for pid 899: 8368; span 21.4 s
+
+### com.facebook.react.runtime.JavaScript (0x15bdd55) (PewPew, pid: 899): 4599 ms (55.0%)
+  self (leaf) top:
+     1982  hermes::vm::CallResult<hermes::vm::HermesValue, (hermes::vm::detail::CallResultSpecialize)2> hermes::vm::Interpreter::interpretFunction<false, false>(hermes::vm::Runtime&, hermes::vm::InterpreterState&) [hermesvm]
+      273  hermes::vm::doGetByIdSlowPath_RJS(hermes::vm::Runtime&, hermes::vm::PinnedHermesValue*, hermes::inst::Inst const*, hermes::vm::CodeBlock*, unsigned int, bool) [hermesvm]
+       76  hermes::vm::toNumber_RJS(hermes::vm::Runtime&, hermes::vm::Handle<hermes::vm::HermesValue>) [hermesvm]
+       60  hermes::vm::mathMin(void*, hermes::vm::Runtime&) [hermesvm]
+       60  hermes::vm::GCBase::GCCallbacksWrapper<hermes::vm::Runtime>::getCurrentIPSlow() const [hermesvm]
+       59  hermes::vm::Interpreter::handleCallSlowPath(hermes::vm::Runtime&, hermes::vm::PinnedHermesValue*) [hermesvm]
+       51  _platform_memset_pattern16 [libsystem_platform.dylib]
+       47  hermes::readSignedLEB128(llvh::ArrayRef<unsigned char>, unsigned int, long long*) [hermesvm]
+       45  hermes::vm::Environment* hermes::vm::GCBase::makeA<hermes::vm::Environment, (hermes::vm::HasFinalizer)0, (hermes::vm::LongLived)0, (hermes::vm::CanBeLarge)0, (hermes::vm::MayFail)0, hermes::vm::Runtime&, hermes::vm::Handle<hermes::vm::Environment>&, unsigned int&>(unsigned int, hermes::vm::Runtime&, hermes::vm::Handle<hermes::vm::Environment>&, unsigned int&) [hermesvm]
+       38  objc_msgSend [libobjcMsgSend.dylib]
+       37  hermes::vm::mathMax(void*, hermes::vm::Runtime&) [hermesvm]
+       34  hermes::vm::JSObject::getNamedWithReceiver_RJS(hermes::vm::Handle<hermes::vm::JSObject>, hermes::vm::Runtime&, hermes::vm::SymbolID, hermes::vm::Handle<hermes::vm::HermesValue>, hermes::vm::PropOpFlags, hermes::vm::ReadPropertyCacheEntry*) [hermesvm]
+  leaf by library:
+     3290  hermesvm
+      597  PewPew.debug.dylib
+      266  React
+       93  libsystem_platform.dylib
+       72  libsystem_kernel.dylib
+       71  libsystem_malloc.dylib
+  inclusive top:
+     4599  +[RCTJSThreadManager runRunLoop] [React]
+     4599  _pthread_start [libsystem_pthread.dylib]
+     4599  __NSThread__start__ [Foundation]
+     4599  thread_start [libsystem_pthread.dylib]
+     4599  _CFRunLoopRunSpecificWithOptions [CoreFoundation]
+     4598  __CFRunLoopRun [CoreFoundation]
+     4525  __CFRunLoopDoBlocks [CoreFoundation]
+     4520  __CFRUNLOOP_IS_CALLING_OUT_TO_A_BLOCK__ [CoreFoundation]
+     4520  invocation function for block in facebook::react::RCTMessageThread::runAsync(std::__1::function<void ()>) [React]
+     4517  std::__1::function<void ()>::operator()() const [React]
+     4517  std::__1::__function::__value_func<void ()>::operator()[abi:de190102]() const [React]
+     4517  decltype(std::declval<facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0&>()()) std::__1::__invoke[abi:de190102]<facebook::react:
+     4517  void std::__1::__invoke_void_return_wrapper<void, true>::__call[abi:de190102]<facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0&
+     4517  std::__1::__function::__func<facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0, std::__1::allocator<facebook::react::RCTMessageT
+     4517  facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0::operator()() const [React]
+     4517  std::__1::__function::__alloc_func<facebook::react::RCTMessageThread::runOnQueue(std::__1::function<void ()>&&)::$_0, std::__1::allocator<facebook::react::RCTMe
+     4516  _ZNSt3__110__function6__funcIZZN8facebook5react13ReactInstanceC1ENS_10unique_ptrINS3_9JSRuntimeENS_14default_deleteIS6_EEEENS_10shared_ptrINS3_18MessageQueueThr
+     4516  facebook::react::tryAndReturnError(std::__1::function<void ()> const&) [React]
+     4516  facebook::react::RCTMessageThread::tryFunc(std::__1::function<void ()> const&) [React]
+     4515  _ZNSt3__110__function12__alloc_funcIZZN8facebook5react13ReactInstanceC1ENS_10unique_ptrINS3_9JSRuntimeENS_14default_deleteIS6_EEEENS_10shared_ptrINS3_18MessageQ
+     4515  _ZZZN8facebook5react13ReactInstanceC1ENSt3__110unique_ptrINS0_9JSRuntimeENS2_14default_deleteIS4_EEEENS2_10shared_ptrINS0_18MessageQueueThreadEEENS8_INS0_12Time
+     4515  _ZNSt3__18__invokeB8de190102IRZZN8facebook5react13ReactInstanceC1ENS_10unique_ptrINS2_9JSRuntimeENS_14default_deleteIS5_EEEENS_10shared_ptrINS2_18MessageQueueTh
+     4515  _ZNSt3__128__invoke_void_return_wrapperIvLb1EE6__callB8de190102IJRZZN8facebook5react13ReactInstanceC1ENS_10unique_ptrINS4_9JSRuntimeENS_14default_deleteIS7_EEEE
+     4514  std::__1::function<void (facebook::jsi::Runtime&)>::operator()(facebook::jsi::Runtime&) const [React]
+     4514  std::__1::__function::__func<facebook::react::RuntimeScheduler_Modern::scheduleEventLoop()::$_0, std::__1::allocator<facebook::react::RuntimeScheduler_Modern::s
+     4514  std::__1::__function::__value_func<void (facebook::jsi::Runtime&)>::operator()[abi:de190102](facebook::jsi::Runtime&) const [React]
+     4513  facebook::react::RuntimeScheduler_Modern::scheduleEventLoop()::$_0::operator()(facebook::jsi::Runtime&) const [React]
+     4513  std::__1::__function::__alloc_func<facebook::react::RuntimeScheduler_Modern::scheduleEventLoop()::$_0, std::__1::allocator<facebook::react::RuntimeScheduler_Mod
+     4513  decltype(std::declval<facebook::react::RuntimeScheduler_Modern::scheduleEventLoop()::$_0&>()(std::declval<facebook::jsi::Runtime&>())) std::__1::__invoke[abi:de
+     4513  facebook::react::RuntimeScheduler_Modern::runEventLoop(facebook::jsi::Runtime&) [React]
+     4513  void std::__1::__invoke_void_return_wrapper<void, true>::__call[abi:de190102]<facebook::react::RuntimeScheduler_Modern::scheduleEventLoop()::$_0&, facebook::jsi
+     4502  facebook::react::RuntimeScheduler_Modern::runEventLoopTick(facebook::jsi::Runtime&, facebook::react::Task&) [React]
+     4480  facebook::react::RuntimeScheduler_Modern::executeTask(facebook::jsi::Runtime&, facebook::react::Task&, bool) const [React]
+     4479  facebook::react::Task::execute(facebook::jsi::Runtime&, bool) [React]
+     4446  facebook::hermes::(anonymous namespace)::HermesRuntimeImpl::call(facebook::jsi::Function const&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsig
+     4446  facebook::jsi::Function::call(facebook::jsi::IRuntime&, facebook::jsi::Value const*, unsigned long) const [React]
+     4416  hermes::vm::Runtime::interpretFunctionImpl(hermes::vm::CodeBlock*) [hermesvm]
+     4416  hermes::vm::JSFunction::_callImpl(hermes::vm::Handle<hermes::vm::Callable>, hermes::vm::Runtime&) [hermesvm]
+     4411  hermes::vm::CallResult<hermes::vm::HermesValue, (hermes::vm::detail::CallResultSpecialize)2> hermes::vm::Interpreter::interpretFunction<false, false>(hermes::vm
+     4301  facebook::hermes::(anonymous namespace)::HermesRuntimeImpl::HFContext::func(void*, hermes::vm::Runtime&) [hermesvm]
+
+### AURemoteIO::IOThread (0x15c4196) (PewPew, pid: 899): 2866 ms (34.2%)
+  self (leaf) top:
+      129  bool std::__1::__less<void, void>::operator()[abi:dee220106]<float, float>(float const&, float const&) const [PewPew.debug.dylib]
+      103  audioapi::ParamRenderQueue::computeValueAtTime(double) [PewPew.debug.dylib]
+       94  audioapi::PeriodicWave::doInterpolation(float, float, float, audioapi::AlignedAudioArray<64ul> const&, audioapi::AlignedAudioArray<64ul> const&) const [PewPew.debug.dylib]
+       90  std::__1::__optional_storage_base<audioapi::RenderParamEvent, false>::__get[abi:dee220106]() & [PewPew.debug.dylib]
+       87  std::__1::__optional_storage_base<audioapi::RenderParamEvent, false>::has_value[abi:dee220106]() const [PewPew.debug.dylib]
+       76  float const& std::__1::clamp[abi:dee220106]<float, std::__1::__less<void, void>>(float const&, float const&, float const&, std::__1::__less<void, void>) [PewPew.debug.dylib]
+       75  void std::__1::__cxx_atomic_store[abi:dee220106]<float>(std::__1::__cxx_atomic_base_impl<float>*, float, std::__1::memory_order) [PewPew.debug.dylib]
+       72  std::__1::__function::__value_func<float (double, double, float, float, double)>::operator()[abi:dee220106](double&&, double&&, float&&, float&&, double&&) const [PewPew.debug.dylib]
+       63  float std::__1::__lerp[abi:dee220106]<float>(float, float, float) [PewPew.debug.dylib]
+       62  std::__1::optional<audioapi::RenderParamEvent>::operator->[abi:dee220106]() [PewPew.debug.dylib]
+       58  std::__1::__atomic_base<float, false>::store[abi:dee220106](float, std::__1::memory_order) [PewPew.debug.dylib]
+       56  std::__1::__optional_storage_base<float, false>::has_value[abi:dee220106]() const [PewPew.debug.dylib]
+  leaf by library:
+     2595  PewPew.debug.dylib
+      193  libc++abi.dylib
+       43  libsystem_m.dylib
+       11  libsystem_platform.dylib
+        6  libsystem_kernel.dylib
+        5  libsystem_malloc.dylib
+  inclusive top:
+     2866  _pthread_start [libsystem_pthread.dylib]
+     2866  thread_start [libsystem_pthread.dylib]
+     2866  void* caulk::thread_proxy<std::__1::tuple<caulk::thread::attributes, AURemoteIO::IOThread::IOThread(AURemoteIO&, caulk::thread::attributes const&, caulk::mach::
+     2864  mshMIGPerform [libEmbeddedSystemAUs.dylib]
+     2860  _XPerformIO [libEmbeddedSystemAUs.dylib]
+     2859  ausdk::AUBase::DoRender(unsigned int&, AudioTimeStamp const&, unsigned int, unsigned int, AudioBufferList&) [libEmbeddedSystemAUs.dylib]
+     2859  AURemoteIO::PerformIO(unsigned int, unsigned int, unsigned int, AudioTimeStamp const&, AudioTimeStamp const&, AudioBufferList const*, AudioBufferList*, int&) [l
+     2857  AUConverterBase::RenderBus(unsigned int&, AudioTimeStamp const&, unsigned int, unsigned int) [libEmbeddedSystemAUs.dylib]
+     2857  AURemoteIO::RenderBus(unsigned int&, AudioTimeStamp const&, unsigned int, unsigned int) [libEmbeddedSystemAUs.dylib]
+     2857  ausdk::AUInputElement::PullInputWithBufferList(unsigned int&, AudioTimeStamp const&, unsigned int, unsigned int, AudioBufferList&) [libEmbeddedSystemAUs.dylib]
+     2856  invocation function for block in CopyInnerInputBlock(AUGraphNodeBaseV3*) [AVFAudio]
+     2856  AUHALOutputUnit_ProvideOutputCallback(void*, unsigned int*, AudioTimeStamp const*, unsigned int, unsigned int, AudioBufferList*) [AudioToolboxCore]
+     2855  invocation function for block in AUGraphNodeBaseV3::AllocateInputBlock() [AVFAudio]
+     2854  __26-[AUAudioUnit renderBlock]_block_invoke [AudioToolboxCore]
+     2854  ausdk::AUMethodRender(void*, unsigned int*, AudioTimeStamp const*, unsigned int, unsigned int, AudioBufferList*) [libEmbeddedSystemAUs.dylib]
+     2853  AUMultiChannelMixer::MixerCore::MasterMix(AudioTimeStamp const&, unsigned int) [libEmbeddedSystemAUs.dylib]
+     2853  AUMultiChannelMixer::Render(unsigned int&, AudioTimeStamp const&, unsigned int) [libEmbeddedSystemAUs.dylib]
+     2852  AUMultiChannelMixer::MixerCore::Mix(InputRenderOrderInfo const*, int, AudioTimeStamp const&, unsigned int) [libEmbeddedSystemAUs.dylib]
+     2850  AUMultiChannelMixer::MixerCore::RenderInput(unsigned int, AudioTimeStamp const&, unsigned int) [libEmbeddedSystemAUs.dylib]
+     2850  AUAudioUnitV2Bridge_Renderer::renderInputProc(void*, unsigned int*, AudioTimeStamp const*, unsigned int, unsigned int, AudioBufferList*) [AudioToolboxCore]
+     2850  invocation function for block in AUGraphMultiBusNode::AllocateInputBlock() [AVFAudio]
+     2849  invocation function for block in AUGraphSourceNodeV3::AllocateInputBlock() [AVFAudio]
+     2849  __51+[AVAudioSourceNode pullInputBlockFromRenderBlock:]_block_invoke [AVFAudio]
+     2848  __65-[NativeAudioPlayer initWithRenderAudio:sampleRate:channelCount:]_block_invoke [PewPew.debug.dylib]
+     2845  audioapi::IOSAudioPlayer::deliverOutputBuffers(AudioBufferList*, int) [PewPew.debug.dylib]
+     2845  invocation function for block in audioapi::IOSAudioPlayer::IOSAudioPlayer(std::__1::function<void (std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>>, int
+     2841  audioapi::AudioDestinationNode::renderAudio(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int) [PewPew.debug.dylib]
+     2841  void std::__1::__invoke_r[abi:dee220106]<void, audioapi::AudioContext::renderAudio()::$_0&, std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>>, int>(audio
+     2841  audioapi::AudioContext::renderAudio()::$_0::operator()(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int) const [PewPew.debug.dylib]
+     2841  void std::__1::__invoke_void_return_wrapper<void, true>::__call[abi:dee220106]<audioapi::AudioContext::renderAudio()::$_0&, std::__1::shared_ptr<audioapi::Align
+     2841  std::__1::function<void (std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>>, int)>::operator()(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>>, i
+     2841  std::__1::__function::__value_func<void (std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>>, int)>::operator()[abi:dee220106](std::__1::shared_ptr<audioap
+     2841  std::__1::__function::__func<audioapi::AudioContext::renderAudio()::$_0, void (std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>>, int)>::operator()(std::
+     2841  std::__1::__invoke_result_impl<void, audioapi::AudioContext::renderAudio()::$_0&, std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>>, int>::type std::__1:
+     2421  audioapi::AudioNode::processAudio(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int, bool) [PewPew.debug.dylib]
+     2414  audioapi::AudioNode::processInputs(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int, bool) [PewPew.debug.dylib]
+     1705  audioapi::AudioParam::processARateParam(int, double) [PewPew.debug.dylib]
+     1625  audioapi::AudioParam::getValueAtTime(double) [PewPew.debug.dylib]
+     1320  audioapi::OscillatorNode::processNode(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int) [PewPew.debug.dylib]
+     1155  audioapi::ParamRenderQueue::computeValueAtTime(double) [PewPew.debug.dylib]
+
+### PewPew (0x15cd391) (PewPew, pid: 899): 224 ms (2.7%)
+  self (leaf) top:
+       56  start_wqthread [libsystem_pthread.dylib]
+       33  mach_msg2_trap [libsystem_kernel.dylib]
+       14  kevent_id [libsystem_kernel.dylib]
+       11  madvise [libsystem_kernel.dylib]
+        7  objc_msgSend [libobjcMsgSend.dylib]
+        4  _dispatch_workloop_worker_thread [libdispatch.dylib]
+        4  _xzm_malloc_tc [libsystem_malloc.dylib]
+        3  -[__NSDictionaryM objectForKeyedSubscript:] [CoreFoundation]
+        3  objc_msgSendSuper2 [libobjcMsgSend.dylib]
+        3  bool objc::DenseMapBase<objc::DenseMap<DisguisedPtr<objc_object const>, unsigned long, (anonymous namespace)::RefcountMapValuePurgeable, objc::DenseMapInfo<DisguisedPtr<objc_object const>>, objc::detail::DenseMapPair<DisguisedPtr<objc_object const>, unsigned long>>, DisguisedPtr<objc_object const>, unsigned long, (anonymous namespace)::RefcountMapValuePurgeable, objc::DenseMapInfo<DisguisedPtr<objc_object const>>, objc::detail::DenseMapPair<DisguisedPtr<objc_object const>, unsigned long>>::LookupBucketFor<DisguisedPtr<objc_object const>>(DisguisedPtr<objc_object const> const&, objc::detail::DenseMapPair<DisguisedPtr<objc_object const>, unsigned long>*&) [libobjc.A.dylib]
+        3  _xzm_xzone_malloc_tiny [libsystem_malloc.dylib]
+        3  _free [libsystem_malloc.dylib]
+  leaf by library:
+       63  libsystem_kernel.dylib
+       60  libsystem_pthread.dylib
+       17  libobjc.A.dylib
+       15  libdispatch.dylib
+       14  libsystem_malloc.dylib
+       10  libobjcMsgSend.dylib
+  inclusive top:
+      224  start_wqthread [libsystem_pthread.dylib]
+      168  _dispatch_workloop_worker_thread [libdispatch.dylib]
+      167  _pthread_wqthread [libsystem_pthread.dylib]
+      161  _dispatch_root_queue_drain_deferred_wlh [libdispatch.dylib]
+      156  _dispatch_lane_invoke [libdispatch.dylib]
+      150  _dispatch_lane_serial_drain [libdispatch.dylib]
+       93  _dispatch_client_callout [libdispatch.dylib]
+       56  qos_class_main [libsystem_pthread.dylib]
+       54  _dispatch_mach_invoke [libdispatch.dylib]
+       53  _dispatch_source_invoke [libdispatch.dylib]
+       53  _dispatch_mach_msg_invoke [libdispatch.dylib]
+       52  _dispatch_continuation_pop [libdispatch.dylib]
+       50  _xpc_connection_mach_event [libxpc.dylib]
+       50  _dispatch_client_callout4 [libdispatch.dylib]
+       43  _xpc_connection_call_event_handler [libxpc.dylib]
+       43  handleMainConnectionReplies(NSObject<OS_xpc_object>*, MTLSimDevice*) [MTLSimDriver]
+       37  -[_MTLCommandQueue _submitAvailableCommandBuffers] [Metal]
+       37  -[MTLSimCommandQueue submitCommandBuffers:count:] [MTLSimDriver]
+       33  mach_msg2_trap [libsystem_kernel.dylib]
+       33  mach_msg2_internal [libsystem_kernel.dylib]
+       31  xpc_connection_send_message [libxpc.dylib]
+       28  _dispatch_call_block_and_release [libdispatch.dylib]
+       21  _xpc_serializer_pack [libxpc.dylib]
+       21  _xpc_connection_pack_message [libxpc.dylib]
+       20  _xpc_dictionary_apply_node_f [libxpc.dylib]
+       20  _xpc_dictionary_serialize [libxpc.dylib]
+       18  __47+[FPCAMetalLayerState _updateLayerState:block:]_block_invoke [FramePacing]
+       18  dispatch_data_make_memory_entry [libdispatch.dylib]
+       18  _xpc_dictionary_serialize_apply [libxpc.dylib]
+       18  _xpc_array_serialize [libxpc.dylib]
+       18  _xpc_data_serialize [libxpc.dylib]
+       18  mach_make_memory_entry_64 [libsystem_kernel.dylib]
+       17  -[_MTLCommandBuffer didScheduleWithStartTime:endTime:error:] [Metal]
+       15  -[MTLSimCommandBuffer dealloc] [MTLSimDriver]
+       15  dispatch_async [libdispatch.dylib]
+       14  _dispatch_kq_poll [libdispatch.dylib]
+       14  kevent_id [libsystem_kernel.dylib]
+       12  xzm_segment_group_free_chunk [libsystem_malloc.dylib]
+       12  -[MTLResourceList dealloc] [Metal]
+       12  _dispatch_event_loop_poke [libdispatch.dylib]
+
+### PewPew (0x15cb91d) (PewPew, pid: 899): 223 ms (2.7%)
+  self (leaf) top:
+       59  start_wqthread [libsystem_pthread.dylib]
+       18  mach_msg2_trap [libsystem_kernel.dylib]
+       14  _xzm_xzone_malloc_tiny [libsystem_malloc.dylib]
+       14  kevent_id [libsystem_kernel.dylib]
+       10  objc_msgSend [libobjcMsgSend.dylib]
+        4  bool objc::DenseMapBase<objc::DenseMap<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>, objc::DenseMapValueInfo<objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>, objc::DenseMapInfo<DisguisedPtr<objc_object>>, objc::detail::DenseMapPair<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>>, DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>, objc::DenseMapValueInfo<objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>, objc::DenseMapInfo<DisguisedPtr<objc_object>>, objc::detail::DenseMapPair<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>>::LookupBucketFor<DisguisedPtr<objc_object>>(DisguisedPtr<objc_object> const&, objc::detail::DenseMapPair<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>> const*&) const [libobjc.A.dylib]
+        4  __bsdthread_ctl [libsystem_kernel.dylib]
+        3  __psynch_cvbroad [libsystem_kernel.dylib]
+        3  objc_release_x8 [libobjc.A.dylib]
+        2  os_unfair_lock_lock_with_options [libsystem_platform.dylib]
+        2  objc_retain [libobjc.A.dylib]
+        2  _dispatch_workloop_worker_thread [libdispatch.dylib]
+  leaf by library:
+       64  libsystem_pthread.dylib
+       47  libsystem_kernel.dylib
+       21  libsystem_malloc.dylib
+       19  libobjc.A.dylib
+       13  libdispatch.dylib
+       12  CoreFoundation
+  inclusive top:
+      223  start_wqthread [libsystem_pthread.dylib]
+      164  _pthread_wqthread [libsystem_pthread.dylib]
+      163  _dispatch_workloop_worker_thread [libdispatch.dylib]
+      156  _dispatch_root_queue_drain_deferred_wlh [libdispatch.dylib]
+      154  _dispatch_lane_invoke [libdispatch.dylib]
+      152  _dispatch_lane_serial_drain [libdispatch.dylib]
+       97  _dispatch_client_callout [libdispatch.dylib]
+       59  qos_class_main [libsystem_pthread.dylib]
+       55  _dispatch_mach_invoke [libdispatch.dylib]
+       54  _dispatch_mach_msg_invoke [libdispatch.dylib]
+       45  _xpc_connection_mach_event [libxpc.dylib]
+       45  _dispatch_client_callout4 [libdispatch.dylib]
+       44  _dispatch_source_invoke [libdispatch.dylib]
+       44  _dispatch_continuation_pop [libdispatch.dylib]
+       43  _xpc_connection_call_event_handler [libxpc.dylib]
+       42  handleMainConnectionReplies(NSObject<OS_xpc_object>*, MTLSimDevice*) [MTLSimDriver]
+       32  -[_MTLCommandQueue _submitAvailableCommandBuffers] [Metal]
+       32  _dispatch_call_block_and_release [libdispatch.dylib]
+       30  -[MTLSimCommandQueue submitCommandBuffers:count:] [MTLSimDriver]
+       26  __47+[FPCAMetalLayerState _updateLayerState:block:]_block_invoke [FramePacing]
+       23  -[_MTLCommandBuffer didScheduleWithStartTime:endTime:error:] [Metal]
+       21  xpc_connection_send_message [libxpc.dylib]
+       18  mach_msg2_trap [libsystem_kernel.dylib]
+       18  mach_msg2_internal [libsystem_kernel.dylib]
+       17  MTLDispatchListApply [Metal]
+       15  _xpc_connection_pack_message [libxpc.dylib]
+       14  _xzm_xzone_malloc_tiny [libsystem_malloc.dylib]
+       14  kevent_id [libsystem_kernel.dylib]
+       13  _xpc_dictionary_serialize [libxpc.dylib]
+       13  dispatch_async [libdispatch.dylib]
+       13  _dispatch_kq_poll [libdispatch.dylib]
+       12  _xpc_serializer_pack [libxpc.dylib]
+       12  dispatch_data_make_memory_entry [libdispatch.dylib]
+       12  _xpc_dictionary_serialize_apply [libxpc.dylib]
+       12  _xpc_dictionary_apply_node_f [libxpc.dylib]
+       12  _xpc_array_serialize [libxpc.dylib]
+       12  _xpc_data_serialize [libxpc.dylib]
+       12  mach_make_memory_entry_64 [libsystem_kernel.dylib]
+       12  invoke_presented_callback(void*) [QuartzCore]
+       12  layer_presented(_CAImageQueue*, unsigned int, double, double, double, void*) [QuartzCore]
+
+### PewPew (0x15cdcc6) (PewPew, pid: 899): 222 ms (2.7%)
+  self (leaf) top:
+       72  start_wqthread [libsystem_pthread.dylib]
+       16  kevent_id [libsystem_kernel.dylib]
+       14  mach_msg2_trap [libsystem_kernel.dylib]
+       10  objc_msgSend [libobjcMsgSend.dylib]
+        5  madvise [libsystem_kernel.dylib]
+        4  bool objc::DenseMapBase<objc::DenseMap<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>, objc::DenseMapValueInfo<objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>, objc::DenseMapInfo<DisguisedPtr<objc_object>>, objc::detail::DenseMapPair<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>>, DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>, objc::DenseMapValueInfo<objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>, objc::DenseMapInfo<DisguisedPtr<objc_object>>, objc::detail::DenseMapPair<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>>>::LookupBucketFor<DisguisedPtr<objc_object>>(DisguisedPtr<objc_object> const&, objc::detail::DenseMapPair<DisguisedPtr<objc_object>, objc::SmallDenseMap<void const*, objc::ObjcAssociation, 1u, objc::DenseMapValueInfo<objc::ObjcAssociation>, objc::DenseMapInfo<void const*>, objc::detail::DenseMapPair<void const*, objc::ObjcAssociation>>> const*&) const [libobjc.A.dylib]
+        4  _xzm_xzone_malloc_tiny [libsystem_malloc.dylib]
+        4  _xzm_free_tc [libsystem_malloc.dylib]
+        3  _kernelrpc_mach_port_deallocate_trap [libsystem_kernel.dylib]
+        3  _platform_memmove [libsystem_platform.dylib]
+        2  _dispatch_lane_serial_drain [libdispatch.dylib]
+        2  mach_msg [libsystem_kernel.dylib]
+  leaf by library:
+       76  libsystem_pthread.dylib
+       48  libsystem_kernel.dylib
+       18  libdispatch.dylib
+       18  libobjc.A.dylib
+       15  libsystem_malloc.dylib
+       10  CoreFoundation
+  inclusive top:
+      222  start_wqthread [libsystem_pthread.dylib]
+      150  _dispatch_workloop_worker_thread [libdispatch.dylib]
+      150  _pthread_wqthread [libsystem_pthread.dylib]
+      140  _dispatch_root_queue_drain_deferred_wlh [libdispatch.dylib]
+      135  _dispatch_lane_invoke [libdispatch.dylib]
+      132  _dispatch_lane_serial_drain [libdispatch.dylib]
+       80  _dispatch_client_callout [libdispatch.dylib]
+       72  qos_class_main [libsystem_pthread.dylib]
+       45  _dispatch_mach_invoke [libdispatch.dylib]
+       45  _dispatch_mach_msg_invoke [libdispatch.dylib]
+       43  _dispatch_source_invoke [libdispatch.dylib]
+       42  _dispatch_continuation_pop [libdispatch.dylib]
+       40  _dispatch_client_callout4 [libdispatch.dylib]
+       39  _xpc_connection_mach_event [libxpc.dylib]
+       33  _xpc_connection_call_event_handler [libxpc.dylib]
+       32  handleMainConnectionReplies(NSObject<OS_xpc_object>*, MTLSimDevice*) [MTLSimDriver]
+       23  -[_MTLCommandQueue _submitAvailableCommandBuffers] [Metal]
+       23  _dispatch_call_block_and_release [libdispatch.dylib]
+       22  -[MTLSimCommandQueue submitCommandBuffers:count:] [MTLSimDriver]
+       18  -[_MTLCommandBuffer didScheduleWithStartTime:endTime:error:] [Metal]
+       17  __47+[FPCAMetalLayerState _updateLayerState:block:]_block_invoke [FramePacing]
+       16  invocation function for block in CA::MachPortUtil::ClientIPC::create(char const*) [QuartzCore]
+       16  _dispatch_kq_poll [libdispatch.dylib]
+       16  kevent_id [libsystem_kernel.dylib]
+       14  xpc_connection_send_message [libxpc.dylib]
+       14  mach_msg2_trap [libsystem_kernel.dylib]
+       14  mach_msg2_internal [libsystem_kernel.dylib]
+       14  dispatch_async [libdispatch.dylib]
+       14  _dispatch_event_loop_poke [libdispatch.dylib]
+       14  MTLDispatchListApply [Metal]
+       12  -[OS_xpc_object dealloc] [libxpc.dylib]
+       10  _xpc_serializer_pack [libxpc.dylib]
+       10  _xpc_connection_pack_message [libxpc.dylib]
+       10  _xpc_dictionary_apply_node_f [libxpc.dylib]
+       10  _XImageQueueDidComposite [QuartzCore]
+       10  objc_msgSend [libobjcMsgSend.dylib]
+       10  _dispatch_set_priority_and_voucher_slow [libdispatch.dylib]
+        9  layer_composited(_CAImageQueue*, void*, unsigned int, unsigned int) [QuartzCore]
+        9  CAImageQueueDidComposite [QuartzCore]
+        9  __45-[_MTLCommandBuffer presentDrawable:options:]_block_invoke [Metal]
+
+### Main Thread (0x15bdb90) (PewPew, pid: 899): 125 ms (1.5%)
+  self (leaf) top:
+       10  mach_msg2_trap [libsystem_kernel.dylib]
+        6  _kernelrpc_mach_port_extract_member_trap [libsystem_kernel.dylib]
+        5  __kdebug_trace64 [libsystem_kernel.dylib]
+        5  objc_msgSend [libobjcMsgSend.dylib]
+        3  A8_mark_constmask(BltDepth const*, BltOp const*, MODE) [CoreGraphics]
+        2  bool objc::DenseMapBase<objc::DenseMap<DisguisedPtr<objc_object const>, unsigned long, (anonymous namespace)::RefcountMapValuePurgeable, objc::DenseMapInfo<DisguisedPtr<objc_object const>>, objc::detail::DenseMapPair<DisguisedPtr<objc_object const>, unsigned long>>, DisguisedPtr<objc_object const>, unsigned long, (anonymous namespace)::RefcountMapValuePurgeable, objc::DenseMapInfo<DisguisedPtr<objc_object const>>, objc::detail::DenseMapPair<DisguisedPtr<objc_object const>, unsigned long>>::LookupBucketFor<DisguisedPtr<objc_object const>>(DisguisedPtr<objc_object const> const&, objc::detail::DenseMapPair<DisguisedPtr<objc_object const>, unsigned long>*&) [libobjc.A.dylib]
+        2  mk_timer_cancel [libsystem_kernel.dylib]
+        2  madvise [libsystem_kernel.dylib]
+        2  kdebug_trace [libsystem_kernel.dylib]
+        2  CFRelease [CoreFoundation]
+        2  std::__1::__shared_weak_count::lock() [libc++.1.dylib]
+        2  mach_absolute_time [libsystem_kernel.dylib]
+  leaf by library:
+       36  libsystem_kernel.dylib
+       22  React
+       16  PewPew.debug.dylib
+       10  CoreFoundation
+        5  libobjc.A.dylib
+        5  libsystem_pthread.dylib
+  inclusive top:
+      125  static AppDelegate.$main() [PewPew.debug.dylib]
+      125  static UIApplicationDelegate.main() [PewPew.debug.dylib]
+      125  start_sim [dyld_sim]
+      125  GSEventRunModal [GraphicsServices]
+      125  0x1c53d7c30 [UIKitCore]
+      125  __debug_main_executable_dylib_entry_point [PewPew.debug.dylib]
+      125  UIApplicationMain [UIKitCore]
+      125  __CFRunLoopRun [CoreFoundation]
+      125  _CFRunLoopRunSpecificWithOptions [CoreFoundation]
+      125  start [dyld]
+       42  __CFRUNLOOP_IS_SERVICING_THE_MAIN_DISPATCH_QUEUE__ [CoreFoundation]
+       41  _dispatch_main_queue_drain [libdispatch.dylib]
+       41  _dispatch_main_queue_callback_4CF [libdispatch.dylib]
+       39  __CFRunLoopDoSource1 [CoreFoundation]
+       38  __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE1_PERFORM_FUNCTION__ [CoreFoundation]
+       38  __CFMachPortPerform [CoreFoundation]
+       36  UC::DriverCore::continueProcessing() [UpdateCycle]
+       35  <deduplicated_symbol> [libdispatch.dylib]
+       34  _dispatch_client_callout [libdispatch.dylib]
+       31  schedulerStepScheduledMainSectionContinue [UIKitCore]
+       31  _UIUpdateSequenceRunNext [UIKitCore]
+       21  _dispatch_call_block_and_release [libdispatch.dylib]
+       19  CA::Display::DisplayLink::dispatch_items(unsigned long long, unsigned long long, unsigned long long) [QuartzCore]
+       19  CA::Display::DisplayLink::dispatch_deferred_display_links(unsigned int) [QuartzCore]
+       19  CA::Display::DisplayLinkItem::dispatch_(CA::SignPost::Interval<(CA::SignPost::CAEventCode)835322056>&) [QuartzCore]
+       19  -[AnimationFrameQueue executeQueue:] [PewPew.debug.dylib]
+       16  facebook::jsi::Function::call(facebook::jsi::IRuntime&, std::initializer_list<facebook::jsi::Value>) const [PewPew.debug.dylib]
+       16  facebook::jsi::Function::call(facebook::jsi::IRuntime&, facebook::jsi::Value const*, unsigned long) const [PewPew.debug.dylib]
+       16  std::__1::__function::__func<worklets::AnimationFrameBatchinator::flush()::$_0, void (double)>::operator()(double&&) [PewPew.debug.dylib]
+       16  facebook::jsi::Value worklets::WorkletRuntime::callGuarded<double&>(facebook::jsi::Function const&, std::__1::optional<std::__1::basic_string<char, std::__1::ch
+       16  facebook::jsi::Value worklets::WorkletRuntime::runSync<double&>(facebook::jsi::Function const&, double&) const [PewPew.debug.dylib]
+       16  worklets::AnimationFrameBatchinator::flush()::$_0::operator()(double) const [PewPew.debug.dylib]
+       16  std::__1::__function::__value_func<void (double)>::operator()[abi:dee220106](double&&) const [PewPew.debug.dylib]
+       16  facebook::jsi::Value facebook::jsi::Function::call<double&>(facebook::jsi::IRuntime&, double&) const [PewPew.debug.dylib]
+       16  std::__1::function<void (double)>::operator()(double) const [PewPew.debug.dylib]
+       16  std::__1::__invoke_result_impl<void, worklets::AnimationFrameBatchinator::flush()::$_0&, double>::type std::__1::__invoke[abi:dee220106]<worklets::AnimationFram
+       16  void std::__1::__invoke_r[abi:dee220106]<void, worklets::AnimationFrameBatchinator::flush()::$_0&, double>(worklets::AnimationFrameBatchinator::flush()::$_0&, d
+       16  void std::__1::__invoke_void_return_wrapper<void, true>::__call[abi:dee220106]<worklets::AnimationFrameBatchinator::flush()::$_0&, double>(worklets::AnimationFr
+       15  facebook::jsi::WithRuntimeDecorator<worklets::AroundLock, facebook::jsi::Runtime, facebook::jsi::Runtime>::call(facebook::jsi::Function const&, facebook::jsi::V
+       15  facebook::jsi::WithRuntimeDecorator<worklets::WorkletsReentrancyCheck, facebook::jsi::Runtime, facebook::jsi::Runtime>::call(facebook::jsi::Function const&, fac
+
+### com.apple.audio.IOThread.client (0x15bde12) (PewPew, pid: 899): 38 ms (0.5%)
+  self (leaf) top:
+       13  mach_msg2_trap [libsystem_kernel.dylib]
+        2  TimestampSanitizer::IOCycle(bool, AudioTimeStamp const*, AudioTimeStamp const*, int, AudioTimeStamp*, AudioTimeStamp*) [AudioToolbox]
+        2  _platform_memmove [libsystem_platform.dylib]
+        2  HALB_Mutex::Lock() [CoreAudio]
+        2  DYLD-STUB$$kdebug_trace [CoreAudio]
+        1  void MixLoop<MCF32toF32>::MonoUnity<MixLoop<MCF32toF32>::Assign>(unsigned int, float const*, unsigned int, float*, unsigned int) [libEmbeddedSystemAUs.dylib]
+        1  XAudioUnit::Render(unsigned int*, AudioTimeStamp const*, unsigned int, unsigned int, AudioBufferList*) [AudioToolbox]
+        1  _platform_memset [libsystem_platform.dylib]
+        1  std::__1::chrono::steady_clock::now() [libc++.1.dylib]
+        1  HALC_ProxyIOContext::IOWorkLoop() [CoreAudio]
+        1  AQMEIO_HAL::IOProc(AudioBufferList const*, AudioTimeStamp const*, AudioBufferList*, AudioTimeStamp const*) [AudioToolbox]
+        1  ausdk::AUBase::DoRender(unsigned int&, AudioTimeStamp const&, unsigned int, unsigned int, AudioBufferList&) [libEmbeddedSystemAUs.dylib]
+  leaf by library:
+       13  libsystem_kernel.dylib
+        6  AudioToolbox
+        5  CoreAudio
+        5  AudioToolboxCore
+        3  libEmbeddedSystemAUs.dylib
+        3  libsystem_platform.dylib
+  inclusive top:
+       38  thread_start [libsystem_pthread.dylib]
+       38  HALC_IOThread::Entry(void*) [CoreAudio]
+       38  _pthread_start [libsystem_pthread.dylib]
+       38  invocation function for block in HALC_ProxyIOContext::HALC_ProxyIOContext(unsigned int, unsigned int) [CoreAudio]
+       33  HALC_ProxyIOContext::IOWorkLoop() [CoreAudio]
+       22  AQMEIO_HAL::_IOProc(unsigned int, AudioTimeStamp const*, AudioBufferList const*, AudioTimeStamp const*, AudioBufferList*, AudioTimeStamp const*, void*) [AudioTo
+       20  AQMEIO_HAL::IOProc(AudioBufferList const*, AudioTimeStamp const*, AudioBufferList*, AudioTimeStamp const*) [AudioToolbox]
+       13  mach_msg2_internal [libsystem_kernel.dylib]
+       13  mach_msg [libsystem_kernel.dylib]
+       13  mach_msg2_trap [libsystem_kernel.dylib]
+       13  mach_msg_overwrite [libsystem_kernel.dylib]
+       13  MESubmixGraph::render(int, AudioBufferList&, AudioTimeStamp const&) [AudioToolbox]
+       13  MEOutputStreamClient::IO_PerformOutput(int, AudioBufferList&, AudioTimeStamp const&) [AudioToolbox]
+       11  XAudioUnit::Render(unsigned int*, AudioTimeStamp const*, unsigned int, unsigned int, AudioBufferList*) [AudioToolbox]
+       10  ausdk::AUBase::DoRender(unsigned int&, AudioTimeStamp const&, unsigned int, unsigned int, AudioBufferList&) [libEmbeddedSystemAUs.dylib]
+       10  ausdk::AUMethodRender(void*, unsigned int*, AudioTimeStamp const*, unsigned int, unsigned int, AudioBufferList*) [libEmbeddedSystemAUs.dylib]
+        9  AUMultiChannelMixer::MixerCore::RenderInput(unsigned int, AudioTimeStamp const&, unsigned int) [libEmbeddedSystemAUs.dylib]
+        9  AUMultiChannelMixer::MixerCore::Mix(InputRenderOrderInfo const*, int, AudioTimeStamp const&, unsigned int) [libEmbeddedSystemAUs.dylib]
+        9  AUMultiChannelMixer::MixerCore::MasterMix(AudioTimeStamp const&, unsigned int) [libEmbeddedSystemAUs.dylib]
+        9  AUMultiChannelMixer::Render(unsigned int&, AudioTimeStamp const&, unsigned int) [libEmbeddedSystemAUs.dylib]
+        5  RemoteIOClient::IONodeClient::DequeueOutput(XAudioTimeStamp const&, unsigned int, AudioBufferList&, bool) [AudioToolbox]
+        5  AQMETapInsert::Render(unsigned int*, AudioTimeStamp const*, unsigned int, unsigned int, AudioBufferList*) [AudioToolbox]
+        5  RemoteIOClient::PerformIO(AudioTimeStamp const*, unsigned int, AudioTimeStamp const*, unsigned int, AudioBufferList*, bool) [AudioToolbox]
+        5  MEMixerChannel::MixInputProc(void*, unsigned int*, AudioTimeStamp const*, unsigned int, unsigned int, AudioBufferList*) [AudioToolbox]
+        5  AudioConverterConvertComplexBuffer [AudioToolboxCore]
+        4  with_resolved_rt(OpaqueAudioConverter*, caulk::rt_function_ref<int (AudioConverterAPI*)>) [AudioToolboxCore]
+        3  AUMultiChannelMixer::MixerCore::SumInput(unsigned int, AUMultiChannelMixerInputElement*, CAStreamBasicDescription const&, CAStreamBasicDescription::CommonPCMFor
+        2  TimestampSanitizer::IOCycle(bool, AudioTimeStamp const*, AudioTimeStamp const*, int, AudioTimeStamp*, AudioTimeStamp*) [AudioToolbox]
+        2  _platform_memmove [libsystem_platform.dylib]
+        2  HALB_Mutex::Lock() [CoreAudio]
+        2  DYLD-STUB$$kdebug_trace [CoreAudio]
+        2  CA::OpaqueObject::Lookup<AudioConverterAPI>::Lookup(OpaqueAudioConverter*) [AudioToolboxCore]
+        2  acv2::AudioConverterV2::convertComplexBuffer(unsigned int, AudioBufferList const*, AudioBufferList*) [AudioToolboxCore]
+        2  int caulk::rt_function_ref<int (AudioConverterAPI*)>::functor_invoker<AudioConverterConvertComplexBuffer::$_0>(caulk::details::erased_callable_rt<int (AudioConv
+        1  void MixLoop<MCF32toF32>::MonoUnity<MixLoop<MCF32toF32>::Assign>(unsigned int, float const*, unsigned int, float*, unsigned int) [libEmbeddedSystemAUs.dylib]
+        1  _platform_memset [libsystem_platform.dylib]
+        1  std::__1::chrono::steady_clock::now() [libc++.1.dylib]
+        1  AUMultiChannelMixer::MixerCore::CheckProcessInPlace(unsigned int, AudioBufferList&) [libEmbeddedSystemAUs.dylib]
+        1  HALB_IOThread::HasBeenStopped() const [CoreAudio]
+        1  pthread_self [libsystem_pthread.dylib]
+
+### hades (0x15bdd56) (PewPew, pid: 899): 33 ms (0.4%)
+  self (leaf) top:
+        6  hermes::vm::HadesGC::incrementalMark(unsigned long) [hermesvm]
+        3  __xzm_xzone_free_to_freelist_chunk [libsystem_malloc.dylib]
+        3  madvise [libsystem_kernel.dylib]
+        1  std::__1::__hash_table<std::__1::__hash_value_type<facebook::jsi::Runtime*, std::__1::unordered_set<audioapi::RuntimeLifecycleListener*, std::__1::hash<audioapi::RuntimeLifecycleListener*>, std::__1::equal_to<audioapi::RuntimeLifecycleListener*>, std::__1::allocator<audioapi::RuntimeLifecycleListener*>>>, std::__1::__unordered_map_hasher<facebook::jsi::Runtime*, std::__1::pair<facebook::jsi::Runtime* const, std::__1::unordered_set<audioapi::RuntimeLifecycleListener*, std::__1::hash<audioapi::RuntimeLifecycleListener*>, std::__1::equal_to<audioapi::RuntimeLifecycleListener*>, std::__1::allocator<audioapi::RuntimeLifecycleListener*>>>, std::__1::hash<facebook::jsi::Runtime*>, std::__1::equal_to<facebook::jsi::Runtime*>>, std::__1::__unordered_map_equal<facebook::jsi::Runtime*, std::__1::pair<facebook::jsi::Runtime* const, std::__1::unordered_set<audioapi::RuntimeLifecycleListener*, std::__1::hash<audioapi::RuntimeLifecycleListener*>, std::__1::equal_to<audioapi::RuntimeLifecycleListener*>, std::__1::allocator<audioapi::RuntimeLifecycleListener*>>>, std::__1::equal_to<facebook::jsi::Runtime*>, std::__1::hash<facebook::jsi::Runtime*>>, std::__1::allocator<std::__1::pair<facebook::jsi::Runtime* const, std::__1::unordered_set<audioapi::RuntimeLifecycleListener*, std::__1::hash<audioapi::RuntimeLifecycleListener*>, std::__1::equal_to<audioapi::RuntimeLifecycleListener*>, std::__1::allocator<audioapi::RuntimeLifecycleListener*>>>>>::end() [PewPew.debug.dylib]
+        1  std::__1::allocator_traits<std::__1::allocator<std::__1::__hash_node<std::__1::__hash_value_type<facebook::jsi::Runtime*, std::__1::map<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, facebook::jsi::Function, std::__1::less<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>, std::__1::allocator<std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, facebook::jsi::Function>>>>, void*>>>::deallocate[abi:dee220106](std::__1::allocator<std::__1::__hash_node<std::__1::__hash_value_type<facebook::jsi::Runtime*, std::__1::map<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, facebook::jsi::Function, std::__1::less<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>, std::__1::allocator<std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, facebook::jsi::Function>>>>, void*>>&, std::__1::__hash_node<std::__1::__hash_value_type<facebook::jsi::Runtime*, std::__1::map<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, facebook::jsi::Function, std::__1::less<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>, std::__1::allocator<std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, facebook::jsi::Function>>>>, void*>*, unsigned long) [PewPew.debug.dylib]
+        1  std::__1::__hash_table<std::__1::__hash_value_type<facebook::jsi::Runtime*, std::__1::map<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, facebook::jsi::Function, std::__1::less<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>, std::__1::allocator<std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, facebook::jsi::Function>>>>, std::__1::__unordered_map_hasher<facebook::jsi::Runtime*, std::__1::pair<facebook::jsi::Runtime* const, std::__1::map<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, facebook::jsi::Function, std::__1::less<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>, std::__1::allocator<std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, facebook::jsi::Function>>>>, std::__1::hash<facebook::jsi::Runtime*>, std::__1::equal_to<facebook::jsi::Runtime*>>, std::__1::__unordered_map_equal<facebook::jsi::Runtime*, std::__1::pair<facebook::jsi::Runtime* const, std::__1::map<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, facebook::jsi::Function, std::__1::less<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>, std::__1::allocator<std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, facebook::jsi::Function>>>>, std::__1::equal_to<facebook::jsi::Runtime*>, std::__1::hash<facebook::jsi::Runtime*>>, std::__1::allocator<std::__1::pair<facebook::jsi::Runtime* const, std::__1::map<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, facebook::jsi::Function, std::__1::less<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>, std::__1::allocator<std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, facebook::jsi::Function>>>>>>::begin() [PewPew.debug.dylib]
+        1  facebook::hermes::debugger::CallFrameInfo::~CallFrameInfo() [React]
+        1  std::__1::__murmur2_or_cityhash<unsigned long, 64ul>::__hash_len_0_to_16[abi:de190102](char const*, unsigned long) [React]
+        1  std::__1::__hash_table<std::__1::__hash_value_type<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, void (audioapi::JsiHostObject::*)(facebook::jsi::Runtime&, facebook::jsi::Value const&)>, std::__1::__unordered_map_hasher<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, void (audioapi::JsiHostObject::*)(facebook::jsi::Runtime&, facebook::jsi::Value const&)>, std::__1::hash<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>, std::__1::equal_to<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>>, std::__1::__unordered_map_equal<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, void (audioapi::JsiHostObject::*)(facebook::jsi::Runtime&, facebook::jsi::Value const&)>, std::__1::equal_to<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>, std::__1::hash<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>>>, std::__1::allocator<std::__1::pair<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>> const, void (audioapi::JsiHostObject::*)(facebook::jsi::Runtime&, facebook::jsi::Value const&)>>>::__deallocate_node_list[abi:dee220106](std::__1::__hash_node_base<std::__1::__hash_node<std::__1::__hash_value_type<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, void (audioapi::JsiHostObject::*)(facebook::jsi::Runtime&, facebook::jsi::Value const&)>, void*>*>*) [PewPew.debug.dylib]
+        1  std::__1::__tree<audioapi::ParamEvent, audioapi::ParamQueueBase<audioapi::ParamEvent>::EventComparator, audioapi::no_pmr::PoolAllocator<audioapi::ParamEvent, audioapi::no_pmr::FixedBlockPool<64ul, 120ul, 8ul>>>::__tree_deleter::operator()[abi:dee220106](std::__1::__tree_node<audioapi::ParamEvent, void*>*) [PewPew.debug.dylib]
+        1  facebook::react::jsinspector_modern::ConsoleTaskId::ConsoleTaskId(void*) [React]
+        1  facebook::jsi::Function::~Function() [PewPew.debug.dylib]
+  leaf by library:
+       12  PewPew.debug.dylib
+        8  hermesvm
+        7  React
+        3  libsystem_malloc.dylib
+        3  libsystem_kernel.dylib
+  inclusive top:
+       33  hermes::vm::HadesGC::Executor::worker() [hermesvm]
+       33  std::__1::__function::__func<hermes::vm::HadesGC::collectOGInBackground()::$_0, std::__1::allocator<hermes::vm::HadesGC::collectOGInBackground()::$_0>, void ()>
+       33  thread_start [libsystem_pthread.dylib]
+       33  hermes::vm::HadesGC::incrementalCollect(bool) [hermesvm]
+       33  _pthread_start [libsystem_pthread.dylib]
+       33  void* std::__1::__thread_proxy[abi:nn190102]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>
+       27  hermes::vm::HadesGC::OldGen::sweepNext(bool) [hermesvm]
+       16  facebook::hermes::(anonymous namespace)::HermesRuntimeImpl::JsiProxy::~JsiProxy() [hermesvm]
+       11  audioapi::JsiHostObject::~JsiHostObject() [PewPew.debug.dylib]
+       11  std::__1::__shared_weak_count::__release_shared[abi:dee220106]() [PewPew.debug.dylib]
+       10  std::__1::shared_ptr<audioapi::AudioParamHostObject>::~shared_ptr[abi:dee220106]() [PewPew.debug.dylib]
+       10  std::__1::__shared_count::__release_shared[abi:de190102]() [React]
+       10  std::__1::__shared_weak_count::__release_shared[abi:de190102]() [React]
+        9  std::__1::__shared_count::__release_shared[abi:dee220106]() [PewPew.debug.dylib]
+        9  facebook::hermes::(anonymous namespace)::HermesRuntimeImpl::HFContext::finalize(void*) [hermesvm]
+        9  std::__1::__function::__alloc_func<facebook::react::jsinspector_modern::(anonymous namespace)::consoleCreateTask(facebook::jsi::Runtime&, facebook::jsi::Value c
+        9  std::__1::__compressed_pair_elem<facebook::react::jsinspector_modern::(anonymous namespace)::consoleCreateTask(facebook::jsi::Runtime&, facebook::jsi::Value con
+        9  std::__1::__compressed_pair<facebook::react::jsinspector_modern::(anonymous namespace)::consoleCreateTask(facebook::jsi::Runtime&, facebook::jsi::Value const*, 
+        9  facebook::react::jsinspector_modern::(anonymous namespace)::consoleCreateTask(facebook::jsi::Runtime&, facebook::jsi::Value const*, unsigned long, facebook::rea
+        9  std::__1::shared_ptr<facebook::react::jsinspector_modern::ConsoleTaskContext>::~shared_ptr[abi:de190102]() [React]
+        9  std::__1::__shared_ptr_emplace<facebook::react::jsinspector_modern::ConsoleTaskContext, std::__1::allocator<facebook::react::jsinspector_modern::ConsoleTaskCont
+        9  void std::__1::__shared_ptr_emplace<facebook::react::jsinspector_modern::ConsoleTaskContext, std::__1::allocator<facebook::react::jsinspector_modern::ConsoleTas
+        9  std::__1::__function::__func<facebook::react::jsinspector_modern::(anonymous namespace)::consoleCreateTask(facebook::jsi::Runtime&, facebook::jsi::Value const*,
+        9  std::__1::__shared_ptr_emplace<audioapi::OscillatorNodeHostObject, std::__1::allocator<audioapi::OscillatorNodeHostObject>>::__on_zero_shared() [PewPew.debug.dy
+        9  audioapi::OscillatorNodeHostObject::~OscillatorNodeHostObject() [PewPew.debug.dylib]
+        9  void std::__1::__destroy_at[abi:dee220106]<audioapi::OscillatorNodeHostObject>(audioapi::OscillatorNodeHostObject*) [PewPew.debug.dylib]
+        9  void std::__1::allocator_traits<std::__1::allocator<audioapi::OscillatorNodeHostObject>>::destroy[abi:dee220106]<audioapi::OscillatorNodeHostObject, 0>(std::__1
+        9  void std::__1::__shared_ptr_emplace<audioapi::OscillatorNodeHostObject, std::__1::allocator<audioapi::OscillatorNodeHostObject>>::__on_zero_shared_impl[abi:dee2
+        8  void std::__1::allocator_traits<std::__1::allocator<audioapi::AudioParamHostObject>>::destroy[abi:dee220106]<audioapi::AudioParamHostObject, 0>(std::__1::alloca
+        8  void std::__1::__shared_ptr_emplace<audioapi::AudioParamHostObject, std::__1::allocator<audioapi::AudioParamHostObject>>::__on_zero_shared_impl[abi:dee220106]<s
+        8  void std::__1::__destroy_at[abi:dee220106]<audioapi::AudioParamHostObject>(audioapi::AudioParamHostObject*) [PewPew.debug.dylib]
+        8  std::__1::__shared_ptr_emplace<audioapi::AudioParamHostObject, std::__1::allocator<audioapi::AudioParamHostObject>>::__on_zero_shared() [PewPew.debug.dylib]
+        8  audioapi::AudioParamHostObject::~AudioParamHostObject() [PewPew.debug.dylib]
+        8  facebook::react::jsinspector_modern::ConsoleTaskContext::~ConsoleTaskContext() [React]
+        8  void std::__1::__destroy_at[abi:de190102]<facebook::react::jsinspector_modern::ConsoleTaskContext, 0>(facebook::react::jsinspector_modern::ConsoleTaskContext*) 
+        8  void std::__1::allocator_traits<std::__1::allocator<facebook::react::jsinspector_modern::ConsoleTaskContext>>::destroy[abi:de190102]<facebook::react::jsinspecto
+        6  hermes::vm::HadesGC::incrementalMark(unsigned long) [hermesvm]
+        5  audioapi::RuntimeAwareCache<std::__1::map<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, facebook::jsi::Function, std::__
+        4  std::__1::__shared_ptr_emplace<audioapi::GainNodeHostObject, std::__1::allocator<audioapi::GainNodeHostObject>>::__on_zero_shared() [PewPew.debug.dylib]
+        4  audioapi::GainNodeHostObject::~GainNodeHostObject() [PewPew.debug.dylib]
+
+### PewPew (0x15bdde9) (PewPew, pid: 899): 31 ms (0.4%)
+  self (leaf) top:
+        7  void std::__1::__destroy_at[abi:dee220106]<float>(float*) [PewPew.debug.dylib]
+        5  float* std::__1::__to_address[abi:dee220106]<float>(float*) [PewPew.debug.dylib]
+        5  std::__1::vector<float, AlignedAllocator<float, 8ul>>::__base_destruct_at_end[abi:dee220106](float*) [PewPew.debug.dylib]
+        4  void std::__1::allocator_traits<AlignedAllocator<float, 8ul>>::destroy[abi:dee220106]<float, 0>(AlignedAllocator<float, 8ul>&, float*) [PewPew.debug.dylib]
+        4  madvise [libsystem_kernel.dylib]
+        1  std::__1::vector<audioapi::AudioNode*, std::__1::allocator<audioapi::AudioNode*>>::__destroy_vector::operator()[abi:dee220106]() [PewPew.debug.dylib]
+        1  std::__1::__shared_ptr_emplace<audioapi::AlignedAudioArrayBuffer<64ul>, std::__1::allocator<audioapi::AlignedAudioArrayBuffer<64ul>>>::_Storage::__get_alloc[abi:dee220106]() [PewPew.debug.dylib]
+        1  std::__1::__shared_ptr_emplace<audioapi::AlignedAudioBuffer<8ul>, std::__1::allocator<audioapi::AlignedAudioBuffer<8ul>>>::__on_zero_shared() [PewPew.debug.dylib]
+        1  _platform_memset [libsystem_platform.dylib]
+        1  std::__1::vector<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<64ul>>, std::__1::allocator<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<64ul>>>>::~vector[abi:dee220106]() [PewPew.debug.dylib]
+        1  __ulock_wake [libsystem_kernel.dylib]
+  leaf by library:
+       25  PewPew.debug.dylib
+        5  libsystem_kernel.dylib
+        1  libsystem_platform.dylib
+  inclusive top:
+       31  _pthread_start [libsystem_pthread.dylib]
+       31  std::__1::__invoke_result_impl<void, void (audioapi::AudioDestructor<audioapi::AudioNode>::*)(audioapi::channels::spsc::Receiver<std::__1::shared_ptr<audioapi::
+       31  void* std::__1::__thread_proxy[abi:dee220106]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct
+       31  audioapi::AudioDestructor<audioapi::AudioNode>::process(audioapi::channels::spsc::Receiver<std::__1::shared_ptr<audioapi::AudioNode>, (audioapi::channels::spsc:
+       31  void std::__1::__thread_execute[abi:dee220106]<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, void (audio
+       31  thread_start [libsystem_pthread.dylib]
+       30  std::__1::__shared_count::__release_shared[abi:dee220106]() [PewPew.debug.dylib]
+       30  std::__1::__shared_weak_count::__release_shared[abi:dee220106]() [PewPew.debug.dylib]
+       30  std::__1::shared_ptr<audioapi::AudioNode>::~shared_ptr[abi:dee220106]() [PewPew.debug.dylib]
+       19  std::__1::__shared_ptr_emplace<audioapi::AudioBufferSourceNode, std::__1::allocator<audioapi::AudioBufferSourceNode>>::__on_zero_shared() [PewPew.debug.dylib]
+       19  void std::__1::__shared_ptr_emplace<audioapi::AudioBufferSourceNode, std::__1::allocator<audioapi::AudioBufferSourceNode>>::__on_zero_shared_impl[abi:dee220106]
+       19  void std::__1::__destroy_at[abi:dee220106]<audioapi::AudioBufferSourceNode>(audioapi::AudioBufferSourceNode*) [PewPew.debug.dylib]
+       19  audioapi::AudioBufferSourceNode::~AudioBufferSourceNode() [PewPew.debug.dylib]
+       19  void std::__1::allocator_traits<std::__1::allocator<audioapi::AudioBufferSourceNode>>::destroy[abi:dee220106]<audioapi::AudioBufferSourceNode, 0>(std::__1::allo
+       18  std::__1::shared_ptr<audioapi::AlignedAudioBuffer<8ul>>::~shared_ptr[abi:dee220106]() [PewPew.debug.dylib]
+       18  std::__1::__shared_ptr_emplace<audioapi::AlignedAudioBuffer<8ul>, std::__1::allocator<audioapi::AlignedAudioBuffer<8ul>>>::__on_zero_shared() [PewPew.debug.dyli
+       17  audioapi::AlignedAudioArray<8ul>::~AlignedAudioArray() [PewPew.debug.dylib]
+       17  void std::__1::__shared_ptr_emplace<audioapi::AlignedAudioArrayBuffer<8ul>, std::__1::allocator<audioapi::AlignedAudioArrayBuffer<8ul>>>::__on_zero_shared_impl[
+       17  audioapi::AlignedAudioArrayBuffer<8ul>::~AlignedAudioArrayBuffer() [PewPew.debug.dylib]
+       17  void std::__1::__destroy_at[abi:dee220106]<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<8ul>>>(std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<
+       17  std::__1::vector<float, AlignedAllocator<float, 8ul>>::__destroy_vector::operator()[abi:dee220106]() [PewPew.debug.dylib]
+       17  audioapi::AlignedAudioBuffer<8ul>::~AlignedAudioBuffer() [PewPew.debug.dylib]
+       17  std::__1::vector<float, AlignedAllocator<float, 8ul>>::clear[abi:dee220106]() [PewPew.debug.dylib]
+       17  std::__1::vector<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<8ul>>, std::__1::allocator<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<8ul>>>
+       17  std::__1::vector<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<8ul>>, std::__1::allocator<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<8ul>>>
+       17  std::__1::vector<float, AlignedAllocator<float, 8ul>>::~vector[abi:dee220106]() [PewPew.debug.dylib]
+       17  void std::__1::allocator_traits<std::__1::allocator<audioapi::AlignedAudioArrayBuffer<8ul>>>::destroy[abi:dee220106]<audioapi::AlignedAudioArrayBuffer<8ul>, 0>(
+       17  std::__1::vector<float, AlignedAllocator<float, 8ul>>::__base_destruct_at_end[abi:dee220106](float*) [PewPew.debug.dylib]
+       17  std::__1::vector<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<8ul>>, std::__1::allocator<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<8ul>>>
+       17  std::__1::__shared_ptr_emplace<audioapi::AlignedAudioArrayBuffer<8ul>, std::__1::allocator<audioapi::AlignedAudioArrayBuffer<8ul>>>::__on_zero_shared() [PewPew.
+       17  void std::__1::__destroy_at[abi:dee220106]<audioapi::AlignedAudioArrayBuffer<8ul>>(audioapi::AlignedAudioArrayBuffer<8ul>*) [PewPew.debug.dylib]
+       17  std::__1::vector<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<8ul>>, std::__1::allocator<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<8ul>>>
+       17  void std::__1::__destroy_at[abi:dee220106]<audioapi::AlignedAudioBuffer<8ul>>(audioapi::AlignedAudioBuffer<8ul>*) [PewPew.debug.dylib]
+       17  void std::__1::allocator_traits<std::__1::allocator<audioapi::AlignedAudioBuffer<8ul>>>::destroy[abi:dee220106]<audioapi::AlignedAudioBuffer<8ul>, 0>(std::__1::
+       17  void std::__1::allocator_traits<std::__1::allocator<std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<8ul>>>>::destroy[abi:dee220106]<std::__1::shared_ptr<
+       17  void std::__1::__shared_ptr_emplace<audioapi::AlignedAudioBuffer<8ul>, std::__1::allocator<audioapi::AlignedAudioBuffer<8ul>>>::__on_zero_shared_impl[abi:dee220
+       17  std::__1::shared_ptr<audioapi::AlignedAudioArrayBuffer<8ul>>::~shared_ptr[abi:dee220106]() [PewPew.debug.dylib]
+        8  void std::__1::allocator_traits<AlignedAllocator<float, 8ul>>::destroy[abi:dee220106]<float, 0>(AlignedAllocator<float, 8ul>&, float*) [PewPew.debug.dylib]
+        7  void std::__1::__shared_ptr_emplace<audioapi::OscillatorNode, std::__1::allocator<audioapi::OscillatorNode>>::__on_zero_shared_impl[abi:dee220106]<std::__1::all
+        7  void std::__1::allocator_traits<std::__1::allocator<audioapi::OscillatorNode>>::destroy[abi:dee220106]<audioapi::OscillatorNode, 0>(std::__1::allocator<audioapi
+
+### PewPew (0x15bddec) (PewPew, pid: 899): 3 ms (0.0%)
+  self (leaf) top:
+        1  std::__1::__atomic_base<unsigned long, false>::load[abi:dee220106](std::__1::memory_order) const [PewPew.debug.dylib]
+        1  std::__1::__atomic_wait_backoff_impl<std::__1::__atomic_base<unsigned long, false>, void std::__1::__atomic_wait[abi:dee220106]<std::__1::__atomic_base<unsigned long, false> const, unsigned long>(std::__1::__atomic_base<unsigned long, false> const&, unsigned long, std::__1::memory_order)::'lambda'(unsigned long const&)>::operator()[abi:dee220106](std::__1::chrono::duration<long long, std::__1::ratio<1l, 1000000000l>>) const [PewPew.debug.dylib]
+        1  __ulock_wait [libsystem_kernel.dylib]
+  leaf by library:
+        2  PewPew.debug.dylib
+        1  libsystem_kernel.dylib
+  inclusive top:
+        3  std::__1::__atomic_base<unsigned long, false>::wait[abi:dee220106](unsigned long, std::__1::memory_order) const [PewPew.debug.dylib]
+        3  audioapi::channels::spsc::Receiver<std::__1::variant<audioapi::ThreadPool::TaskEvent, audioapi::ThreadPool::StopEvent>, (audioapi::channels::spsc::OverflowStrat
+        3  thread_start [libsystem_pthread.dylib]
+        3  std::__1::__poll_with_backoff_results std::__1::__libcpp_thread_poll_with_backoff[abi:dee220106]<void std::__1::__atomic_wait_unless[abi:dee220106]<std::__1::__
+        3  void* std::__1::__thread_proxy[abi:dee220106]<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct
+        3  void std::__1::__atomic_wait_unless[abi:dee220106]<std::__1::__atomic_base<unsigned long, false>, void std::__1::__atomic_wait[abi:dee220106]<std::__1::__atomic
+        3  audioapi::ThreadPool::workerThreadFunc(audioapi::channels::spsc::Receiver<std::__1::variant<audioapi::ThreadPool::TaskEvent, audioapi::ThreadPool::StopEvent>, (
+        3  void std::__1::__thread_execute[abi:dee220106]<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct>>, void (audio
+        3  void std::__1::__atomic_wait[abi:dee220106]<std::__1::__atomic_base<unsigned long, false> const, unsigned long>(std::__1::__atomic_base<unsigned long, false> co
+        3  _pthread_start [libsystem_pthread.dylib]
+        3  std::__1::__invoke_result_impl<void, void (audioapi::ThreadPool::*)(audioapi::channels::spsc::Receiver<std::__1::variant<audioapi::ThreadPool::TaskEvent, audioa
+        2  std::__1::__atomic_wait_backoff_impl<std::__1::__atomic_base<unsigned long, false>, void std::__1::__atomic_wait[abi:dee220106]<std::__1::__atomic_base<unsigned
+        1  std::__1::__atomic_waitable_traits<std::__1::__atomic_base<unsigned long, false>, void>::__atomic_load[abi:dee220106](std::__1::__atomic_base<unsigned long, fal
+        1  std::__1::__atomic_base<unsigned long, false>::load[abi:dee220106](std::__1::memory_order) const [PewPew.debug.dylib]
+        1  void std::__1::__atomic_wait_unless[abi:dee220106]<std::__1::__atomic_base<unsigned long, false>, void std::__1::__atomic_wait[abi:dee220106]<std::__1::__atomic
+        1  __ulock_wait [libsystem_kernel.dylib]
+        1  std::__1::__libcpp_atomic_wait(void const volatile*, long long) [libc++.1.dylib]
+
+### com.facebook.SocketRocket.NetworkThread (0x15bddaf) (PewPew, pid: 899): 3 ms (0.0%)
+  self (leaf) top:
+        2  __kdebug_trace64 [libsystem_kernel.dylib]
+        1  kevent_id [libsystem_kernel.dylib]
+  leaf by library:
+        3  libsystem_kernel.dylib
+  inclusive top:
+        3  thread_start [libsystem_pthread.dylib]
+        3  -[SRRunLoopThread main] [ReactNativeDependencies]
+        3  _pthread_start [libsystem_pthread.dylib]
+        3  -[NSRunLoop(NSRunLoop) runMode:beforeDate:] [Foundation]
+        3  _CFRunLoopRunSpecificWithOptions [CoreFoundation]
+        3  __NSThread__start__ [Foundation]
+        2  __kdebug_trace64 [libsystem_kernel.dylib]
+        2  __CFRunLoopRun [CoreFoundation]
+        1  SocketStream::dispatchSignalFromSocketCallbackUnlocked(SocketStreamSignalHolder*) [CFNetwork]
+        1  _CFStreamSignalEvent [CoreFoundation]
+        1  SocketStream::_SocketCallBack_stream(__CFSocket*, unsigned long, __CFData const*, void const*, void*) [CFNetwork]
+        1  dispatch_async [libdispatch.dylib]
+        1  _dispatch_kq_poll [libdispatch.dylib]
+        1  _inputStreamCallbackFunc [CoreFoundation]
+        1  _cfstream_solo_signalEventSync [CoreFoundation]
+        1  _dispatch_event_loop_poke [libdispatch.dylib]
+        1  kevent_id [libsystem_kernel.dylib]
+        1  __CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE0_PERFORM_FUNCTION__ [CoreFoundation]
+        1  __CFRunLoopDoSources0 [CoreFoundation]
+        1  __CFSocketPerformV0 [CoreFoundation]
+        1  __CFRunLoopDoSource0 [CoreFoundation]
+        1  _signalEventSync [CoreFoundation]
+        1  -[SRWebSocket stream:handleEvent:] [ReactNativeDependencies]
+
+### com.apple.CFSocket.private (0x15bddb1) (PewPew, pid: 899): 1 ms (0.0%)
+  self (leaf) top:
+        1  __select [libsystem_kernel.dylib]
+  leaf by library:
+        1  libsystem_kernel.dylib
+  inclusive top:
+        1  __select [libsystem_kernel.dylib]
+        1  thread_start [libsystem_pthread.dylib]
+        1  _pthread_start [libsystem_pthread.dylib]
+        1  __CFSocketManager [CoreFoundation]

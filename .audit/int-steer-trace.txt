@@ -1,0 +1,33 @@
+# Level 1, manual play on iPhone 17 Pro sim, sampled every 16 ms via debugger-evaluate on globalThis.pewpew (dev-only loop handle).
+# columns: ms since sampler start, player.x, input.targetX (blank = finger up, COAST), sim tick
+# swipe 1: 0.25 -> 0.75 of screen width (half screen, right), 600 ms, momentum false
+5479,0,0,634
+5513,0.017,0.84,635
+5596,0.35,2.565,640
+5696,1.35,3.815,647
+5729,1.5,4,648
+6030,3.826,4,667
+6146,3.952,,674
+6280,4,,681
+# swipe 2: 0.75 -> 0.25 (half screen, left) from the right wall
+7646,4,4,763
+7863,2.65,0.175,777
+8030,1.307,-1.131,786
+8280,-1.054,-1.625,802
+8346,-1.32,,805
+8529,-2.103,,817
+8779,-2.855,,831
+9030,-3.502,,846
+9279,-4,,862
+# swipe 4: 0.3 -> 0.8 from the left wall
+11513,-4,-4,995
+12364,1.53,1.625,1047
+12430,1.579,,1051
+13530,1.957,,1116
+# swipe 5: 0.6 -> 0.35 (quarter screen, left)
+13630,1.977,1.977,1122
+14113,-0.647,-0.841,1151
+14180,-0.747,,1155
+15030,-1.406,,1206
+17030,-1.881,,1326
+26279,-1.973,,1881

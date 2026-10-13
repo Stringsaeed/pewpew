@@ -1,0 +1,50 @@
+2026-10-12 16:02:07.676 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:07.682 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:08.218 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:08.390 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarFrame] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:08.712 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication setStatusBarStyle:animated:] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:08.712 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication setStatusBarHidden:withAnimation:] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:08.728 E  PewPew[89035:155dd54] [com.apple.Foundation:general] NSBundle (null) initWithPath failed because the resolved path is empty or nil
+2026-10-12 16:02:08.737 E  PewPew[89035:155de75] [com.apple.CFBundle:plugin] AddInstanceForFactory: No factory registered for id <CFUUID 0x12a3bb5c0> F8BB1C28-BAE8-11D6-9C31-00039315CD46
+2026-10-12 16:02:08.810 E  PewPew[89035:155dde9] [com.apple.coreaudio:EnhanceDialogueProcessor] EnhanceDialogueProcessor.cpp:658   EnhanceDialogueProcessor has no tuning for unrecognized device type
+2026-10-12 16:02:08.810 E  PewPew[89035:155dde9] [com.apple.coreaudio:EnhanceDialogueProcessor] EnhanceDialogueProcessor.cpp:268   EnhanceDialogueProcessor() - Product does not have valid tuning at ''
+2026-10-12 16:02:08.810 E  PewPew[89035:155dde9] [com.apple.coreaudio:EnhanceDialogueProcessor] EnhanceDialogueProcessor.cpp:658   EnhanceDialogueProcessor has no tuning for unrecognized device type
+2026-10-12 16:02:08.810 E  PewPew[89035:155dde9] [com.apple.coreaudio:EnhanceDialogueProcessor] EnhanceDialogueProcessor.cpp:268   EnhanceDialogueProcessor() - Product does not have valid tuning at ''
+2026-10-12 16:02:08.836 E  PewPew[89035:155ddf0] [com.apple.coreaudio:aqme]        MEMixerChannel.cpp:5021  GetParameters unimplemented for param 14
+2026-10-12 16:02:08.836 E  PewPew[89035:155ddf0] [com.apple.coreaudio:aqme]        MEMixerChannel.cpp:5021  GetParameters unimplemented for param 14
+2026-10-12 16:02:08.865 E  PewPew[89035:155ddf0] [com.apple.coreaudio:AMCP]          HALC_ProxyIOContext.cpp:1676  HALC_ProxyIOContext::IOWorkLoop: skipping cycle due to overload
+2026-10-12 16:02:08.932 E  PewPew[89035:155de36] [com.apple.UIKit:Assert] Modifying properties of a view's layer off the main thread is not allowed: view <MetalView: 0x105762140> with nearest ancestor view controller <UIViewController: 0x10
+2026-10-12 16:02:08.989 E  PewPew[89035:155de36] [com.apple.UIKit:Assert] Modifying properties of a view's layer off the main thread is not allowed: view <MetalView: 0x105762140> with nearest ancestor view controller <UIViewController: 0x10
+2026-10-12 16:02:09.022 E  PewPew[89035:155de36] [com.apple.UIKit:Assert] Modifying properties of a view's layer off the main thread is not allowed: view <MetalView: 0x105762140> with nearest ancestor view controller <UIViewController: 0x10
+2026-10-12 16:02:09.058 E  PewPew[89035:155de36] [com.apple.UIKit:Assert] Modifying properties of a view's layer off the main thread is not allowed: view <MetalView: 0x105762140> with nearest ancestor view controller <UIViewController: 0x10
+2026-10-12 16:02:09.091 E  PewPew[89035:155de36] [com.apple.UIKit:Assert] Modifying properties of a view's layer off the main thread is not allowed: view <MetalView: 0x105762140> with nearest ancestor view controller <UIViewController: 0x10
+2026-10-12 16:02:09.092 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:20.095 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication setStatusBarStyle:animated:] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:20.435 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:20.564 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarFrame] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:20.848 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication setStatusBarStyle:animated:] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:20.848 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication setStatusBarHidden:withAnimation:] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:20.853 E  PewPew[89035:155dddb] [com.apple.coreaudio:aqme]        MEMixerChannel.cpp:5021  GetParameters unimplemented for param 14
+2026-10-12 16:02:20.854 E  PewPew[89035:155dddb] [com.apple.coreaudio:aqme]        MEMixerChannel.cpp:5021  GetParameters unimplemented for param 14
+2026-10-12 16:02:20.876 E  PewPew[89035:155dddb] [com.apple.coreaudio:AMCP]          HALC_ProxyIOContext.cpp:1676  HALC_ProxyIOContext::IOWorkLoop: skipping cycle due to overload
+2026-10-12 16:02:20.947 E  PewPew[89035:155e48a] [com.apple.UIKit:Assert] Modifying properties of a view's layer off the main thread is not allowed: view <MetalView: 0x105762140> with nearest ancestor view controller <UIViewController: 0x10
+2026-10-12 16:02:21.003 E  PewPew[89035:155e48a] [com.apple.UIKit:Assert] Modifying properties of a view's layer off the main thread is not allowed: view <MetalView: 0x105762140> with nearest ancestor view controller <UIViewController: 0x10
+2026-10-12 16:02:21.036 E  PewPew[89035:155e48a] [com.apple.UIKit:Assert] Modifying properties of a view's layer off the main thread is not allowed: view <MetalView: 0x105762140> with nearest ancestor view controller <UIViewController: 0x10
+2026-10-12 16:02:21.072 E  PewPew[89035:155e48a] [com.apple.UIKit:Assert] Modifying properties of a view's layer off the main thread is not allowed: view <MetalView: 0x105762140> with nearest ancestor view controller <UIViewController: 0x10
+2026-10-12 16:02:21.106 E  PewPew[89035:155e48a] [com.apple.UIKit:Assert] Modifying properties of a view's layer off the main thread is not allowed: view <MetalView: 0x105762140> with nearest ancestor view controller <UIViewController: 0x10
+2026-10-12 16:02:21.314 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:02:45.073 E  PewPew[89035:155dd54] [com.apple.UIKit:UIFocus] RCTScrollViewComponentView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
+2026-10-12 16:02:45.121 E  PewPew[89035:155dd54] [com.apple.BoardServices:XPCErrors] non-launching port is incompatible with service identifier "com.apple.PointerUI.pointeruid.default-service"
+2026-10-12 16:04:35.447 F  PewPew[89035:155dd54] [com.apple.UIKit.AnimationKit:DebugAssertion] Transformers don't support animations across multiple screens simultaneously. Ensure that each input animatable property is associated with a vie
+2026-10-12 16:04:35.447 F  PewPew[89035:155dd54] [com.apple.UIKit.AnimationKit:DebugAssertion] Transformers don't support animations across multiple screens simultaneously. Ensure that each input animatable property is associated with a vie
+2026-10-12 16:04:35.448 F  PewPew[89035:155dd54] [com.apple.UIKit.AnimationKit:DebugAssertion] Transformers don't support animations across multiple screens simultaneously. Ensure that each input animatable property is associated with a vie
+2026-10-12 16:04:41.879 E  PewPew[89035:155dde6] [com.apple.coreaudio:aqme]        MEMixerChannel.cpp:5021  GetParameters unimplemented for param 14
+2026-10-12 16:04:41.879 E  PewPew[89035:155dde6] [com.apple.coreaudio:aqme]        MEMixerChannel.cpp:5021  GetParameters unimplemented for param 14
+2026-10-12 16:04:42.443 E  PewPew[89035:155dde6] [com.apple.coreaudio:aqme]        MEMixerChannel.cpp:5021  GetParameters unimplemented for param 14
+2026-10-12 16:04:42.443 E  PewPew[89035:155dde6] [com.apple.coreaudio:aqme]        MEMixerChannel.cpp:5021  GetParameters unimplemented for param 14
+2026-10-12 16:05:35.712 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:05:36.581 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:06:47.767 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:06:48.631 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:06:51.965 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.
+2026-10-12 16:06:52.831 E  PewPew[89035:155dd54] [com.apple.UIKit:Assert] -[UIApplication statusBarStyle] API has been deprecated and is a no-op on 27.0 and later.

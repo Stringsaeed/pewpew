@@ -1,0 +1,46 @@
+thread~'JavaScript' samples=4599
+   138   3.0%  rnwgpu::GPUQueue::submit(std::__1::vector<std::__1::shared_ptr<rnwgpu::GPUCommandBuffer>, std::__1::allocator<std::__1::shared_ptr<rnwgpu::GPUCommandBuffer>>>) [PewPew.debug.dylib]
+   133   2.9%  dawn::native::QueueBase::APISubmit(unsigned int, dawn::native::CommandBufferBase* const*) [PewPew.debug.dylib]
+   131   2.8%  dawn::native::QueueBase::SubmitInternal(unsigned int, dawn::native::CommandBufferBase* const*) [PewPew.debug.dylib]
+    98   2.1%  hermes::vm::HadesGC::youngGenCollection(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, bool) [hermesvm]
+    98   2.1%  audioapi::JsiHostObject::get(facebook::jsi::Runtime&, facebook::jsi::PropNameID const&) [PewPew.debug.dylib]
+    97   2.1%  void* hermes::vm::HadesGC::allocSlow<(hermes::vm::CanBeLarge)0, (hermes::vm::MayFail)0>(unsigned int) [hermesvm]
+    75   1.6%  rnwgpu::GPUCanvasContext::present() [PewPew.debug.dylib]
+    74   1.6%  rnwgpu::SurfaceInfo::presentFrame() [PewPew.debug.dylib]
+    73   1.6%  rnwgpu::GPUCanvasContext::getCurrentTexture() [PewPew.debug.dylib]
+    66   1.4%  unsigned long long hermes::vm::HadesGC::youngGenEvacuateImpl<false>(bool) [hermesvm]
+    65   1.4%  rnwgpu::JSIConverter<std::__1::shared_ptr<rnwgpu::GPURenderPassDescriptor>, void>::fromJSI(facebook::jsi::Runtime&, facebook::jsi::Value const&, bool) [PewPew.debug.dylib]
+    63   1.4%  rnwgpu::SurfaceInfo::getCurrentTexture() [PewPew.debug.dylib]
+    59   1.3%  dawn::native::Surface::APIGetCurrentTexture(dawn::native::SurfaceTexture*) const [PewPew.debug.dylib]
+    58   1.3%  dawn::native::Surface::GetCurrentTexture(dawn::native::SurfaceTexture*) const [PewPew.debug.dylib]
+    58   1.3%  dawn::native::metal::EncodeMetalRenderPass(dawn::native::metal::Device*, dawn::native::metal::CommandRecordingContext*, dawn::native::RenderPassResourceUsage const*, MTLRenderPassDescriptor*, unsigned
+    57   1.2%  rnwgpu::GPUCommandEncoder::beginRenderPass(std::__1::shared_ptr<rnwgpu::GPURenderPassDescriptor>) [PewPew.debug.dylib]
+    57   1.2%  dawn::native::SwapChainBase::GetCurrentTexture() [PewPew.debug.dylib]
+    54   1.2%  dawn::native::Surface::APIPresent() [PewPew.debug.dylib]
+    53   1.2%  dawn::native::SwapChainBase::Present() [PewPew.debug.dylib]
+    53   1.2%  audioapi::BaseAudioContextHostObject::createOscillator(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long) [PewPew.debug.dylib]
+    51   1.1%  audioapi::OscillatorNodeHostObject::OscillatorNodeHostObject(std::__1::shared_ptr<audioapi::BaseAudioContext> const&, audioapi::OscillatorOptions const&) [PewPew.debug.dylib]
+    48   1.0%  audioapi::AudioParamHostObject::AudioParamHostObject(std::__1::shared_ptr<audioapi::AudioParam> const&) [PewPew.debug.dylib]
+    41   0.9%  audioapi::BaseAudioContextHostObject::createGain(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long) [PewPew.debug.dylib]
+    40   0.9%  rnwgpu::JSIConverter<std::__1::vector<std::__1::variant<std::nullptr_t, std::__1::shared_ptr<rnwgpu::GPURenderPassColorAttachment>>, std::__1::allocator<std::__1::variant<std::nullptr_t, std::__1::sha
+    40   0.9%  facebook::react::RuntimeScheduler::scheduleWork(std::__1::function<void (facebook::jsi::Runtime&)>&&) [React]
+    35   0.8%  audioapi::GainNodeHostObject::GainNodeHostObject(std::__1::shared_ptr<audioapi::BaseAudioContext> const&, audioapi::GainOptions const&) [PewPew.debug.dylib]
+    34   0.7%  rnwgpu::GPUQueue::writeBuffer(std::__1::shared_ptr<rnwgpu::GPUBuffer>, unsigned long long, std::__1::shared_ptr<rnwgpu::ArrayBuffer>, std::__1::optional<unsigned long long>, std::__1::optional<unsigne
+    32   0.7%  dawn::native::QueueBase::APIWriteBuffer(dawn::native::BufferBase*, unsigned long long, void const*, unsigned long) [PewPew.debug.dylib]
+    32   0.7%  dawn::native::QueueBase::WriteBuffer(dawn::native::BufferBase*, unsigned long long, void const*, unsigned long) [PewPew.debug.dylib]
+    32   0.7%  dawn::native::CommandEncoder::APIBeginRenderPass(dawn::native::RenderPassDescriptor const*) [PewPew.debug.dylib]
+    32   0.7%  dawn::native::CommandEncoder::BeginRenderPass(dawn::native::RenderPassDescriptor const*) [PewPew.debug.dylib]
+    31   0.7%  dawn::native::BufferBase::UploadData(unsigned long long, void const*, unsigned long) [PewPew.debug.dylib]
+    27   0.6%  rnwgpu::JSIConverter<std::__1::variant<std::nullptr_t, std::__1::shared_ptr<rnwgpu::GPURenderPassColorAttachment>>, void>::fromJSI(facebook::jsi::Runtime&, facebook::jsi::Value const&, bool) [PewPew.d
+    25   0.5%  rnwgpu::JSIConverter<std::__1::shared_ptr<rnwgpu::GPURenderPassColorAttachment>, void>::fromJSI(facebook::jsi::Runtime&, facebook::jsi::Value const&, bool) [PewPew.debug.dylib]
+    25   0.5%  audioapi::BaseAudioContextHostObject::createBiquadFilter(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long) [PewPew.debug.dylib]
+    25   0.5%  audioapi::BiquadFilterNodeHostObject::BiquadFilterNodeHostObject(std::__1::shared_ptr<audioapi::BaseAudioContext> const&, audioapi::BiquadFilterOptions const&) [PewPew.debug.dylib]
+    22   0.5%  facebook::react::ShadowTree::commit(std::__1::function<std::__1::shared_ptr<facebook::react::RootShadowNode> (facebook::react::RootShadowNode const&)> const&, facebook::react::ShadowTreeCommitOptions 
+    22   0.5%  std::__1::__function::__alloc_func<facebook::react::UIManagerBinding::get(facebook::jsi::Runtime&, facebook::jsi::PropNameID const&)::$_9, std::__1::allocator<facebook::react::UIManagerBinding::get(fa
+    22   0.5%  facebook::jsi::Value std::__1::__invoke_void_return_wrapper<facebook::jsi::Value, false>::__call[abi:de190102]<facebook::react::UIManagerBinding::get(facebook::jsi::Runtime&, facebook::jsi::PropNameID
+    22   0.5%  decltype(std::declval<facebook::react::UIManagerBinding::get(facebook::jsi::Runtime&, facebook::jsi::PropNameID const&)::$_9&>()(std::declval<facebook::jsi::Runtime&>(), std::declval<facebook::jsi::Va
+    22   0.5%  std::__1::__function::__func<facebook::react::UIManagerBinding::get(facebook::jsi::Runtime&, facebook::jsi::PropNameID const&)::$_9, std::__1::allocator<facebook::react::UIManagerBinding::get(facebook
+    22   0.5%  facebook::react::UIManagerBinding::get(facebook::jsi::Runtime&, facebook::jsi::PropNameID const&)::$_9::operator()(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, un
+    22   0.5%  rnwgpu::JSIConverter<std::__1::shared_ptr<rnwgpu::GPUQueue>, void>::toJSI(facebook::jsi::Runtime&, std::__1::shared_ptr<rnwgpu::GPUQueue> const&) [PewPew.debug.dylib]
+    21   0.5%  rnwgpu::GPUTexture::createView(std::__1::optional<std::__1::shared_ptr<rnwgpu::GPUTextureViewDescriptor>>) [PewPew.debug.dylib]
+    20   0.4%  rnwgpu::JSIConverter<std::__1::shared_ptr<rnwgpu::ArrayBuffer>, void>::fromJSI(facebook::jsi::Runtime&, facebook::jsi::Value const&, bool) [PewPew.debug.dylib]

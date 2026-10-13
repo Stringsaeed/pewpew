@@ -1,0 +1,26 @@
+thread~'AURemoteIO' samples=2866
+  2841  99.1%  audioapi::AudioDestinationNode::renderAudio(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int) [PewPew.debug.dylib]
+  2841  99.1%  void std::__1::__invoke_void_return_wrapper<void, true>::__call[abi:dee220106]<audioapi::AudioContext::renderAudio()::$_0&, std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>>, int>(audioapi::Aud
+  2841  99.1%  std::__1::__invoke_result_impl<void, audioapi::AudioContext::renderAudio()::$_0&, std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>>, int>::type std::__1::__invoke[abi:dee220106]<audioapi::Audio
+  2841  99.1%  void std::__1::__invoke_r[abi:dee220106]<void, audioapi::AudioContext::renderAudio()::$_0&, std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>>, int>(audioapi::AudioContext::renderAudio()::$_0&, 
+  2841  99.1%  audioapi::AudioContext::renderAudio()::$_0::operator()(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int) const [PewPew.debug.dylib]
+  2841  99.1%  std::__1::__function::__func<audioapi::AudioContext::renderAudio()::$_0, void (std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>>, int)>::operator()(std::__1::shared_ptr<audioapi::AlignedAudioBu
+  2421  84.5%  audioapi::AudioNode::processAudio(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int, bool) [PewPew.debug.dylib]
+  2414  84.2%  audioapi::AudioNode::processInputs(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int, bool) [PewPew.debug.dylib]
+  1705  59.5%  audioapi::AudioParam::processARateParam(int, double) [PewPew.debug.dylib]
+  1625  56.7%  audioapi::AudioParam::getValueAtTime(double) [PewPew.debug.dylib]
+  1320  46.1%  audioapi::OscillatorNode::processNode(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int) [PewPew.debug.dylib]
+  1155  40.3%  audioapi::ParamRenderQueue::computeValueAtTime(double) [PewPew.debug.dylib]
+   884  30.8%  audioapi::GainNode::processNode(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int) [PewPew.debug.dylib]
+   431  15.0%  audioapi::PeriodicWave::getSample(float, float, float) [PewPew.debug.dylib]
+   369  12.9%  audioapi::AudioGraphManager::preProcessGraph() [PewPew.debug.dylib]
+   339  11.8%  audioapi::AudioParam::setValue(float) [PewPew.debug.dylib]
+   306  10.7%  audioapi::PeriodicWave::doInterpolation(float, float, float, audioapi::AlignedAudioArray<64ul> const&, audioapi::AlignedAudioArray<64ul> const&) const [PewPew.debug.dylib]
+   123   4.3%  audioapi::PeriodicWave::getWaveDataForFundamentalFrequency(float) const [PewPew.debug.dylib]
+    50   1.7%  audioapi::BiquadFilterNode::processNode(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int) [PewPew.debug.dylib]
+    45   1.6%  audioapi::AudioGraphManager::settlePendingConnections() [PewPew.debug.dylib]
+    44   1.5%  audioapi::BaseAudioContext::processAudioEvents() [PewPew.debug.dylib]
+    36   1.3%  audioapi::AudioParam::calculateInputs(std::__1::shared_ptr<audioapi::AlignedAudioBuffer<64ul>> const&, int) [PewPew.debug.dylib]
+    35   1.2%  audioapi::PeriodicWave::getPeriodicWaveSize() const [PewPew.debug.dylib]
+    31   1.1%  audioapi::AudioParam::processKRateParam(int, double) [PewPew.debug.dylib]
+    29   1.0%  audioapi::AudioGraphManager::handleConnectEvent(std::__1::unique_ptr<audioapi::AudioGraphManager::Event, std::__1::default_delete<audioapi::AudioGraphManager::Event>>) [PewPew.debug.dylib]

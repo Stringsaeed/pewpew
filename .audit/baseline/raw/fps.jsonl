@@ -1,0 +1,9 @@
+{"tag":"title-1","frames":601,"fps":60.058376290113884,"p50":16.671833992004395,"p95":17.48362499475479,"max":19.83516699075699,"over20ms":0,"over33ms":0}
+{"tag":"title-2","frames":601,"fps":60.08027189168086,"p50":16.65987503528595,"p95":17.786041975021362,"max":25.60316699743271,"over20ms":6,"over33ms":0}
+{"tag":"l1-1","frames":600,"fps":59.98699156876815,"p50":16.688583970069885,"p95":19.01087498664856,"max":27.665832996368408,"over20ms":23,"over33ms":0,"note":"level1 auto, tick 337->~1000, phase fly"}
+{"tag":"l1-2","frames":601,"fps":60.06048795842228,"p50":16.684916019439697,"p95":19.044790983200073,"max":22.136416018009186,"over20ms":18,"over33ms":0,"note":"level1 auto, ends tick 2309, phase fly"}
+{"tag":"boss-10-1","frames":601,"fps":59.997361517741844,"p50":16.73616600036621,"p95":19.065374970436096,"max":22.39375001192093,"over20ms":15,"over33ms":0,"note":"level10 run B, started at boss entry tick 3540 epoch_ms 1791814853407, boss ended 1791814866689 tick 4338"}
+{"tag":"boss-10-2","frames":600,"fps":59.999649002101975,"p50":16.66854202747345,"p95":16.98845899105072,"max":18.13274997472763,"over20ms":0,"over33ms":0,"note":"level10 run C, started at boss entry tick 3539 epoch_ms 1791814948621, boss ended 1791814961904 tick 4336"}
+{"tag":"l30-1","frames":601,"fps":60.088217199363434,"p50":16.80362504720688,"p95":22.396291971206665,"max":25.12387502193451,"over20ms":91,"over33ms":0,"note":"level30 auto fly, from tick 203"}
+{"tag":"l30-2","frames":601,"fps":59.98074902175133,"p50":16.732417047023773,"p95":22.063083946704865,"max":24.408917009830475,"over20ms":96,"over33ms":0,"note":"level30 auto fly, ends tick 2245"}
+{"tag":"boss-30-3","frames":598,"fps":59.78088083066454,"p50":16.730791985988617,"p95":21.208541989326477,"max":44.896000027656555,"over20ms":55,"over33ms":1,"note":"level30 boss (warden/core), auto-started at boss entry tick 5392 epoch_ms 1791815092674; overlapped xctrace export of the native profile on the host"}

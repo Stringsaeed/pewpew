@@ -1,0 +1,37 @@
+{
+  "name": "pewpew",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "expo": "~57.0.27",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-audio-api": "0.13.6",
+    "react-native-reanimated": "4.5.1",
+    "react-native-webgpu": "0.5.17",
+    "react-native-worklets": "0.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "@types/react": "~19.2.2",
+    "@webgpu/types": "0.1.65",
+    "tsx": "4.23.15",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "verify": "tsx scripts/verify-levels.ts",
+    "check": "npm run typecheck && npm test && npm run verify && npm run gen:meshes -- --check",
+    "gen:meshes": "tsx scripts/gen-meshes.ts",
+    "render-song": "tsx scripts/render-song.ts",
+    "sweep": "tsx scripts/ramp-sweep.ts"
+  },
+  "private": true
+}
