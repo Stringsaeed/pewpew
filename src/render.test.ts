@@ -6,6 +6,7 @@ import { Kind } from './levels';
 import { MESHES, type MeshId } from './render/meshes.gen';
 import { MAX_PIXEL_RATIO, LOOK, createRenderer } from './render';
 import { STEP, createWorld, step, type SimEvent, type World } from './sim';
+import { add } from './sim/world';
 import { createFakeGpu, type FakeGpu, type GpuCall } from './testing/fake-gpu';
 
 const SNAP = new URL('./testing/render.snapshot.json', import.meta.url);
@@ -74,6 +75,149 @@ describe('renderer', { concurrency: false }, () => {
     }
   });
 
+  test('a won hold dives the rocket into the black hole and a new run ends the hold', () => {
+    const restore = installRandom(7);
+    try {
+      const gpu = createFakeGpu();
+      const renderer = createRenderer(gpu.device, gpu.context, 'bgra8unorm', MAX_PIXEL_RATIO);
+      const world = createWorld(1);
+      world.player.x = 3;
+      world.player.y = 40;
+      world.wormholeY = 40;
+      world.phase = { p: 'won', stars: 3 };
+      renderer.hold('won', 1.4);
+      const rocket = LAYOUT.find((mesh) => mesh.id === 'rocket')!.baseVertex * 36;
+      const hole = LAYOUT.find((mesh) => mesh.id === 'blackhole')!.baseVertex * 36;
+      const seen: { rocket: boolean; hole: boolean }[] = [];
+      for (let i = 0; i < 20; i++) {
+        const mark = gpu.calls.length;
+        renderer.frame(world, [], 0, 0.1);
+        const offsets = vertexOffsets(gpu.calls.slice(mark), gpu.buffers[0]!.id);
+        seen.push({ rocket: offsets.includes(rocket), hole: offsets.includes(hole) });
+      }
+      assert.equal(seen[0]!.rocket, true);
+      assert.equal(seen[19]!.rocket, false);
+      assert.ok(seen.every((frame) => frame.hole));
+      renderer.frame(createWorld(1), [], 0, STEP);
+      const mark = gpu.calls.length;
+      renderer.frame(createWorld(1), [], 0, STEP);
+      assert.ok(vertexOffsets(gpu.calls.slice(mark), gpu.buffers[0]!.id).includes(rocket));
+      renderer.dispose();
+    } finally {
+      restore();
+    }
+  });
+
+  test('hits shake the camera, reduce motion does not, and the shake dies away', () => {
+    const restore = installRandom(3);
+    try {
+      const shakeAfter = (reduce: boolean): number[] => {
+        const gpu = createFakeGpu();
+        const renderer = createRenderer(gpu.device, gpu.context, 'bgra8unorm', MAX_PIXEL_RATIO);
+        renderer.setReduceMotion(reduce);
+        const world = createWorld(1);
+        const out: number[] = [];
+        const hit: SimEvent = { e: 'playerHit', x: 0, y: 0, lives: 2 };
+        for (const [events, dt] of [[[hit], 0.016], [[], 0.016], [[], 1.5]] as const) {
+          renderer.frame(world, events, 0, dt);
+          const uniform = gpu.buffers[4]!.id;
+          let at = 0, last = -1;
+          for (const call of gpu.calls) if (call.op === 'writeBuffer') { if (call.buffer === uniform) last = at; at++; }
+          const floats = new Float32Array(gpu.writes[last]!.buffer.slice(0));
+          out.push(Math.abs(floats[12]!));
+        }
+        renderer.dispose();
+        return out;
+      };
+      const shaken = shakeAfter(false);
+      assert.ok(shaken[0]! > 0.001 && shaken[1]! > 0.001);
+      assert.equal(shaken[2], 0);
+      assert.deepEqual(shakeAfter(true), [0, 0, 0]);
+    } finally {
+      restore();
+    }
+  });
+
+  test('a damaged body glows hot and flashes white for two frames when a shot lands', () => {
+    const restore = installRandom(11);
+    try {
+      const gpu = createFakeGpu();
+      const renderer = createRenderer(gpu.device, gpu.context, 'bgra8unorm', MAX_PIXEL_RATIO);
+      const world = createWorld(1);
+      const i = add(world, Kind.Asteroid, 1, 6, 0, 0);
+      world.bodies.hp[i] = 1;
+      // The rocket is slot 0 in the mesh buffer and the asteroid slot 1. Floats 7 and 8 are flash and heat.
+      const slot = (events: SimEvent[], dt: number): { flash: number; heat: number } => {
+        const mark = gpu.writes.length;
+        renderer.frame(world, events, 0, dt);
+        const mesh = gpu.writes.slice(mark).find((_, k) => gpu.calls.filter((call) => call.op === 'writeBuffer')[mark + k]?.buffer === gpu.buffers[2]!.id)!;
+        const floats = new Float32Array(mesh.buffer.slice(0));
+        return { flash: floats[12 + 7]!, heat: floats[12 + 8]! };
+      };
+      const hit: SimEvent = { e: 'hit', target: Kind.Asteroid, x: 1, y: 6 };
+      assert.deepEqual(slot([], 0.016), { flash: 0, heat: Math.fround(1 - 1 / 3) });
+      assert.equal(slot([hit], 0.016).flash, 0.5);
+      assert.equal(slot([], 0.016).flash, 0.5);
+      assert.equal(slot([], 0.1).flash, 0);
+      renderer.dispose();
+    } finally {
+      restore();
+    }
+  });
+
+  test('the shield bubble draws last in its own pipeline and lingers half a second after a block', () => {
+    const restore = installRandom(5);
+    try {
+      const gpu = createFakeGpu();
+      const renderer = createRenderer(gpu.device, gpu.context, 'bgra8unorm', MAX_PIXEL_RATIO);
+      const world = createWorld(1);
+      world.player.shield = true;
+      const bubble = LAYOUT.find((mesh) => mesh.id === 'bubble')!.baseVertex * 36;
+      const drawsBubble = (event: SimEvent[], dt: number): boolean => {
+        const mark = gpu.calls.length;
+        renderer.frame(world, event, 0, dt);
+        const frame = gpu.calls.slice(mark);
+        const offsets = vertexOffsets(frame, gpu.buffers[0]!.id);
+        const pipelines = frame.filter((call) => call.op === 'setPipeline');
+        if (offsets.includes(bubble)) {
+          assert.equal(offsets[offsets.length - 1], bubble);
+          assert.equal(pipelines.length, 4);
+        }
+        return offsets.includes(bubble);
+      };
+      assert.equal(drawsBubble([], 0.016), true);
+      world.player.shield = false;
+      assert.equal(drawsBubble([{ e: 'shieldBlock', x: 0, y: 0 }], 0.016), true);
+      assert.equal(drawsBubble([], 0.3), true);
+      assert.equal(drawsBubble([], 0.3), false);
+      renderer.dispose();
+    } finally {
+      restore();
+    }
+  });
+
+  test('a lost hold hides the ship and keeps drawing the fire', () => {
+    const restore = installRandom(9);
+    try {
+      const gpu = createFakeGpu();
+      const renderer = createRenderer(gpu.device, gpu.context, 'bgra8unorm', MAX_PIXEL_RATIO);
+      const world = createWorld(1);
+      world.phase = { p: 'lost' };
+      renderer.hold('lost', 1);
+      const rocket = LAYOUT.find((mesh) => mesh.id === 'rocket')!.baseVertex * 36;
+      for (let i = 0; i < 10; i++) {
+        const mark = gpu.calls.length;
+        renderer.frame(world, [], 0, 0.1);
+        const frame = gpu.calls.slice(mark);
+        assert.equal(vertexOffsets(frame, gpu.buffers[0]!.id).includes(rocket), false);
+        assert.ok(frame.some((call) => call.op === 'draw' && call.vertexCount === 4 && call.instanceCount > 20));
+      }
+      renderer.dispose();
+    } finally {
+      restore();
+    }
+  });
+
   test('level 1 and a boss fight match the draw contract and the snapshot', () => {
     const restore = installRandom(0xdecaf);
     try {
@@ -133,7 +277,7 @@ function play(world: World, frames: number): FrameLog[] {
   return logs;
 }
 
-/** Bodies per mesh, plus the rocket, boss, and wormhole the renderer appends to those groups. */
+/** Bodies per mesh, plus the rocket, boss, black hole, and shield bubble the renderer appends to those groups. */
 function instanceCounts(world: World): Map<MeshId, number> {
   const counts = new Map<MeshId, number>();
   for (const id of MESH_IDS) counts.set(id, 0);
@@ -147,7 +291,11 @@ function instanceCounts(world: World): Map<MeshId, number> {
   }
   counts.set('rocket', counts.get('rocket')! + 1);
   if (world.boss) counts.set(world.boss.id, counts.get(world.boss.id)! + 1);
-  if (world.wormholeY !== null) counts.set('wormhole', counts.get('wormhole')! + 1);
+  if (world.player.shield) counts.set('bubble', counts.get('bubble')! + 1);
+  if (world.wormholeY !== null) {
+    counts.set('blackhole', counts.get('blackhole')! + 1);
+    counts.set('accretion', counts.get('accretion')! + 1);
+  }
   return counts;
 }
 
@@ -164,6 +312,17 @@ function assertDraws(calls: GpuCall[], counts: Map<MeshId, number>, vertex: numb
     assert.equal(drawn[i]!.offset, groups[i]!.baseVertex * 36);
     assert.equal(drawn[i]!.instances, counts.get(groups[i]!.id));
   }
+}
+
+/** Vertex-buffer offsets of every indexed draw in a frame: one per mesh group drawn. */
+function vertexOffsets(calls: GpuCall[], vertex: number): number[] {
+  const offsets: number[] = [];
+  let offset = -1;
+  for (const call of calls) {
+    if (call.op === 'setVertexBuffer' && call.slot === 0 && call.buffer === vertex) offset = call.offset;
+    if (call.op === 'drawIndexed') offsets.push(offset);
+  }
+  return offsets;
 }
 
 function splitFrames(gpu: FakeGpu): FrameLog[] {

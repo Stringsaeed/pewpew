@@ -1,15 +1,41 @@
 import { ARCHETYPES, Kind, type BossId } from '../levels';
 import { MAX_BODIES, type WorldView } from '../sim';
-import { BOSS_RADIUS, LOOK, ROCKET_RADIUS, WORMHOLE_RADIUS } from './look';
+import { PITCH_TAN } from './camera';
+import { BLACKHOLE_RADIUS, BLACKHOLE_TILT, BOSS_RADIUS, BUBBLE_RADIUS, LOOK, ROCKET_RADIUS } from './look';
+import { BUBBLE_FORM_SECONDS, BUBBLE_POP_SECONDS, HIT_FLASH_REACH, HOLD_LOST, HOLD_WON, HOLE_OPEN_SECONDS, RIPPLE_SECONDS, bossHeat, createDive, holdProgress, pose, smooth, type Fx } from './fx';
 import { MESHES, type MeshId } from './meshes.gen';
-import { PARTICLE_CAP, type BurstTables, type ParticlePool } from './particles';
+import { PARTICLE_CAP, RING, SMOKE, type BurstTables, type ParticlePool } from './particles';
 
 export const MESH_IDS = Object.keys(MESHES) as MeshId[];
-export const INSTANCE_FLOATS = 8;
+/** Mesh and glow instances share one stride: see the layout comment in wgsl.ts. */
+export const INSTANCE_FLOATS = 12;
+export const GLOW_SPOT = 0;
+export const GLOW_RING = 1;
+export const GLOW_ORB = 2;
+export const GLOW_HALO = 3;
+export const GLOW_FLAT = 4;
+export const MODE_TUMBLE = 0;
+export const MODE_FLAT = 1;
+export const MODE_DISC = 2;
+export const MODE_DIVE = 3;
+const GLOW_Z = 0.4;
+/** Emissive accents on a boss breathe by this fraction, as a wave across the hull. */
+const BOSS_PULSE = 0.22;
+/** A mine's core blinks by this fraction: armed. */
+const MINE_PULSE = 0.55;
+/** Pickups spin at this rate (rad/s) and sit in a halo: matte means rock, hot means threat, haloed means take it. */
+const PICKUP_SPIN = 3.2;
+const HALO_SCALE = 3.1;
+const HALO_HZ = 2;
+/** Glow quads sit in the plane of the bodies. The hole's halo goes behind the whole accretion disc, so the core stays black and the disc takes no seam. */
+const HALO_Z = -2.6;
+/** In front of every mesh, so the flash covers the near half of the accretion disc too. */
+const FLASH_Z = 6;
 
 const MESH_INDEX = Object.fromEntries(MESH_IDS.map((id, i) => [id, i])) as { [M in MeshId]: number };
-const MESH_CAP = MAX_BODIES + 3;
-const GLOW_CAP = MAX_BODIES + PARTICLE_CAP + 2;
+const MESH_CAP = MAX_BODIES + 5;
+const GLOW_CAP = 2 * MAX_BODIES + PARTICLE_CAP + 16;
+const HOLE_SCALE = BLACKHOLE_RADIUS / MESHES.accretion.radius;
 const BOSS_MESH: { readonly [B in BossId]: number } = {
   warden: MESH_INDEX.warden, hive: MESH_INDEX.hive, core: MESH_INDEX.core,
 };
@@ -34,9 +60,16 @@ export interface MeshBatch {
   readonly glowCount: number;
   readonly px: number;
   readonly py: number;
+  /** Where the exhaust leaves, which way it points, and how big the puffs are. Off while the rocket is hidden. */
+  readonly nozzleX: number;
+  readonly nozzleY: number;
+  readonly headX: number;
+  readonly headY: number;
+  readonly puff: number;
+  readonly exhaust: boolean;
   readonly bursts: BurstTables;
   begin(): void;
-  packWorld(world: WorldView, alpha: number, time: number, bossFlash: number): void;
+  packWorld(world: WorldView, alpha: number, time: number, fx: Fx): void;
   packParticles(pool: ParticlePool): void;
 }
 
@@ -46,6 +79,12 @@ export function createBatch(): MeshBatch {
   const meshOf = new Int16Array(KIND_COUNT * VARIANTS).fill(-1);
   const scaleOf = new Float32Array(KIND_COUNT * VARIANTS);
   const tintOf = new Float32Array(KIND_COUNT * 3);
+  const pulseOf = new Float32Array(KIND_COUNT);
+  const maxHp = new Int16Array(KIND_COUNT);
+  // Billboard kinds: half-extents and glow shape.
+  const glowW = new Float32Array(KIND_COUNT);
+  const glowH = new Float32Array(KIND_COUNT);
+  const glowShape = new Uint8Array(KIND_COUNT);
   const burst = new Float32Array(KIND_COUNT * 3);
   for (let k = 0; k < KIND_COUNT; k++) {
     const look = LOOK[k as Kind];
@@ -60,8 +99,16 @@ export function createBatch(): MeshBatch {
       burst.set(signature(look.meshes[0]), k * 3);
     } else {
       burst.set(look.rgba.slice(0, 3), k * 3);
+      const orb = look.shape === 'orb';
+      glowW[k] = orb ? look.size : look.size * 0.7;
+      glowH[k] = orb ? look.size : look.size * 1.9;
+      glowShape[k] = orb ? GLOW_ORB : GLOW_SPOT;
     }
   }
+  pulseOf[Kind.Mine] = MINE_PULSE;
+  for (let k = 0; k < KIND_COUNT; k++) maxHp[k] = ARCHETYPES[k as Kind].hp;
+  const haloOf = new Float32Array(KIND_COUNT);
+  for (let k = 0; k < KIND_COUNT; k++) if (ARCHETYPES[k as Kind].role === 'pickup') haloOf[k] = ARCHETYPES[k as Kind].radius * HALO_SCALE;
   const bossBurst = Float32Array.from(MESH_IDS.flatMap((id) => signature(id)));
   const counts = new Uint32Array(MESH_IDS.length);
   const starts = new Uint32Array(MESH_IDS.length);
@@ -75,17 +122,23 @@ export function createBatch(): MeshBatch {
   let glowCount = 0;
   let px = 0;
   let py = 0;
+  let nozzleX = 0, nozzleY = 0, headX = 0, headY = 1, puff = 1;
+  let exhaust = true;
+  const dive = createDive();
 
-  function putMesh(slot: number, x: number, y: number, rot: number, s: number, r: number, g: number, b: number, flash: number) {
+  function putMesh(slot: number, x: number, y: number, rot: number, s: number, r: number, g: number, b: number, flash: number,
+    heat = 0, mode = MODE_TUMBLE, a = 0, c = 0) {
     const o = slot * INSTANCE_FLOATS;
     meshInst[o] = x; meshInst[o + 1] = y; meshInst[o + 2] = rot; meshInst[o + 3] = s;
     meshInst[o + 4] = r; meshInst[o + 5] = g; meshInst[o + 6] = b; meshInst[o + 7] = flash;
+    meshInst[o + 8] = heat; meshInst[o + 9] = mode; meshInst[o + 10] = a; meshInst[o + 11] = c;
   }
-  function putGlow(x: number, y: number, sx: number, sy: number, r: number, g: number, b: number, a: number) {
+  function putGlow(x: number, y: number, sx: number, sy: number, r: number, g: number, b: number, a: number, shape = GLOW_SPOT, z = GLOW_Z) {
     if (glowCount === GLOW_CAP) return;
     const o = glowCount++ * INSTANCE_FLOATS;
     glowInst[o] = x; glowInst[o + 1] = y; glowInst[o + 2] = sx; glowInst[o + 3] = sy;
     glowInst[o + 4] = r; glowInst[o + 5] = g; glowInst[o + 6] = b; glowInst[o + 7] = a;
+    glowInst[o + 8] = shape; glowInst[o + 9] = z; glowInst[o + 10] = 0; glowInst[o + 11] = 0;
   }
 
   function begin(): void {
@@ -94,10 +147,12 @@ export function createBatch(): MeshBatch {
     meshSlots = 0;
   }
 
-  function packWorld(world: WorldView, alpha: number, time: number, bossFlash: number): void {
+  function packWorld(world: WorldView, alpha: number, time: number, fx: Fx): void {
     const pl = world.player;
-    px = pl.px + (pl.x - pl.px) * alpha;
-    py = pl.py + (pl.y - pl.py) * alpha;
+    const held = fx.hold !== 0;
+    // A terminal world no longer steps, so its interpolation alpha is meaningless.
+    px = held ? pl.x : pl.px + (pl.x - pl.px) * alpha;
+    py = held ? pl.y : pl.py + (pl.y - pl.py) * alpha;
     const bodies = world.bodies;
     for (let i = 0; i < bodies.count; i++) {
       const m = meshOf[bodies.kind[i] * VARIANTS + (bodies.variant[i] % VARIANTS)];
@@ -109,13 +164,22 @@ export function createBatch(): MeshBatch {
         if (look.draw === 'glow') {
           const x = bodies.px[i] + (bodies.x[i] - bodies.px[i]) * alpha;
           const y = bodies.py[i] + (bodies.y[i] - bodies.py[i]) * alpha;
-          putGlow(x, y, look.size * 0.7, look.size * 1.9, look.rgba[0], look.rgba[1], look.rgba[2], look.rgba[3]);
+          const k = bodies.kind[i];
+          putGlow(x, y, glowW[k], glowH[k], look.rgba[0], look.rgba[1], look.rgba[2], look.rgba[3], glowShape[k]);
         }
       }
     }
-    counts[MESH_INDEX.rocket]++;
+
+    const p = holdProgress(fx);
+    const rocketShown = fx.hold !== HOLD_LOST;
+    const diving = fx.hold === HOLD_WON && world.wormholeY !== null;
+    if (diving) pose(dive, p, pl.x, pl.y, 0, world.wormholeY!);
+    const rocketOn = rocketShown && (!diving || dive.visible);
+    if (rocketOn) counts[MESH_INDEX.rocket]++;
+    const bubbleOn = rocketShown && (pl.shield || fx.dying > 0);
+    if (bubbleOn) counts[MESH_INDEX.bubble]++;
     if (world.boss) counts[BOSS_MESH[world.boss.id]]++;
-    if (world.wormholeY !== null) counts[MESH_INDEX.wormhole]++;
+    if (world.wormholeY !== null) { counts[MESH_INDEX.blackhole]++; counts[MESH_INDEX.accretion]++; }
 
     let acc = 0;
     for (let m = 0; m < counts.length; m++) { starts[m] = acc; cursor[m] = acc; acc += counts[m]; }
@@ -125,33 +189,99 @@ export function createBatch(): MeshBatch {
       const m = bodyMesh[i];
       if (m < 0) continue;
       const k = bodies.kind[i];
-      putMesh(cursor[m]++,
-        bodies.px[i] + (bodies.x[i] - bodies.px[i]) * alpha,
-        bodies.py[i] + (bodies.y[i] - bodies.py[i]) * alpha,
-        bodies.rot[i], scaleOf[k * VARIANTS + (bodies.variant[i] % VARIANTS)],
-        tintOf[k * 3], tintOf[k * 3 + 1], tintOf[k * 3 + 2], 0);
+      const x = bodies.px[i] + (bodies.x[i] - bodies.px[i]) * alpha;
+      const y = bodies.py[i] + (bodies.y[i] - bodies.py[i]) * alpha;
+      const halo = haloOf[k];
+      if (halo > 0) {
+        const pulse = 0.5 + 0.15 * Math.sin(time * HALO_HZ * 6.2832 + x);
+        putGlow(x, y, halo, halo, burst[k * 3], burst[k * 3 + 1], burst[k * 3 + 2], pulse);
+      }
+      // A body that has taken a shot glows hotter the closer it is to dying, and flashes white when a shot lands on it.
+      const hp = bodies.hp[i], hp0 = maxHp[k];
+      const heat = hp0 > 0 && hp > 0 && hp < hp0 ? 1 - hp / hp0 : 0;
+      let flash = 0;
+      if (fx.hitLive) {
+        for (let j = 0; j < fx.hitTtl.length; j++) {
+          if (fx.hitTtl[j] <= 0 || fx.hitKind[j] !== k) continue;
+          const dx = fx.hitX[j] - x, dy = fx.hitY[j] - y;
+          if (dx * dx + dy * dy < HIT_FLASH_REACH * HIT_FLASH_REACH) { flash = fx.reduceMotion ? 0.25 : 0.5; break; }
+        }
+      }
+      putMesh(cursor[m]++, x, y, halo > 0 ? time * PICKUP_SPIN + x : bodies.rot[i], scaleOf[k * VARIANTS + (bodies.variant[i] % VARIANTS)],
+        tintOf[k * 3], tintOf[k * 3 + 1], tintOf[k * 3 + 2], flash, heat, MODE_TUMBLE, pulseOf[k]);
     }
-    const blink = world.tick < pl.invulnUntil && (world.tick >> 3) % 2 === 0 ? 0.5 : 0;
-    const bank = Math.max(-0.5, Math.min(0.5, -pl.vx * 0.06));
-    putMesh(cursor[MESH_INDEX.rocket]++, px, py, bank, ROCKET_RADIUS / MESHES.rocket.radius, 1, 1, 1, blink);
+
+    const rocketScale = ROCKET_RADIUS / MESHES.rocket.radius;
+    exhaust = rocketOn;
+    if (rocketOn) {
+      if (diving) {
+        putMesh(cursor[MESH_INDEX.rocket]++, dive.x, dive.y, dive.heading, rocketScale * dive.size, 1, 1, 1, 0,
+          dive.z, MODE_DIVE, dive.roll, dive.stretch);
+        const back = ROCKET_RADIUS * 0.95 * dive.size * (1 + dive.stretch);
+        headX = dive.hx; headY = dive.hy; puff = dive.size;
+        nozzleX = dive.x - headX * back; nozzleY = dive.y - headY * back;
+      } else {
+        const blink = world.tick < pl.invulnUntil && (world.tick >> 3) % 2 === 0 ? 0.5 : 0;
+        const bank = Math.max(-0.5, Math.min(0.5, -pl.vx * 0.06));
+        putMesh(cursor[MESH_INDEX.rocket]++, px, py, bank, rocketScale, 1, 1, 1, blink);
+        headX = 0; headY = 1; puff = 1;
+        nozzleX = px; nozzleY = py - ROCKET_RADIUS * 0.95;
+      }
+    }
+    if (rocketOn) {
+      // A warm glow at the nozzle always, and a cyan engine flare that swells with sideways speed.
+      const flicker = 0.9 + 0.1 * Math.sin(time * 41);
+      putGlow(nozzleX, nozzleY, 0.55 * puff, 0.7 * puff, 1, 0.6, 0.2, 0.7 * flicker);
+      const lateral = Math.min(1, Math.abs(pl.vx) / 6) * (diving ? 0 : 1);
+      if (lateral > 0.05) putGlow(nozzleX - Math.sign(pl.vx) * 0.15, nozzleY - 0.25, 0.28, 0.9 + 0.5 * lateral, 0.3, 0.9, 1, 0.75 * lateral * flicker);
+    }
     if (world.boss) {
       const b = world.boss;
       const m = BOSS_MESH[b.id];
       putMesh(cursor[m]++, b.px + (b.x - b.px) * alpha, b.y, Math.sin(time * 0.8) * 0.08,
-        BOSS_RADIUS / MESHES[b.id].radius, 1, 1, 1, 0.45 * Math.min(1, bossFlash / 0.06));
+        BOSS_RADIUS / MESHES[b.id].radius, 1, 1, 1, 0.45 * Math.min(1, fx.flash / 0.06), bossHeat(b.id, b.hp), MODE_FLAT, BOSS_PULSE);
     }
     if (world.wormholeY !== null) {
-      putMesh(cursor[MESH_INDEX.wormhole]++, 0, world.wormholeY, time * 0.9, WORMHOLE_RADIUS / MESHES.wormhole.radius, 1, 1, 1, 0);
-      putGlow(0, world.wormholeY, WORMHOLE_RADIUS * 0.9, WORMHOLE_RADIUS * 0.9, 0.6, 0.4, 1, 0.5);
+      const hy = world.wormholeY;
+      const grow = smooth(0, 1, fx.holeAge / HOLE_OPEN_SECONDS);
+      const size = HOLE_SCALE * (0.06 + 0.94 * grow);
+      putMesh(cursor[MESH_INDEX.blackhole]++, 0, hy, 0, size, 1, 1, 1, 0, 0, MODE_FLAT, 0.12);
+      putMesh(cursor[MESH_INDEX.accretion]++, 0, hy, time * 0.5, size, 1, 1, 1, 0, 0, MODE_DISC, 0, BLACKHOLE_TILT);
+      const r = BLACKHOLE_RADIUS * (0.06 + 0.94 * grow);
+      const haloY = hy - HALO_Z * PITCH_TAN;
+      putGlow(0, haloY, r * 1.5, r * 1.5, 1, 0.5, 0.18, 0.2 * grow, GLOW_HALO, HALO_Z);
+      putGlow(0, haloY, r * 2.3, r * 2.3, 0.55, 0.3, 1, 0.24 * grow, GLOW_HALO, HALO_Z);
     }
-    if (pl.shield) putGlow(px, py, 1.3, 1.3, 0.35, 0.65, 1, -0.9);
+    if (bubbleOn) {
+      // Forming: swells in from 70% with a bright flash. Popping (the sim already dropped the shield): swells out and fades.
+      const form = Math.min(1, fx.bubbleAge / BUBBLE_FORM_SECONDS);
+      const pop = pl.shield ? 0 : 1 - fx.dying / BUBBLE_POP_SECONDS;
+      const swell = (0.7 + 0.3 * (1 - (1 - form) * (1 - form))) * (1 + 0.3 * pop) * (1 + 0.015 * Math.sin(time * 3));
+      const bright = (1 + 1.5 * (1 - form)) * (1 - pop) * (fx.reduceMotion ? 0.85 : 1);
+      const age = fx.ripple >= 0 && fx.ripple < RIPPLE_SECONDS ? fx.ripple : -1;
+      putMesh(cursor[MESH_INDEX.bubble]++, px, py, 0, BUBBLE_RADIUS * swell / MESHES.bubble.radius, 0.35, 0.65, 1, bright,
+        age, 0, fx.rippleX, fx.rippleY);
+    }
+    if (fx.hold === HOLD_WON) {
+      const flash = smooth(0.62, 0.8, p) * (1 - smooth(0.82, 1, p)) * (fx.reduceMotion ? 0.5 : 1);
+      if (flash > 0) putGlow(0, world.wormholeY ?? py, 60, 60, 1, 1, 1, flash, GLOW_FLAT, FLASH_Z);
+    }
   }
 
   function packParticles(pool: ParticlePool): void {
     for (let i = 0; i < pool.count; i++) {
       const a = pool.life[i] / pool.ttl[i];
-      const s = pool.size[i] * (0.4 + 0.6 * a);
-      putGlow(pool.x[i], pool.y[i], s, s, pool.r[i], pool.g[i], pool.b[i], a);
+      if (a > 1) continue;
+      if (pool.kind[i] === RING) {
+        const s = pool.size[i] * (0.2 + 1.4 * (1 - a));
+        putGlow(pool.x[i], pool.y[i], s, s, pool.r[i], pool.g[i], pool.b[i], a * 0.9, GLOW_RING);
+      } else if (pool.kind[i] === SMOKE) {
+        const s = pool.size[i] * (1 + 1.4 * (1 - a));
+        putGlow(pool.x[i], pool.y[i], s, s, pool.r[i], pool.g[i], pool.b[i], a * 0.4);
+      } else {
+        const s = pool.size[i] * (0.4 + 0.6 * a);
+        putGlow(pool.x[i], pool.y[i], s, s, pool.r[i], pool.g[i], pool.b[i], a);
+      }
     }
   }
 
@@ -161,5 +291,11 @@ export function createBatch(): MeshBatch {
     get glowCount() { return glowCount; },
     get px() { return px; },
     get py() { return py; },
+    get nozzleX() { return nozzleX; },
+    get nozzleY() { return nozzleY; },
+    get headX() { return headX; },
+    get headY() { return headY; },
+    get puff() { return puff; },
+    get exhaust() { return exhaust; },
   };
 }

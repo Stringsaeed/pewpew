@@ -74,12 +74,13 @@ Internals stay unexported, so nothing outside a module can import them. Audio is
 | `src/audio/data.ts` | `PATCHES`, `SFX`, `SONGS`, `EVENT_SFX` (data) | levels, sim (types) |
 | `src/audio/engine.ts` | `AudioEngine`, `createAudio` (the synth engine, sequencer, voice caps, music state) | sim (types), audio data |
 | `src/audio/index.ts` | the public audio API, so `src/audio` keeps resolving | data, engine |
-| `src/render/index.ts` | `Renderer` (`frame`, `dispose`, optional `hold` and `setReduceMotion`), `createRenderer` (GPU resources, pipelines, pass, resize, dispose) | render modules, sim (types), meshes |
-| `src/render/look.ts` | `Look`, `LOOK`, visual radii | levels, sim, meshes (types) |
-| `src/render/wgsl.ts` | uniform struct and the stars, mesh, and glow shaders | nothing |
-| `src/render/batch.ts` | kind-to-mesh tables, counting sort, instance packing | levels, sim, look, meshes, particles |
-| `src/render/particles.ts` | particle pool, event bursts, integration | levels, sim (types), look |
-| `src/render/camera.ts` | view and projection uniforms | nothing |
+| `src/render/index.ts` | `Renderer`, `createRenderer` (GPU resources, four pipelines, pass, resize, hold and reduce-motion state, dispose) | render modules, sim (types), meshes |
+| `src/render/look.ts` | `Look`, `LOOK`, visual radii, `NEBULA_OCTAVES`, tier tints | levels, sim, meshes (types) |
+| `src/render/wgsl.ts` | uniform struct and the stars, mesh, glow, and bubble shaders | look, meshes |
+| `src/render/batch.ts` | kind-to-mesh tables, counting sort, instance packing (bodies, bosses, black hole, bubble, dive) | levels, sim, look, meshes, particles, fx |
+| `src/render/particles.ts` | particle pool (dots, rings, smoke, start delays), event bursts, boss damage emission, integration | levels, sim (types), fx |
+| `src/render/fx.ts` | renderer-owned animation state (hold, hole age, bubble, trauma, hit flashes) and the dive pose | levels |
+| `src/render/camera.ts` | view and projection uniforms, shake, zoom | nothing |
 | `src/render/meshes.gen.ts` | `MeshData`, `MeshId`, `MESHES` (generated) | nothing |
 | `src/shell/loop.ts` | mutable `Loop`, `createLoop`, `resetRun`, `setPlaying` (the only writer of `playing`), `advance`, `press`, `drag`, `release`, `rapidRemaining`. Holds a terminal world 1 s on a loss and 1.4 s on a win | sim barrel, `src/sim/rules` (`RAPID_TICKS`), bot, flow (type) |
 | `src/shell/useGpu.ts` | adapter, device, zero-layout retry, rAF, renderer create and dispose, the one pixel-ratio read, Reduce Motion | react-native, webgpu, render, shell/loop |
@@ -121,9 +122,11 @@ The sim uses a mulberry32 RNG (`Math.imul`, which is exact) and only `+ - * / sq
 
 ### Renderer contract
 
-`frame(world | null, events, alpha, dt)` runs once per rAF. It reads positions, interpolating `px` to `x` by `alpha` so 120 Hz ProMotion doesn't judder at a 60 Hz sim. It maps `kind` through `LOOK` to a `MeshId` and batches by mesh. One shared vertex and index buffer holds all meshes, and one instance buffer is written once per frame. Then a `drawIndexed` runs per non-empty mesh using `firstInstance`, which is about 17 draw calls in the worst case. There are three pipelines. `stars` is procedural and bufferless. `mesh` is instanced, with Lambert shading plus emissive vertex color and depth. `glow` draws additive billboards for bolts, exhaust, particles, and the shield. Particles are renderer-owned state spawned from events, so the sim stays lean and they never affect determinism. The HUD is React Native views fed by `hudOf(world, prev)`, which returns `prev` itself when nothing visible changed.
+`frame(world | null, events, alpha, dt)` runs once per rAF. It reads positions, interpolating `px` to `x` by `alpha` so 120 Hz ProMotion doesn't judder at a 60 Hz sim. It maps `kind` through `LOOK` to a `MeshId` and batches by mesh. One shared vertex and index buffer holds all meshes, and one instance buffer is written once per frame. Then a `drawIndexed` runs per non-empty mesh, with the vertex and instance buffers bound at that mesh's offsets. There are four pipelines. `stars` is procedural and bufferless: three hashed star layers, a per-tier value-noise nebula (`NEBULA_OCTAVES`, the one per-pixel cost this layer adds), and speed lines from the nearest layer stretching with scroll speed. `mesh` is instanced, with a hemisphere ambient, Lambert, a rim light, emissive vertex color (any channel above 1 is unlit), a heat column (damage tint on bodies, accent brightening on bosses) and depth. `glow` draws additive billboards in five shapes (spot, ring, orb, halo, flat) for bolts, exhaust, particles, halos, and the flash. `bubble` draws the shield, a smooth icosphere, additively with no depth write: fresnel rim, hex shimmer, a ripple from the impact point. Particles are renderer-owned state spawned from events, so the sim stays lean and they never affect determinism. The HUD is React Native views fed by `hudOf(world, prev)`, which returns `prev` itself when nothing visible changed.
 
-### Audio contract
+Mesh and glow instances are 12 floats: `(x, y, rot, scale)`, `(r, g, b, flash or alpha)`, then three extras. Mesh extras are `(heat, mode, a, b)`; the mode column picks the vertex transform (tumble, flat, tilted disc, dive). The black hole is two meshes, `blackhole` (horizon and photon ring) and `accretion` (a banded emissive disc the shader tilts and spins), plus a halo drawn behind the disc so the core stays black. The three bosses are authored in world units around the sim's bolt origin `(boss.x, boss.y - 1.4)`, so every launch point is on the mesh.
+
+Two methods outside `frame` take the terminal beats. `hold(kind, seconds)` is called once when the sim emits `won` or `lost`; the shell then keeps calling `frame` with the same terminal world. Won flies the rocket into the black hole (accelerating, shrinking, rolling, stretching along its heading, exhaust following, camera easing in) and ends in a white flash. Lost blows the ship up and hides it. The choreography runs on the `dt` the shell passes, so a shell that slows `dt` for slow motion stretches the hold with it: pass `seconds` in the same scaled time. A new run or the menu ends a hold. `setReduceMotion(on)` turns the shake off, halves the flashes, and drops speed lines and warp; the shell skips its own slow motion. Shader compile errors do not show up in the fake-GPU tests, so a shader change must be checked on a device.
 
 `AudioEngine` has four methods, `events(evs)`, `ui(cue)`, `mix(...)`, and `active(on)`. The engine is the single owner of music state. A `start` event selects the song for `tierOf(level)`, `bossEnter` switches to `boss`, and `won` or `lost` plays a stinger and stops. SFX come from the exhaustive `EVENT_SFX` table. A `Patch` is a wave, an ADSR envelope, an optional detune, an optional filter with its own envelope, and an optional pitch sweep. Noise comes from one buffer generated at init. A `Song` is a bpm plus tracker strings (`"C4 - . E4"`) per voice, scheduled by a 25 ms lookahead timer against `ctx.currentTime`. Each SFX has a `maxVoices` cap so 10 lasers a second can't pile up nodes. `npm run render-song` writes every song and effect to `/tmp/pewpew-audio` as wav; `npm run render-song -- tier1` renders one id.
 
@@ -141,7 +144,7 @@ One AsyncStorage key, `pewpew/save/v1`, holds `{ v: 1, levels: [{ best, stars }]
 
 ### Interface depth
 
-The sim exports five functions plus types (`createWorld`, `step`, `hudOf`, `simulate`, `replay`). They hide track compilation, spawning, steering physics, drone patterns, boss phase and attack cycling, collision, scoring, and phase transitions. Audio exposes four methods over a synth, a sequencer, and a voice manager. The renderer exposes `frame` and `dispose` over three pipelines, instancing, particles, resize, and camera. `hold` and `setReduceMotion` are optional and unimplemented until the game-view unit lands.
+The sim exports five functions plus types (`createWorld`, `step`, `hudOf`, `simulate`, `replay`). They hide track compilation, spawning, steering physics, drone patterns, boss phase and attack cycling, collision, scoring, and phase transitions. Audio exposes four methods over a synth, a sequencer, and a voice manager. The renderer exposes `frame`, `dispose`, `hold`, and `setReduceMotion` over four pipelines, instancing, particles, hold choreography, resize, and camera.
 
 ### What it deliberately doesn't do
 

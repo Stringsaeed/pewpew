@@ -1,11 +1,13 @@
+import { tierOf } from '../levels';
 import type { NativeCanvas } from 'react-native-webgpu';
 import type { SimEvent, WorldView } from '../sim';
 import { INSTANCE_FLOATS, MESH_IDS, createBatch } from './batch';
-import { writeCamera } from './camera';
-import { LOOK, type Look } from './look';
+import { UNIFORM_FLOATS, writeCamera } from './camera';
+import { LOOK, TIER_TINT, type Look } from './look';
 import { MESHES } from './meshes.gen';
-import { applyEvents, createPool, integrate, spawnExhaust, type BossFlash } from './particles';
-import { GLOW, MESH, STARS } from './wgsl';
+import { HOLD_LOST, HOLD_NONE, HOLD_WON, SHAKE_REACH, TRAUMA_DECAY, ageHitFlashes, bossPhaseIndex, createFx, holdProgress, smooth, wobble } from './fx';
+import { applyEvents, createPool, emitBossDamage, integrate, spawnExhaust } from './particles';
+import { BUBBLE, GLOW, MESH, STARS } from './wgsl';
 
 export type { Look };
 export { LOOK };
@@ -17,13 +19,22 @@ export { LOOK };
  *  mesh   one shared vertex and index buffer holding every MeshData (interleaved pos|normal|color, 36 B), plus one
  *         instance buffer (x, y, rot, scale, tint rgb, flash = 8 f32). Per frame: counting-sort live bodies by MeshId,
  *         one writeBuffer, then drawIndexed per non-empty mesh with the vertex and instance buffers bound at that mesh's offsets.
- *         Rocket, boss, and wormhole are appended from the player, boss, and wormholeY scalars. Lambert plus emissive vertex color.
- *  glow   instanced quads, additive blend, no depth write: bolts, exhaust, explosion particles, shield bubble.
+ *         Rocket, boss, and the black hole (horizon plus accretion disc) are appended from the player, boss, and wormholeY
+ *         scalars. Lambert plus emissive vertex color. The instance's mode column picks the transform (see wgsl.ts).
+ *  glow   instanced quads, additive blend, no depth write: bolts, exhaust, explosion particles, rings, halos, shield bubble.
  * Particles live here (CPU SoA, 2048 cap) and spawn from SimEvents; the sim never knows they exist.
  */
 export interface Renderer {
   /** world null = menu backdrop (stars only). alpha = leftover accumulator / STEP, for interpolation. */
   frame(world: WorldView | null, events: readonly SimEvent[], alpha: number, dtSec: number): void;
+  /** Shake off, white flashes at half strength. The shell skips slow motion itself. */
+  setReduceMotion(on: boolean): void;
+  /**
+   * Called once when the sim emits `won` or `lost`. The shell then keeps calling `frame` with the same terminal world
+   * for about `seconds` of the dt it passes (1.4 for won, 1.0 for lost), already scaled for slow motion. Won flies the
+   * rocket into the black hole and ends in a white flash. Lost blows the ship up and hides it.
+   */
+  hold(kind: 'won' | 'lost', seconds: number): void;
   dispose(): void;
   /** Once, when the sim emits won or lost. The shell keeps framing that world and passes an already scaled dt. */
   hold?(kind: 'won' | 'lost', seconds: number): void;
@@ -32,6 +43,7 @@ export interface Renderer {
 }
 
 export const MAX_PIXEL_RATIO = 2;
+const BUBBLE_MESH = MESH_IDS.indexOf('bubble');
 
 export function createRenderer(
   device: GPUDevice,
@@ -73,7 +85,7 @@ export function createRenderer(
   const batch = createBatch();
   const meshInstBuf = buffer(batch.meshInst, GPUBufferUsage.VERTEX);
   const glowInstBuf = buffer(batch.glowInst, GPUBufferUsage.VERTEX);
-  const uniforms = new Float32Array(36);
+  const uniforms = new Float32Array(UNIFORM_FLOATS);
   const uniformBuf = buffer(uniforms, GPUBufferUsage.UNIFORM);
 
   const bindLayout = device.createBindGroupLayout({
@@ -87,39 +99,48 @@ export function createRenderer(
   const starsModule = device.createShaderModule({ code: STARS });
   const meshModule = device.createShaderModule({ code: MESH });
   const glowModule = device.createShaderModule({ code: GLOW });
+  const bubbleModule = device.createShaderModule({ code: BUBBLE });
   const starsPipe = device.createRenderPipeline({
     layout,
     vertex: { module: starsModule, entryPoint: 'vs' },
     fragment: { module: starsModule, entryPoint: 'fs', targets: [{ format }] },
     depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'always' },
   });
+  const meshBuffers: GPUVertexBufferLayout[] = [
+    { arrayStride: 36, attributes: [
+      { shaderLocation: 0, offset: 0, format: 'float32x3' },
+      { shaderLocation: 1, offset: 12, format: 'float32x3' },
+      { shaderLocation: 2, offset: 24, format: 'float32x3' },
+    ] },
+    { arrayStride: INSTANCE_FLOATS * 4, stepMode: 'instance', attributes: [
+      { shaderLocation: 3, offset: 0, format: 'float32x4' },
+      { shaderLocation: 4, offset: 16, format: 'float32x4' },
+      { shaderLocation: 5, offset: 32, format: 'float32x4' },
+    ] },
+  ];
   const meshPipe = device.createRenderPipeline({
     layout,
-    vertex: {
-      module: meshModule, entryPoint: 'vs',
-      buffers: [
-        { arrayStride: 36, attributes: [
-          { shaderLocation: 0, offset: 0, format: 'float32x3' },
-          { shaderLocation: 1, offset: 12, format: 'float32x3' },
-          { shaderLocation: 2, offset: 24, format: 'float32x3' },
-        ] },
-        { arrayStride: 32, stepMode: 'instance', attributes: [
-          { shaderLocation: 3, offset: 0, format: 'float32x4' },
-          { shaderLocation: 4, offset: 16, format: 'float32x4' },
-        ] },
-      ],
-    },
+    vertex: { module: meshModule, entryPoint: 'vs', buffers: meshBuffers },
     fragment: { module: meshModule, entryPoint: 'fs', targets: [{ format }] },
     primitive: { topology: 'triangle-list', cullMode: 'back' },
     depthStencil: { format: DEPTH, depthWriteEnabled: true, depthCompare: 'less' },
+  });
+  // The shield bubble: the same vertex layout, its own shader, additive, no depth write, drawn after everything else.
+  const bubblePipe = device.createRenderPipeline({
+    layout,
+    vertex: { module: bubbleModule, entryPoint: 'vs', buffers: meshBuffers },
+    fragment: { module: bubbleModule, entryPoint: 'fs', targets: [{ format, blend: { color: additive, alpha: additive } }] },
+    primitive: { topology: 'triangle-list', cullMode: 'back' },
+    depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'less' },
   });
   const glowPipe = device.createRenderPipeline({
     layout,
     vertex: {
       module: glowModule, entryPoint: 'vs',
-      buffers: [{ arrayStride: 32, stepMode: 'instance', attributes: [
+      buffers: [{ arrayStride: INSTANCE_FLOATS * 4, stepMode: 'instance', attributes: [
         { shaderLocation: 0, offset: 0, format: 'float32x4' },
         { shaderLocation: 1, offset: 16, format: 'float32x4' },
+        { shaderLocation: 2, offset: 32, format: 'float32x4' },
       ] }],
     },
     fragment: { module: glowModule, entryPoint: 'fs', targets: [{ format, blend: { color: additive, alpha: additive } }] },
@@ -128,7 +149,7 @@ export function createRenderer(
   });
 
   const pool = createPool();
-  const bossFx: BossFlash = { flash: 0, cooldown: 0 };
+  const fx = createFx();
 
   let depth: GPUTexture | null = null;
   let width = 0;
@@ -164,23 +185,49 @@ export function createRenderer(
   function frame(world: WorldView | null, events: readonly SimEvent[], alpha: number, dt: number): void {
     if (!resize()) return;
     time += dt;
-    bossFx.flash = Math.max(0, bossFx.flash - dt);
-    bossFx.cooldown = Math.max(0, bossFx.cooldown - dt);
-    applyEvents(pool, world, events, batch.bursts, bossFx);
+    // A new run, or the menu, ends the hold: the shell never says so.
+    if (fx.hold !== HOLD_NONE && (!world || (world.phase.p !== 'won' && world.phase.p !== 'lost'))) fx.hold = HOLD_NONE;
+    fx.flash = Math.max(0, fx.flash - dt);
+    fx.cooldown = Math.max(0, fx.cooldown - dt);
+    fx.holeAge += dt;
+    fx.bubbleAge += dt;
+    if (fx.hitLive) ageHitFlashes(fx, dt);
+    fx.trauma = Math.max(0, fx.trauma - TRAUMA_DECAY * dt);
+    fx.dying = Math.max(0, fx.dying - dt);
+    if (fx.ripple >= 0) fx.ripple += dt;
+    if (fx.hold !== HOLD_NONE) fx.holdT += dt;
+    applyEvents(pool, world, events, batch.bursts, fx);
     integrate(pool, dt);
 
     batch.begin();
     let camY = menuY;
+    let zoom = 1;
     if (world) {
-      batch.packWorld(world, alpha, time, bossFx.flash);
+      batch.packWorld(world, alpha, time, fx);
       camY = batch.py;
-      spawnExhaust(pool, batch.px, batch.py, dt);
+      if (world.boss) emitBossDamage(pool, fx, world.boss.x, world.boss.y, bossPhaseIndex(world.boss.id, world.boss.hp), dt);
+      if (batch.exhaust) spawnExhaust(pool, batch.nozzleX, batch.nozzleY, batch.headX, batch.headY, batch.puff, dt);
+      if (fx.hold === HOLD_WON && world.wormholeY !== null) {
+        const e = smooth(0, 0.8, holdProgress(fx));
+        camY += (world.wormholeY - camY) * 0.6 * e;
+        zoom = 1 - 0.14 * e;
+      }
     } else {
       menuY += dt * 2.5;
     }
     batch.packParticles(pool);
 
-    writeCamera(uniforms, camY, width, height, time);
+    // Backdrop: the tier's nebula tint and the scroll speed ease toward their targets, so a new level never snaps.
+    const tier = world ? tierOf(world.spec.n) : 1;
+    const ease = Math.min(1, dt * 2.5);
+    const tint = TIER_TINT[tier - 1];
+    fx.tintR += (tint[0] - fx.tintR) * ease; fx.tintG += (tint[1] - fx.tintG) * ease; fx.tintB += (tint[2] - fx.tintB) * ease;
+    fx.speed += ((fx.reduceMotion ? 0 : world ? world.spec.scroll : 2.5) - fx.speed) * ease;
+    fx.warp = fx.reduceMotion || fx.hold !== HOLD_WON ? 0 : smooth(0, 0.8, holdProgress(fx));
+    uniforms[36] = fx.tintR; uniforms[37] = fx.tintG; uniforms[38] = fx.tintB; uniforms[39] = 1;
+    uniforms[40] = fx.speed; uniforms[41] = fx.warp;
+    const shake = fx.trauma * fx.trauma * SHAKE_REACH;
+    writeCamera(uniforms, camY, width, height, time, zoom, shake * wobble(time, 0), shake * wobble(time, 11));
     device.queue.writeBuffer(uniformBuf, 0, uniforms);
     if (batch.meshSlots > 0) device.queue.writeBuffer(meshInstBuf, 0, batch.meshInst, 0, batch.meshSlots * INSTANCE_FLOATS);
     if (batch.glowCount > 0) device.queue.writeBuffer(glowInstBuf, 0, batch.glowInst, 0, batch.glowCount * INSTANCE_FLOATS);
@@ -195,7 +242,7 @@ export function createRenderer(
       pass.setPipeline(meshPipe);
       pass.setIndexBuffer(indexBuf, 'uint16');
       for (let m = 0; m < batch.counts.length; m++) {
-        if (batch.counts[m] === 0) continue;
+        if (batch.counts[m] === 0 || m === BUBBLE_MESH) continue;
         // Dawn rejects a nonzero baseVertex or firstInstance unless the device enabled 'indirect-first-instance',
         // so both offsets go into the vertex buffer bindings and the renderer works with whatever device it is given.
         pass.setVertexBuffer(0, vertexBuf, baseVertex[m] * 36);
@@ -208,6 +255,12 @@ export function createRenderer(
       pass.setVertexBuffer(0, glowInstBuf);
       pass.draw(4, batch.glowCount);
     }
+    if (batch.counts[BUBBLE_MESH] > 0) {
+      pass.setPipeline(bubblePipe);
+      pass.setVertexBuffer(0, vertexBuf, baseVertex[BUBBLE_MESH] * 36);
+      pass.setVertexBuffer(1, meshInstBuf, batch.starts[BUBBLE_MESH] * INSTANCE_FLOATS * 4);
+      pass.drawIndexed(indexCountOf[BUBBLE_MESH], batch.counts[BUBBLE_MESH], firstIndex[BUBBLE_MESH], 0, 0);
+    }
     pass.end();
     device.queue.submit([encoder.finish()]);
     ctx.present();
@@ -215,6 +268,16 @@ export function createRenderer(
 
   return {
     frame,
+    setReduceMotion(on) {
+      fx.reduceMotion = on;
+      if (on) fx.trauma = 0;
+    },
+    hold(kind, seconds) {
+      fx.hold = kind === 'won' ? HOLD_WON : HOLD_LOST;
+      fx.holdSeconds = Math.max(seconds, 0.1);
+      fx.holdT = 0;
+      fx.holdFresh = true;
+    },
     dispose() {
       for (const b of [vertexBuf, indexBuf, meshInstBuf, glowInstBuf, uniformBuf]) b.destroy();
       depth?.destroy();
