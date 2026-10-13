@@ -10,9 +10,11 @@ interface Props {
   readonly save: Save;
   readonly onPlay: () => void;
   readonly onSettings: () => void;
+  /** Opens the Game Center campaign leaderboard. Absent where Game Center does not exist, which hides the button. */
+  readonly onRanks?: () => void;
 }
 
-export function Title({ save, onPlay, onSettings }: Props) {
+export function Title({ save, onPlay, onSettings, onRanks }: Props) {
   const total = save.levels.reduce((sum, r) => sum + r.stars, 0);
   return (
     <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(160)} style={styles.root}>
@@ -25,6 +27,7 @@ export function Title({ save, onPlay, onSettings }: Props) {
       </View>
       <View style={styles.actions}>
         <Button label="PLAY" onPress={onPlay} />
+        {onRanks ? <Button label="RANKINGS" tone="ghost" ink={color.yellow} onPress={onRanks} /> : null}
         <Button label="SETTINGS" tone="ghost" onPress={onSettings} />
       </View>
       <Text accessibilityLabel={`Best total stars ${total} of ${save.levels.length * 3}`} style={styles.total}>
