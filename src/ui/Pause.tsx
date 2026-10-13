@@ -7,11 +7,12 @@ interface Props {
   readonly onRetry: () => void;
   readonly onSettings: () => void;
   readonly onQuit: () => void;
+  readonly reduceMotion?: boolean;
 }
 
-export function Pause({ onResume, onRetry, onSettings, onQuit }: Props) {
+export function Pause({ onResume, onRetry, onSettings, onQuit, reduceMotion }: Props) {
   return (
-    <Panel title="PAUSED">
+    <Panel title="PAUSED" reduceMotion={reduceMotion}>
       <Button label="RESUME" onPress={onResume} />
       <Button label="RETRY" tone="ghost" onPress={onRetry} />
       <Button label="SETTINGS" tone="ghost" onPress={onSettings} />

@@ -12,11 +12,12 @@ interface Props {
   readonly reached?: number;
   readonly onRetry: () => void;
   readonly onLevels: () => void;
+  readonly reduceMotion?: boolean;
 }
 
-export function GameOver({ level, score, best, reached, onRetry, onLevels }: Props) {
+export function GameOver({ level, score, best, reached, onRetry, onLevels, reduceMotion }: Props) {
   return (
-    <Panel title="GAME OVER" tint={color.magenta} shake>
+    <Panel title="GAME OVER" tint={color.magenta} shake reduceMotion={reduceMotion}>
       <Text style={styles.sub}>{`LEVEL ${level}`}</Text>
       <Text accessibilityLabel={`Score ${score}`} style={styles.score}>{String(score).padStart(6, '0')}</Text>
       {best !== undefined ? <Text style={styles.sub}>{`BEST ${best}`}</Text> : null}

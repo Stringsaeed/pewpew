@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { PixelRatio } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, PixelRatio } from 'react-native';
 import { useCanvasRef, type NativeCanvas } from 'react-native-webgpu';
 import { MAX_PIXEL_RATIO, createRenderer, type Renderer } from '../render';
 import { advance, type Loop, type Sinks } from './loop';
@@ -12,12 +12,29 @@ export type FrameSample = (now: number, tick: (now: number) => void) => void;
  * Owns the adapter, the device, the rAF clock, and the renderer.
  * The pixel ratio is read once, here, when the renderer is created.
  * A zero-size canvas retries on the next frame instead of configuring.
+ * Also subscribes to Reduce Motion and returns that flag for the screen tree.
  */
-export function useGpu(canvasRef: CanvasRef, loop: Loop, sinks: Sinks, sample: FrameSample | null): void {
+export function useGpu(canvasRef: CanvasRef, loop: Loop, sinks: Sinks, sample: FrameSample | null): boolean {
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const reduceRef = useRef(false);
+  const rendererRef = useRef<Renderer | null>(null);
   const sinksRef = useRef(sinks);
   sinksRef.current = sinks;
   const sampleRef = useRef(sample);
   sampleRef.current = sample;
+
+  useEffect(() => {
+    let alive = true;
+    const apply = (on: boolean) => {
+      if (!alive) return;
+      reduceRef.current = on;
+      setReduceMotion(on);
+      rendererRef.current?.setReduceMotion?.(on);
+    };
+    void AccessibilityInfo.isReduceMotionEnabled().then(apply);
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', apply);
+    return () => { alive = false; sub.remove(); };
+  }, []);
 
   useEffect(() => {
     let frame = 0;
@@ -47,6 +64,8 @@ export function useGpu(canvasRef: CanvasRef, loop: Loop, sinks: Sinks, sample: F
         if (!c || !canvas || canvas.clientWidth === 0 || canvas.clientHeight === 0 || !device) return;
         ctx = c;
         renderer = createRenderer(device, ctx, format, Math.min(PixelRatio.get(), MAX_PIXEL_RATIO));
+        rendererRef.current = renderer;
+        renderer.setReduceMotion?.(reduceRef.current);
         loop.last = now;
         return;
       }
@@ -68,6 +87,9 @@ export function useGpu(canvasRef: CanvasRef, loop: Loop, sinks: Sinks, sample: F
       stopped = true;
       cancelAnimationFrame(frame);
       renderer?.dispose();
+      rendererRef.current = null;
     };
   }, [canvasRef, loop]);
+
+  return reduceMotion;
 }

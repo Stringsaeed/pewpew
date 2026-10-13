@@ -14,6 +14,7 @@ interface Props {
   readonly onNext: () => void;
   readonly onRetry: () => void;
   readonly onLevels: () => void;
+  readonly reduceMotion?: boolean;
 }
 
 const STAR_STAGGER_MS = 280;
@@ -36,7 +37,7 @@ function useCountUp(target: number): number {
   return value;
 }
 
-export function Complete({ level, score, stars, best, onNext, onRetry, onLevels }: Props) {
+export function Complete({ level, score, stars, best, onNext, onRetry, onLevels, reduceMotion }: Props) {
   const shown = useCountUp(score);
   const pops = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
   useEffect(() => {
@@ -50,7 +51,7 @@ export function Complete({ level, score, stars, best, onNext, onRetry, onLevels 
 
   const isBest = score > 0 && score >= best;
   return (
-    <Panel title="LEVEL CLEAR" tint={color.green}>
+    <Panel title="LEVEL CLEAR" tint={color.green} reduceMotion={reduceMotion}>
       <View accessible accessibilityLabel={`${stars} of 3 stars`} style={styles.stars}>
         {pops.map((v, i) => (
           <Animated.Text

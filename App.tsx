@@ -67,7 +67,7 @@ export default function App() {
     };
   }
 
-  useGpu(canvasRef, loop, sinksRef.current, tools?.sample ?? null);
+  const reduceMotion = useGpu(canvasRef, loop, sinksRef.current, tools?.sample ?? null);
 
   return (
     <View style={styles.root}>
@@ -87,6 +87,7 @@ export default function App() {
           onTouchMove={(e) => drag(loop, e.nativeEvent.pageX, widthRef.current)}
           onTouchEnd={() => release(loop)}
           rapid={rapidRemaining(loop.world)}
+          reduceMotion={reduceMotion}
         />
       )}
     </View>

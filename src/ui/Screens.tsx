@@ -31,10 +31,12 @@ interface Props {
   readonly onTouchEnd: () => void;
   /** Rapid window still left, 0..1, so the RAPID chip can drain between hud updates. */
   readonly rapid?: number;
+  /** When set, panels fade in instead of zooming. */
+  readonly reduceMotion?: boolean;
 }
 
 /** Which screen is on top of the canvas. The canvas itself stays in App. */
-export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnlockAll, onTouchStart, onTouchMove, onTouchEnd, rapid }: Props) {
+export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnlockAll, onTouchStart, onTouchMove, onTouchEnd, rapid, reduceMotion }: Props) {
   const onMenu = screen.s === 'title' || screen.s === 'levels' || (screen.s === 'settings' && run === null);
   const level = run?.level ?? 1;
   const intro = useIntro(hud, run);
@@ -73,6 +75,7 @@ export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnloc
           onRetry={() => act({ a: 'retry' })}
           onSettings={() => act({ a: 'settings' })}
           onQuit={() => act({ a: 'quit' })}
+          reduceMotion={reduceMotion}
         />
       ) : null}
       {screen.s === 'settings' ? (
@@ -83,6 +86,7 @@ export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnloc
           onSfx={(sfx) => commitSave({ ...save, sfx })}
           onBack={() => act({ a: 'back' })}
           onUnlockAll={onUnlockAll}
+          reduceMotion={reduceMotion}
         />
       ) : null}
       {screen.s === 'complete' ? (
@@ -94,6 +98,7 @@ export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnloc
           onNext={() => act({ a: 'next' })}
           onRetry={() => act({ a: 'retry' })}
           onLevels={() => act({ a: 'quit' })}
+          reduceMotion={reduceMotion}
         />
       ) : null}
       {screen.s === 'gameover' ? (
@@ -104,6 +109,7 @@ export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnloc
           reached={reached.current}
           onRetry={() => act({ a: 'retry' })}
           onLevels={() => act({ a: 'quit' })}
+          reduceMotion={reduceMotion}
         />
       ) : null}
     </>
