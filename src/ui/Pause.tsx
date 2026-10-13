@@ -1,5 +1,6 @@
 import { Button } from './Button';
 import { Panel } from './Panel';
+import { color } from './theme';
 
 interface Props {
   readonly onResume: () => void;
@@ -14,7 +15,7 @@ export function Pause({ onResume, onRetry, onSettings, onQuit }: Props) {
       <Button label="RESUME" onPress={onResume} />
       <Button label="RETRY" tone="ghost" onPress={onRetry} />
       <Button label="SETTINGS" tone="ghost" onPress={onSettings} />
-      <Button label="LEVELS" accessibilityLabel="Quit to levels" tone="danger" onPress={onQuit} />
+      <Button label="LEVELS" accessibilityLabel="Quit to levels" tone="ghost" ink={color.magenta} onPress={onQuit} />
     </Panel>
   );
 }

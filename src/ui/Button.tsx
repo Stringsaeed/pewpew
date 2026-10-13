@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, type Insets, type StyleProp, type ViewStyle } from 'react-native';
 import { color, font, space } from './theme';
 
 export type Tone = 'primary' | 'ghost' | 'danger';
@@ -11,19 +11,24 @@ interface Props {
   readonly tone?: Tone;
   readonly accessibilityLabel?: string;
   readonly style?: StyleProp<ViewStyle>;
+  readonly hitSlop?: number | Insets;
+  /** Overrides the label color of the tone, e.g. a ghost button with magenta text. */
+  readonly ink?: string;
 }
 
-export function Button({ label, onPress, tone = 'primary', accessibilityLabel, style }: Props) {
+export function Button({ label, onPress, tone = 'primary', accessibilityLabel, style, hitSlop, ink: inkOverride }: Props) {
   const border = TONE[tone];
-  const ink = LABEL[tone];
+  const ink = inkOverride ?? LABEL[tone];
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      hitSlop={hitSlop}
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
         { borderColor: border, backgroundColor: pressed ? border : 'rgba(255,255,255,0.04)', transform: [{ scale: pressed ? 0.97 : 1 }] },
+        tone === 'primary' && { boxShadow: `0 0 18px ${border}73` },
         style,
       ]}
     >
