@@ -40,5 +40,6 @@ export function Panel({ title, tint = color.cyan, shake = false, children }: Pro
 const styles = StyleSheet.create({
   scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: color.scrim, alignItems: 'center', justifyContent: 'center' },
   panel: { backgroundColor: color.panel, borderWidth: 2, borderRadius: 20, paddingVertical: space.lg, paddingHorizontal: space.lg, alignItems: 'center', gap: space.md, minWidth: 300 },
-  title: { fontFamily: font.family, fontSize: font.title, fontWeight: '900', letterSpacing: 5 },
+  /** Padding gives the text shadow room so it is not clipped to a box; the negative margin cancels it in layout. */
+  title: { padding: 14, margin: -14, fontFamily: font.family, fontSize: font.title, fontWeight: '900', letterSpacing: 5 },
 });
