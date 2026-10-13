@@ -1,0 +1,15 @@
+---
+import Doc from '../layouts/Doc.astro';
+import { Content } from '../../../docs/support-page.md';
+import { SITE } from '../consts';
+---
+<Doc title="Support · PewPew" description="How to play PewPew, sound and pause controls, progress, and how to reach support." eyebrow="Help">
+  <Content />
+  <p class="mail"><a class="btn btn-primary" href={`mailto:${SITE.email}?subject=PewPew%20support`}>Email support</a></p>
+</Doc>
+
+<style>
+  .mail { margin-top: 40px; }
+  .mail a { color: var(--cyan); }
+  .mail a:hover { color: var(--bg); }
+</style>

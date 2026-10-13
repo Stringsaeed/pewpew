@@ -1,0 +1,5 @@
+dist/
+.astro/
+.vercel/
+.env*
+node_modules/

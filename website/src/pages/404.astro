@@ -1,0 +1,17 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Lost in space · PewPew" description="This page drifted out of the track.">
+  <section class="lost wrap">
+    <p class="code glow-threat">404</p>
+    <h1>GAME OVER</h1>
+    <p class="lede">This page drifted past the edge of the track.</p>
+    <a class="btn btn-primary" href="/">Retry</a>
+  </section>
+</Base>
+
+<style>
+  .lost { min-height: 70svh; display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center; }
+  .code { margin: 0; font-size: 13px; letter-spacing: 0.5em; font-weight: 700; }
+  h1 { margin: 0; font-size: clamp(44px, 9vw, 96px); letter-spacing: 0.12em; color: var(--threat); text-shadow: 0 0 30px rgba(255, 90, 54, 0.6); }
+</style>

@@ -1,0 +1,51 @@
+---
+import { SITE } from '../consts';
+import Logo from './Logo.astro';
+const year = 2026;
+---
+<footer class="foot">
+  <div class="wrap grid">
+    <div class="brand">
+      <Logo />
+      <p>30 levels. 3 bosses. One rocket.<br />Made by <a href={SITE.x} rel="noopener">@stringsaeed</a>.</p>
+    </div>
+    <nav aria-label="Footer">
+      <div>
+        <h2>Game</h2>
+        <a href={SITE.appStore} rel="noopener">App Store</a>
+        <a href="/#play">Play in browser</a>
+        <a href="/support">Support</a>
+      </div>
+      <div>
+        <h2>Source</h2>
+        <a href={SITE.github} rel="noopener">GitHub</a>
+        <a href={`${SITE.github}/blob/main/docs/architecture.md`} rel="noopener">Architecture</a>
+        <a href={`${SITE.github}/blob/main/LICENSE`} rel="noopener">MIT license</a>
+      </div>
+      <div>
+        <h2>Legal</h2>
+        <a href="/privacy">Privacy policy</a>
+        <a href={`mailto:${SITE.email}`}>Contact</a>
+      </div>
+    </nav>
+  </div>
+  <div class="wrap legal">
+    <span>© {year} {SITE.author}</span>
+    <span>Apple, the Apple logo, iPhone, and App Store are trademarks of Apple Inc.</span>
+  </div>
+</footer>
+
+<style>
+  .foot { border-top: 1px solid var(--line); padding: 64px 0 40px; background: linear-gradient(transparent, rgba(255, 61, 154, 0.04)); }
+  .grid { display: grid; grid-template-columns: 1.2fr 2fr; gap: 48px; }
+  .brand p { color: var(--text-dim); font-size: 13px; margin: 16px 0 0; }
+  nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  nav div { display: flex; flex-direction: column; gap: 10px; }
+  h2 { font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--magenta); margin: 0 0 6px; font-weight: 700; }
+  nav a { color: var(--text-dim); text-decoration: none; font-size: 14px; }
+  nav a:hover { color: var(--cyan); }
+  .legal { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 12px; color: var(--dim); }
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>

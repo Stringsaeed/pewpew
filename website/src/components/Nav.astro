@@ -1,0 +1,39 @@
+---
+import { SITE } from '../consts';
+import Logo from './Logo.astro';
+import RocketMark from './RocketMark.astro';
+---
+<header class="nav">
+  <div class="wrap row">
+    <a class="brand" href="/" aria-label="PewPew home">
+      <RocketMark size={26} />
+      <Logo />
+    </a>
+    <nav aria-label="Primary">
+      <a href="/#play">Play</a>
+      <a href="/#bosses">Bosses</a>
+      <a href="/#tech">Tech</a>
+      <a href={SITE.github} rel="noopener">GitHub</a>
+    </nav>
+    <a class="btn btn-primary btn-sm get" href={SITE.appStore} rel="noopener">Get the app</a>
+  </div>
+</header>
+
+<style>
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    background: linear-gradient(rgba(5, 5, 15, 0.82), rgba(5, 5, 15, 0.55));
+    border-bottom: 1px solid var(--line);
+  }
+  .row { display: flex; align-items: center; gap: 24px; min-height: 64px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+  nav { display: flex; gap: 28px; margin-left: auto; }
+  nav a { color: var(--text-dim); text-decoration: none; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; }
+  nav a:hover { color: var(--cyan); }
+  @media (max-width: 760px) {
+    nav { display: none; }
+    .get { margin-left: auto; }
+  }
+</style>

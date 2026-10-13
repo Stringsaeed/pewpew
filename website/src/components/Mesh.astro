@@ -1,0 +1,9 @@
+---
+import type { MeshId } from '@game/render/meshes.gen';
+import { meshSvg, type Pose } from '../lib/meshSvg';
+
+interface Props { id: MeshId; pose?: Pose; size?: string; class?: string; label?: string }
+const { id, pose, size = '100%', class: cls, label } = Astro.props;
+const { viewBox, body } = meshSvg(id, pose);
+---
+<svg class={cls} viewBox={viewBox} width={size} height={size} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : 'true'} set:html={body} />

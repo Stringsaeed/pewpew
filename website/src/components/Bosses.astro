@@ -1,0 +1,103 @@
+---
+import { Image } from 'astro:assets';
+import { BOSSES, type BossAttack, type BossId } from '@game/levels';
+import warden from '../assets/bosses/warden.png';
+import hive from '../assets/bosses/hive.png';
+import core from '../assets/bosses/core.png';
+import blackhole from '../assets/bosses/blackhole.png';
+
+const attackName = (a: BossAttack): string => {
+  switch (a.a) {
+    case 'spread': return `${a.bolts}-bolt fan`;
+    case 'aimed': return `${a.bolts} aimed shots`;
+    case 'mines': return `${a.count} mines`;
+    case 'drones': return `${a.count} ${a.pattern} drones`;
+  }
+};
+
+const roster: { id: BossId; level: number; tone: string; img: ImageMetadata; line: string }[] = [
+  { id: 'warden', level: 10, tone: '#9a6bff', img: warden, line: 'An armored gate in violet space. It sweeps the lane, fans bolts, and seeds mines behind them.' },
+  { id: 'hive', level: 20, tone: '#2fd6c4', img: hive, line: 'A honeycomb mothership in the teal nebula. It launches drones in formation while it aims at you.' },
+  { id: 'core', level: 30, tone: '#ff3d6a', img: core, line: 'The last guardian, with three phases. At a quarter health it fires 150-degree walls of bolts.' },
+];
+const bosses = roster.map((r) => {
+  const spec = BOSSES[r.id];
+  const unique = [...new Set(spec.phases.flatMap((p) => p.attacks.map(attackName)))];
+  return { ...r, hp: spec.hp, phases: spec.phases.length, fastest: Math.min(...spec.phases.map((p) => p.attackEverySec)), attacks: unique };
+});
+---
+<section class="section bosses" id="bosses" aria-labelledby="bosses-h">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">Every tenth level</p>
+      <h2 class="h-section" id="bosses-h">Three bosses. <span class="glow-threat">Each one</span> changes the rules.</h2>
+      <p class="lede">Each boss guards the end of a tier. Every phase speeds up its sweep and swaps its attack cycle, and when it dies the wormhole opens behind it.</p>
+    </div>
+
+    <div class="roster">
+      {bosses.map((b) => (
+        <article class="boss reveal" style={`--tone:${b.tone}`}>
+          <div class="shot">
+            <Image src={b.img} alt={`${b.id} boss fight on level ${b.level}`} widths={[480, 760, 1100]} sizes="(max-width: 900px) 92vw, 380px" quality={78} />
+            <span class="lvl">LV {b.level}</span>
+          </div>
+          <div class="body">
+            <h3>{b.id}</h3>
+            <p>{b.line}</p>
+            <dl>
+              <div><dt>HP</dt><dd>{b.hp}</dd></div>
+              <div><dt>Phases</dt><dd>{b.phases}</dd></div>
+              <div><dt>Attacks every</dt><dd>{b.fastest}s</dd></div>
+            </dl>
+            <ul class="moves">{b.attacks.map((a) => <li>{a}</li>)}</ul>
+          </div>
+        </article>
+      ))}
+    </div>
+
+    <article class="dive reveal">
+      <Image class="bh" src={blackhole} alt="The rocket diving into the black hole" widths={[640, 1000, 1320]} sizes="(max-width: 900px) 92vw, 560px" quality={78} />
+      <div class="dive-copy">
+        <p class="eyebrow">Then</p>
+        <h3 class="h-section">Dive into the <span class="glow-magenta">black hole.</span></h3>
+        <p class="lede">Beat a boss and the wormhole opens where it died: a black hole with a tilted, spinning accretion disc. Fly in and the level is yours.</p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<style>
+  .head { max-width: 780px; }
+  .roster { margin-top: 56px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .boss {
+    display: grid; grid-template-rows: auto 1fr; overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--tone) 35%, transparent); border-radius: var(--radius);
+    background: linear-gradient(color-mix(in oklab, var(--tone) 10%, transparent), transparent 40%), var(--panel);
+    box-shadow: 0 30px 80px -40px var(--tone);
+  }
+  .shot { position: relative; aspect-ratio: 4 / 3; overflow: hidden; }
+  .shot img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.02); transition: transform 1.2s cubic-bezier(.2,.8,.2,1); }
+  .boss:hover .shot img { transform: scale(1.1); }
+  .shot::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 55%, rgba(12, 14, 36, 0.95)); }
+  .lvl { position: absolute; top: 14px; left: 14px; z-index: 1; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.25em; color: var(--tone); border: 1px solid var(--tone); background: rgba(5, 5, 15, 0.7); }
+  .body { padding: 4px 22px 24px; display: grid; gap: 14px; align-content: start; }
+  .boss h3 { margin: 0; font-size: 30px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--tone); text-shadow: 0 0 22px var(--tone); }
+  .body p { margin: 0; color: var(--text-dim); font-size: 14px; line-height: 1.55; }
+  dl { margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); border-block: 1px solid var(--line); }
+  dl div { padding: 10px 0; }
+  dt { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); }
+  dd { margin: 2px 0 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .moves { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .moves li { font-size: 11px; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 6px; color: var(--text-dim); background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); }
+  .dive {
+    margin-top: 18px; display: grid; grid-template-columns: 1fr 1.1fr; align-items: center; overflow: hidden;
+    border: 1px solid rgba(255, 61, 154, 0.3); border-radius: var(--radius); background: var(--panel);
+  }
+  .dive :global(.bh) { width: 100%; height: 100%; max-height: 520px; object-fit: cover; }
+  .dive-copy { padding: clamp(28px, 4vw, 56px); }
+  .dive-copy .h-section { font-size: clamp(28px, 3.6vw, 46px); }
+  @media (max-width: 900px) {
+    .roster { grid-template-columns: 1fr; }
+    .dive { grid-template-columns: 1fr; }
+  }
+</style>

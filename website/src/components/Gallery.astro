@@ -1,0 +1,60 @@
+---
+import { Picture } from 'astro:assets';
+
+const files = import.meta.glob<{ default: ImageMetadata }>('../assets/screens/*.png', { eager: true });
+const alts: Record<string, string> = {
+  '01-gameplay': 'Weaving through a level 30 asteroid field',
+  '02-hive': 'Fighting the Hive boss on level 20',
+  '03-black-hole': 'Diving into the black hole',
+  '04-warden': 'The Warden boss on level 10',
+  '05-core': 'The Core, the final boss, on level 30',
+  '06-levels': 'Level select with stars for each level',
+  '07-clear': 'Level clear with three stars',
+};
+const shots = Object.entries(files)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([path, mod]) => {
+    const key = path.split('/').pop()!.replace('.png', '');
+    return { src: mod.default, alt: alts[key] ?? 'PewPew screenshot' };
+  });
+---
+<section class="section gallery" id="screens" aria-labelledby="gallery-h">
+  <div class="wrap head reveal">
+    <p class="eyebrow">Straight off the simulator</p>
+    <h2 class="h-section" id="gallery-h">See it <span class="glow-magenta">in motion.</span></h2>
+  </div>
+  <ul class="strip" tabindex="0" aria-label="Screenshots, scroll sideways">
+    {shots.map((s, i) => (
+      <li style={`--i:${i}`}>
+        <Picture src={s.src} alt={s.alt} formats={['avif', 'webp']} fallbackFormat="jpg" widths={[360, 540, 720]} sizes="(max-width: 640px) 70vw, 300px" quality={72} loading="lazy" />
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  .head { margin-bottom: 48px; }
+  .strip {
+    list-style: none; margin: 0; padding: 8px max(20px, calc((100vw - var(--max)) / 2)) 32px;
+    display: grid; grid-auto-flow: column; grid-auto-columns: clamp(220px, 24vw, 300px); gap: 22px;
+    overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: max(20px, calc((100vw - var(--max)) / 2));
+    scrollbar-width: thin; scrollbar-color: var(--dim) transparent;
+  }
+  .strip li { scroll-snap-align: start; }
+  .strip :global(img) {
+    width: 100%; height: auto; aspect-ratio: 1320 / 2868; border-radius: 18px;
+    border: 1px solid var(--line); box-shadow: 0 30px 80px -40px rgba(255, 61, 154, 0.55);
+    transition: transform 300ms cubic-bezier(.2,.8,.2,1);
+  }
+  .strip li:hover :global(img) { transform: translateY(-6px); }
+  @supports (animation-timeline: view(inline)) {
+    @media (prefers-reduced-motion: no-preference) {
+      .strip li { animation: tilt linear both; animation-timeline: view(inline); }
+      @keyframes tilt {
+        0% { transform: perspective(900px) rotateY(18deg) scale(0.92); opacity: 0.5; }
+        40%, 60% { transform: none; opacity: 1; }
+        100% { transform: perspective(900px) rotateY(-18deg) scale(0.92); opacity: 0.5; }
+      }
+    }
+  }
+</style>
