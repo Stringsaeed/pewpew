@@ -228,6 +228,13 @@ export function createBatch(): MeshBatch {
         nozzleX = px; nozzleY = py - ROCKET_RADIUS * 0.95;
       }
     }
+    if (rocketOn) {
+      // A warm glow at the nozzle always, and a cyan engine flare that swells with sideways speed.
+      const flicker = 0.9 + 0.1 * Math.sin(time * 41);
+      putGlow(nozzleX, nozzleY, 0.55 * puff, 0.7 * puff, 1, 0.6, 0.2, 0.7 * flicker);
+      const lateral = Math.min(1, Math.abs(pl.vx) / 6) * (diving ? 0 : 1);
+      if (lateral > 0.05) putGlow(nozzleX - Math.sign(pl.vx) * 0.15, nozzleY - 0.25, 0.28, 0.9 + 0.5 * lateral, 0.3, 0.9, 1, 0.75 * lateral * flicker);
+    }
     if (world.boss) {
       const b = world.boss;
       const m = BOSS_MESH[b.id];
