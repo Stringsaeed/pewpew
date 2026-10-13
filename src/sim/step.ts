@@ -2,27 +2,21 @@ import { ARCHETYPES, BOSSES, DRONE_PATTERNS, Kind, levelSpec } from '../levels';
 import type { BossAttack, BossPhase, BossSpec, DronePattern, LevelNumber, LevelSpec, PickupKind } from '../levels';
 import {
   AIM_SPREAD, BOLT_RANGE, BOLT_SPEED, BOSS_DIST, BOSS_GRACE_TICKS, BOSS_R, BOSS_SCORE_PER_HP, BOSS_SWEEP,
-  COAST_DAMPING, DEAD, DESPAWN_BEHIND, DRAG_GAIN, DRONE_ANCHOR_LIMIT, ENEMY_BOLT_SPEED, FIRE_TICKS,
+  COAST_DAMPING, DEAD, DESPAWN_BEHIND, DRONE_ANCHOR_LIMIT, ENEMY_BOLT_SPEED, FIRE_TICKS,
   HIT_INVULN_TICKS, PICKUP_SLACK, PLAYER_MAX_VX, PLAYER_RADIUS, PLAYER_X_LIMIT, RAPID_TICKS,
   ROW_DY, ROW_GAP, SHIELD_INVULN_TICKS, SPAWN_AHEAD, STEER_ACCEL, STEER_GAIN, STEP, TICKS_PER_SEC,
   TRACK_END_CLEAR, TRACK_HALF_WIDTH, TRACK_START, WELL_REACH_Y,
 } from './rules';
 import { PI, TWO_PI, clamp, cosT, rand, sinT } from './math';
 import type { Rng } from './math';
+import { COAST, steerVelocity } from './input';
+import type { Input } from './input';
 import { add, createWorld, remove } from './world';
 import type { Bodies, Boss, Player, SimEvent, Stars, World, WorldView } from './world';
 
 // This file and levels.ts may use only + - * / and Math.sqrt, imul, floor, min, max, abs (sim.test.ts enforces it).
 // Engine trig differs in the last ulp between Hermes and V8, which would make the verifier prove a slightly different
 // game than the one on the phone. Those operations are correctly rounded by IEEE 754 on every engine.
-
-/** One input per step. targetX is the world x the rocket steers toward. null means the finger is up, so the rocket coasts and wells pull it. */
-export interface Input { readonly targetX: number | null }
-export const COAST: Input = { targetX: null };
-/** Relative drag. anchorX is the rocket x when the finger went down; dxFrac is finger dx / screen width. */
-export function dragInput(anchorX: number, dxFrac: number): Input {
-  return { targetX: clamp(anchorX + dxFrac * DRAG_GAIN, -PLAYER_X_LIMIT, PLAYER_X_LIMIT) };
-}
 
 export interface Spawn { readonly y: number; readonly x: number; readonly kind: Kind; readonly variant: number; readonly param: number }
 /** Compiled from (LevelSpec, seed) once at createWorld, sorted by y. */
@@ -135,12 +129,6 @@ export function hashWorld(w: World): number {
   for (let i = 0; i < b.count; i++) { num(b.kind[i]); num(b.x[i]); num(b.y[i]); num(b.hp[i]); }
   if (w.boss !== null) { num(w.boss.hp); num(w.boss.x); num(w.boss.attack); }
   return h >>> 0;
-}
-
-/** The rocket's lateral velocity after one held-finger STEP, before well pull. Exported so a bot can plan with the real handling. */
-export function steerVelocity(x: number, vx: number, targetX: number): number {
-  const want = clamp((clamp(targetX, -PLAYER_X_LIMIT, PLAYER_X_LIMIT) - x) * STEER_GAIN, -PLAYER_MAX_VX, PLAYER_MAX_VX);
-  return vx + clamp(want - vx, -STEER_ACCEL * STEP, STEER_ACCEL * STEP);
 }
 
 function steer(w: World, input: Input): void {

@@ -8,6 +8,8 @@ export {
   TICKS_PER_SEC,
   TRACK_HALF_WIDTH,
 } from './rules';
+export { COAST, dragInput, steerVelocity } from './input';
+export type { Input } from './input';
 export { createWorld } from './world';
 export type {
   Bodies,
@@ -23,19 +25,15 @@ export type {
   WorldView,
 } from './world';
 export {
-  COAST,
-  dragInput,
   hashWorld,
   hudOf,
   replay,
   simulate,
   step,
-  steerVelocity,
 } from './step';
 export type {
   Bot,
   Hud,
-  Input,
   RunResult,
   Spawn,
   Track,
