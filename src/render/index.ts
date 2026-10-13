@@ -1,11 +1,11 @@
 import type { NativeCanvas } from 'react-native-webgpu';
-import { ARCHETYPES, Kind, type BossId } from '../levels';
+import type { SimEvent, WorldView } from '../sim';
+import { INSTANCE_FLOATS, MESH_IDS, createBatch } from './batch';
 import { writeCamera } from './camera';
-import { BOSS_RADIUS, LOOK, ROCKET_RADIUS, WORMHOLE_RADIUS, type Look } from './look';
-import { MESHES, type MeshId } from './meshes.gen';
-import { PARTICLE_CAP, applyEvents, createPool, integrate, spawnExhaust, type BossFlash, type BurstTables } from './particles';
+import { LOOK, type Look } from './look';
+import { MESHES } from './meshes.gen';
+import { applyEvents, createPool, integrate, spawnExhaust, type BossFlash } from './particles';
 import { GLOW, MESH, STARS } from './wgsl';
-import { MAX_BODIES, type SimEvent, type WorldView } from '../sim';
 
 export type { Look };
 export { LOOK };
@@ -28,26 +28,6 @@ export interface Renderer {
 }
 
 export const MAX_PIXEL_RATIO = 2;
-
-const MESH_IDS = Object.keys(MESHES) as MeshId[];
-const MESH_INDEX = Object.fromEntries(MESH_IDS.map((id, i) => [id, i])) as { [M in MeshId]: number };
-const INSTANCE_FLOATS = 8;
-const MESH_CAP = MAX_BODIES + 3;
-const GLOW_CAP = MAX_BODIES + PARTICLE_CAP + 2;
-const BOSS_MESH: { readonly [B in BossId]: number } = {
-  warden: MESH_INDEX.warden, hive: MESH_INDEX.hive, core: MESH_INDEX.core,
-};
-const KIND_COUNT = Object.keys(LOOK).length;
-const VARIANTS = 4;
-
-/** Mean vertex color normalized to a max channel of 1: the burst color when that mesh is destroyed. */
-function signature(id: MeshId): [number, number, number] {
-  const c = MESHES[id].colors;
-  let r = 0, g = 0, b = 0;
-  for (let i = 0; i < c.length; i += 3) { r += Math.min(c[i], 1); g += Math.min(c[i + 1], 1); b += Math.min(c[i + 2], 1); }
-  const m = Math.max(r, g, b) || 1;
-  return [r / m, g / m, b / m];
-}
 
 export function createRenderer(
   device: GPUDevice,
@@ -86,10 +66,9 @@ export function createRenderer(
   };
   const vertexBuf = buffer(vertexData, GPUBufferUsage.VERTEX);
   const indexBuf = buffer(indexData, GPUBufferUsage.INDEX);
-  const meshInst = new Float32Array(MESH_CAP * INSTANCE_FLOATS);
-  const glowInst = new Float32Array(GLOW_CAP * INSTANCE_FLOATS);
-  const meshInstBuf = buffer(meshInst, GPUBufferUsage.VERTEX);
-  const glowInstBuf = buffer(glowInst, GPUBufferUsage.VERTEX);
+  const batch = createBatch();
+  const meshInstBuf = buffer(batch.meshInst, GPUBufferUsage.VERTEX);
+  const glowInstBuf = buffer(batch.glowInst, GPUBufferUsage.VERTEX);
   const uniforms = new Float32Array(36);
   const uniformBuf = buffer(uniforms, GPUBufferUsage.UNIFORM);
 
@@ -144,33 +123,7 @@ export function createRenderer(
     depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'less' },
   });
 
-  // Flat (kind, variant) tables so the per-body loop is two typed-array reads. Mesh -1 means a glow kind.
-  const meshOf = new Int16Array(KIND_COUNT * VARIANTS).fill(-1);
-  const scaleOf = new Float32Array(KIND_COUNT * VARIANTS);
-  const tintOf = new Float32Array(KIND_COUNT * 3);
-  const burst = new Float32Array(KIND_COUNT * 3);
-  for (let k = 0; k < KIND_COUNT; k++) {
-    const look = LOOK[k as Kind];
-    if (look.draw === 'mesh') {
-      if (look.meshes.length > VARIANTS || VARIANTS % look.meshes.length !== 0) throw new Error(`LOOK[${k}]: mesh count must divide ${VARIANTS}`);
-      for (let v = 0; v < VARIANTS; v++) {
-        const id = look.meshes[v % look.meshes.length];
-        meshOf[k * VARIANTS + v] = MESH_INDEX[id];
-        scaleOf[k * VARIANTS + v] = ARCHETYPES[k as Kind].radius / MESHES[id].radius;
-      }
-      tintOf.set(look.tint, k * 3);
-      burst.set(signature(look.meshes[0]), k * 3);
-    } else {
-      burst.set(look.rgba.slice(0, 3), k * 3);
-    }
-  }
-  const bossBurst = Float32Array.from(MESH_IDS.flatMap((id) => signature(id)));
-  const counts = new Uint32Array(MESH_IDS.length);
-  const starts = new Uint32Array(MESH_IDS.length);
-  const cursor = new Uint32Array(MESH_IDS.length);
-  const bodyMesh = new Int16Array(MAX_BODIES);
   const pool = createPool();
-  const bursts: BurstTables = { burst, bossBurst, bossMesh: BOSS_MESH, core: MESH_INDEX.core };
   const bossFx: BossFlash = { flash: 0, cooldown: 0 };
 
   let depth: GPUTexture | null = null;
@@ -204,98 +157,29 @@ export function createRenderer(
     return true;
   }
 
-  function putMesh(slot: number, x: number, y: number, rot: number, s: number, r: number, g: number, b: number, flash: number) {
-    const o = slot * INSTANCE_FLOATS;
-    meshInst[o] = x; meshInst[o + 1] = y; meshInst[o + 2] = rot; meshInst[o + 3] = s;
-    meshInst[o + 4] = r; meshInst[o + 5] = g; meshInst[o + 6] = b; meshInst[o + 7] = flash;
-  }
-  let glowCount = 0;
-  function putGlow(x: number, y: number, sx: number, sy: number, r: number, g: number, b: number, a: number) {
-    if (glowCount === GLOW_CAP) return;
-    const o = glowCount++ * INSTANCE_FLOATS;
-    glowInst[o] = x; glowInst[o + 1] = y; glowInst[o + 2] = sx; glowInst[o + 3] = sy;
-    glowInst[o + 4] = r; glowInst[o + 5] = g; glowInst[o + 6] = b; glowInst[o + 7] = a;
-  }
-
   function frame(world: WorldView | null, events: readonly SimEvent[], alpha: number, dt: number): void {
     if (!resize()) return;
     time += dt;
     bossFx.flash = Math.max(0, bossFx.flash - dt);
     bossFx.cooldown = Math.max(0, bossFx.cooldown - dt);
-    applyEvents(pool, world, events, bursts, bossFx);
+    applyEvents(pool, world, events, batch.bursts, bossFx);
     integrate(pool, dt);
 
-    counts.fill(0);
-    glowCount = 0;
+    batch.begin();
     let camY = menuY;
-    let meshSlots = 0;
     if (world) {
-      const pl = world.player;
-      const px = pl.px + (pl.x - pl.px) * alpha;
-      const py = pl.py + (pl.y - pl.py) * alpha;
-      camY = py;
-      const bodies = world.bodies;
-      for (let i = 0; i < bodies.count; i++) {
-        const m = meshOf[bodies.kind[i] * VARIANTS + (bodies.variant[i] % VARIANTS)];
-        bodyMesh[i] = m;
-        if (m >= 0) {
-          counts[m]++;
-        } else {
-          const look = LOOK[bodies.kind[i] as Kind];
-          if (look.draw === 'glow') {
-            const x = bodies.px[i] + (bodies.x[i] - bodies.px[i]) * alpha;
-            const y = bodies.py[i] + (bodies.y[i] - bodies.py[i]) * alpha;
-            putGlow(x, y, look.size * 0.7, look.size * 1.9, look.rgba[0], look.rgba[1], look.rgba[2], look.rgba[3]);
-          }
-        }
-      }
-      counts[MESH_INDEX.rocket]++;
-      if (world.boss) counts[BOSS_MESH[world.boss.id]]++;
-      if (world.wormholeY !== null) counts[MESH_INDEX.wormhole]++;
-
-      let acc = 0;
-      for (let m = 0; m < counts.length; m++) { starts[m] = acc; cursor[m] = acc; acc += counts[m]; }
-      meshSlots = acc;
-
-      for (let i = 0; i < bodies.count; i++) {
-        const m = bodyMesh[i];
-        if (m < 0) continue;
-        const k = bodies.kind[i];
-        putMesh(cursor[m]++,
-          bodies.px[i] + (bodies.x[i] - bodies.px[i]) * alpha,
-          bodies.py[i] + (bodies.y[i] - bodies.py[i]) * alpha,
-          bodies.rot[i], scaleOf[k * VARIANTS + (bodies.variant[i] % VARIANTS)],
-          tintOf[k * 3], tintOf[k * 3 + 1], tintOf[k * 3 + 2], 0);
-      }
-      const blink = world.tick < pl.invulnUntil && (world.tick >> 3) % 2 === 0 ? 0.5 : 0;
-      const bank = Math.max(-0.5, Math.min(0.5, -pl.vx * 0.06));
-      putMesh(cursor[MESH_INDEX.rocket]++, px, py, bank, ROCKET_RADIUS / MESHES.rocket.radius, 1, 1, 1, blink);
-      if (world.boss) {
-        const b = world.boss;
-        const m = BOSS_MESH[b.id];
-        putMesh(cursor[m]++, b.px + (b.x - b.px) * alpha, b.y, Math.sin(time * 0.8) * 0.08,
-          BOSS_RADIUS / MESHES[b.id].radius, 1, 1, 1, 0.45 * Math.min(1, bossFx.flash / 0.06));
-      }
-      if (world.wormholeY !== null) {
-        putMesh(cursor[MESH_INDEX.wormhole]++, 0, world.wormholeY, time * 0.9, WORMHOLE_RADIUS / MESHES.wormhole.radius, 1, 1, 1, 0);
-        putGlow(0, world.wormholeY, WORMHOLE_RADIUS * 0.9, WORMHOLE_RADIUS * 0.9, 0.6, 0.4, 1, 0.5);
-      }
-
-      spawnExhaust(pool, px, py, dt);
-      if (pl.shield) putGlow(px, py, 1.3, 1.3, 0.35, 0.65, 1, -0.9);
+      batch.packWorld(world, alpha, time, bossFx.flash);
+      camY = batch.py;
+      spawnExhaust(pool, batch.px, batch.py, dt);
     } else {
       menuY += dt * 2.5;
     }
-    for (let i = 0; i < pool.count; i++) {
-      const a = pool.life[i] / pool.ttl[i];
-      const s = pool.size[i] * (0.4 + 0.6 * a);
-      putGlow(pool.x[i], pool.y[i], s, s, pool.r[i], pool.g[i], pool.b[i], a);
-    }
+    batch.packParticles(pool);
 
     writeCamera(uniforms, camY, width, height, time);
     device.queue.writeBuffer(uniformBuf, 0, uniforms);
-    if (meshSlots > 0) device.queue.writeBuffer(meshInstBuf, 0, meshInst, 0, meshSlots * INSTANCE_FLOATS);
-    if (glowCount > 0) device.queue.writeBuffer(glowInstBuf, 0, glowInst, 0, glowCount * INSTANCE_FLOATS);
+    if (batch.meshSlots > 0) device.queue.writeBuffer(meshInstBuf, 0, batch.meshInst, 0, batch.meshSlots * INSTANCE_FLOATS);
+    if (batch.glowCount > 0) device.queue.writeBuffer(glowInstBuf, 0, batch.glowInst, 0, batch.glowCount * INSTANCE_FLOATS);
 
     colorAttachment.view = ctx.getCurrentTexture().createView();
     const encoder = device.createCommandEncoder();
@@ -303,22 +187,22 @@ export function createRenderer(
     pass.setBindGroup(0, bind);
     pass.setPipeline(starsPipe);
     pass.draw(3);
-    if (meshSlots > 0) {
+    if (batch.meshSlots > 0) {
       pass.setPipeline(meshPipe);
       pass.setIndexBuffer(indexBuf, 'uint16');
-      for (let m = 0; m < counts.length; m++) {
-        if (counts[m] === 0) continue;
+      for (let m = 0; m < batch.counts.length; m++) {
+        if (batch.counts[m] === 0) continue;
         // Dawn rejects a nonzero baseVertex or firstInstance unless the device enabled 'indirect-first-instance',
         // so both offsets go into the vertex buffer bindings and the renderer works with whatever device it is given.
         pass.setVertexBuffer(0, vertexBuf, baseVertex[m] * 36);
-        pass.setVertexBuffer(1, meshInstBuf, starts[m] * INSTANCE_FLOATS * 4);
-        pass.drawIndexed(indexCountOf[m], counts[m], firstIndex[m], 0, 0);
+        pass.setVertexBuffer(1, meshInstBuf, batch.starts[m] * INSTANCE_FLOATS * 4);
+        pass.drawIndexed(indexCountOf[m], batch.counts[m], firstIndex[m], 0, 0);
       }
     }
-    if (glowCount > 0) {
+    if (batch.glowCount > 0) {
       pass.setPipeline(glowPipe);
       pass.setVertexBuffer(0, glowInstBuf);
-      pass.draw(4, glowCount);
+      pass.draw(4, batch.glowCount);
     }
     pass.end();
     device.queue.submit([encoder.finish()]);
