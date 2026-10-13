@@ -80,9 +80,9 @@ function spawnFromTrack(w: World): void {
 
 function fire(w: World, out: SimEvent[]): void {
   const p = w.player;
-  if (w.tick < p.fireAt) return;
-  const rapid = w.tick < p.rapidUntil;
-  p.fireAt = w.tick + (rapid ? FIRE_TICKS / 2 : FIRE_TICKS);
+  if (w.tick < p.fireAtTick) return;
+  const rapid = w.tick < p.rapidUntilTick;
+  p.fireAtTick = w.tick + (rapid ? FIRE_TICKS / 2 : FIRE_TICKS);
   add(w, Kind.Bolt, p.x, p.y + 0.8, 0, BOLT_SPEED);
   out.push({ e: 'fire', x: p.x, y: p.y + 0.8, rapid });
 }
@@ -118,19 +118,19 @@ function hurt(w: World, out: SimEvent[]): void {
   const p = w.player;
   if (p.shield) {
     p.shield = false;
-    p.invulnUntil = w.tick + SHIELD_INVULN_TICKS;
+    p.invulnUntilTick = w.tick + SHIELD_INVULN_TICKS;
     out.push({ e: 'shieldBlock', x: p.x, y: p.y });
     return;
   }
   p.lives = (p.lives - 1) as Player['lives'];
-  p.invulnUntil = w.tick + HIT_INVULN_TICKS;
+  p.invulnUntilTick = w.tick + HIT_INVULN_TICKS;
   out.push({ e: 'playerHit', x: p.x, y: p.y, lives: p.lives });
 }
 
 function collect(w: World, kind: PickupKind, x: number, y: number, out: SimEvent[]): void {
   const p = w.player;
   if (kind === Kind.Shield) p.shield = true;
-  else if (kind === Kind.Rapid) p.rapidUntil = w.tick + RAPID_TICKS;
+  else if (kind === Kind.Rapid) p.rapidUntilTick = w.tick + RAPID_TICKS;
   w.score += ARCHETYPES[kind].score;
   out.push({ e: 'pickup', kind, x, y });
 }
@@ -151,7 +151,7 @@ function collide(w: World, out: SimEvent[]): void {
       b.hp[i] = DEAD;
       continue;
     }
-    if (w.tick < p.invulnUntil) continue;
+    if (w.tick < p.invulnUntilTick) continue;
     hurt(w, out);
     if (a.role === 'field') continue;
     b.hp[i] = DEAD;
@@ -230,7 +230,7 @@ function transition(w: World, out: SimEvent[]): void {
     out.push({ e: 'wormholeOpen', y: boss.y });
   } else if (w.phase.p === 'fly' && w.spec.boss !== null && w.wormholeY === null && p.y >= w.spec.length) {
     w.phase = { p: 'boss' };
-    w.boss = { id: w.spec.boss, x: 0, px: 0, y: p.y + BOSS_DIST, hp: BOSSES[w.spec.boss].hp, attack: 0, attackAt: w.tick + BOSS_GRACE_TICKS, t: 0 };
+    w.boss = { id: w.spec.boss, x: 0, px: 0, y: p.y + BOSS_DIST, hp: BOSSES[w.spec.boss].hp, attack: 0, attackAtTick: w.tick + BOSS_GRACE_TICKS, t: 0 };
     out.push({ e: 'bossEnter', boss: w.spec.boss });
   }
   const wy = w.wormholeY;

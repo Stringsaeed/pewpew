@@ -23,12 +23,12 @@ export interface Player {
   y: number; py: number;
   lives: 0 | 1 | 2 | 3;
   shield: boolean;
-  rapidUntil: number;  // tick
-  invulnUntil: number; // tick
-  fireAt: number;      // tick
+  rapidUntilTick: number;
+  invulnUntilTick: number;
+  fireAtTick: number;
 }
 /** t is the sweep angle; it accumulates so a phase change alters speed without a jump in x. */
-export interface Boss { readonly id: BossId; x: number; px: number; y: number; hp: number; attack: number; attackAt: number; t: number }
+export interface Boss { readonly id: BossId; x: number; px: number; y: number; hp: number; attack: number; attackAtTick: number; t: number }
 
 export type Stars = 1 | 2 | 3;
 /** Run phase. 'won' and 'lost' are terminal, so step() on them is a no-op that emits nothing. */
@@ -94,7 +94,7 @@ export function createWorld(n: LevelNumber): World {
     phase: { p: 'fly' },
     score: 0,
     wormholeY: spec.boss === null ? spec.length : null,
-    player: { x: 0, px: 0, vx: 0, y: 0, py: 0, lives: 3, shield: false, rapidUntil: 0, invulnUntil: 0, fireAt: 0 },
+    player: { x: 0, px: 0, vx: 0, y: 0, py: 0, lives: 3, shield: false, rapidUntilTick: 0, invulnUntilTick: 0, fireAtTick: 0 },
     bodies: createBodies(),
     boss: null,
     dropped: 0,

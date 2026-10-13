@@ -99,7 +99,7 @@ Internals stay unexported, so nothing outside a module can import them. Audio is
 - *A level is a table row plus a fixed seed, compiled once into a `Track`.* `createWorld` runs `compileTrack(spec)` into a y-sorted `Spawn[]`. Every row carries its own `seed`, so the verifier proves the exact layout players fly, not a random sample. Spawning at runtime is a cursor walk. Per-level rules exist only in `LEVELS` and `BOSSES`, and `compileTrack` is the only reader of density, mix, and wells.
 - *Entities live in one dense struct-of-arrays pool.* `Bodies` has 512 slots and uses swap-remove. There's no per-entity object and no GC churn in Hermes. The renderer iterates `0..count` and counting-sorts by mesh straight into the instance buffer. Static per-kind facts (`radius`, `hp`, `score`, `splitInto`, `role`) live in `ARCHETYPES`, and collision switches on `role`, never on `kind`. The player, the boss, and the wormhole are scalars on `World`, because they're unique and need stable identity, which swap-remove indices can't give.
 - *The run phase is a 4-variant union* (`fly | boss | won | lost`). Terminal phases make `step` a no-op, so a double-dispatched end or an extra step is harmless. Invulnerability, rapid fire, and the shield are tick deadlines or a boolean on `Player`, not phases, because they overlap with any phase.
-- *A boss is a list of health-gated phases.* `BossSpec.phases` is a non-empty tuple whose first entry has `atHpFraction: 1`. Each `BossPhase` sets `sweepSpeed`, `attackEvery`, and a non-empty `attacks` cycle. The sim picks the last phase whose fraction is at or above the boss's remaining health, so phase is derived from `hp` and never stored.
+- *A boss is a list of health-gated phases.* `BossSpec.phases` is a non-empty tuple whose first entry has `atHpFraction: 1`. Each `BossPhase` sets `sweepSpeed`, `attackEverySec`, and a non-empty `attacks` cycle. The sim picks the last phase whose fraction is at or above the boss's remaining health, so phase is derived from `hp` and never stored.
 - *Screen flow is a separate pure reducer* (`flow.ts`, 7 screens). Invalid actions return the same screen. The `play` screen carries `(level, attempt)`, and the shell rebuilds the `World` when that key changes, so "retry" can't reuse a dead world.
 - *Input is one value per step*, `{ targetX: number | null }`. The human's relative drag and the bot both produce it. `null` means the finger is up. The rocket then coasts and gravity wells get full authority, which is what makes wells dangerous. The drag mapping (`dragInput`) lives in the sim, so the bot and the human share one input model.
 - *Events form a discriminated union appended to a caller-owned buffer.* `step` appends and the shell clears once per rendered frame, so events from several steps in one frame aren't lost.
@@ -166,7 +166,7 @@ Three architecture candidates competed in an arena. The coordinator and a gpt-5.
 
 - All 30 level rows. Candidate 2's ramp was adapted to candidate 1's `LevelSpec`. Scroll and length kept candidate 2's values. Density changed from hazards per unit to hazards per 100 units. Gravity wells moved out of the hazard mix into the `wells` count, and the per-tier well counts became a running maximum so every `RAMP` column is monotone across the campaign. Drone patterns `cross` and `escort` became `zigzag` and `orbit`. The fixed per-row `seed` replaced candidate 2's caller-selected seeds.
 - The load-time validator. `defineCampaign` became `defineLevels`.
-- Boss phases. `BossPhaseSpec` became `BossPhase` (`atHpFraction`, `sweepSpeed`, `attackEvery`, `attacks`), and it replaced candidate 1's flat `sweepSpeed`, `attackEvery`, and `attacks` on `BossSpec`.
+- Boss phases. `BossPhaseSpec` became `BossPhase` (`atHpFraction`, `sweepSpeed`, `attackEverySec`, `attacks`), and it replaced candidate 1's flat `sweepSpeed`, `attackEverySec`, and `attacks` on `BossSpec`.
 
 **Grafts from candidate 3.**
 
@@ -206,6 +206,6 @@ Three architecture candidates competed in an arena. The coordinator and a gpt-5.
 
 ## Follow-ups
 
-- Rename fields to carry their units (`scrollUnitsPerSec`, `attackEverySec`) and split the shared `Bodies` columns `variant`, `t`, and `param` per kind, as the comment review proposed.
+- Split the shared `Bodies` columns `variant`, `t`, and `param` per kind, as the comment review proposed. LevelSpec columns keep their names; each one already has a unit comment.
 - Run the Android emulator and a physical iPhone pass, and a release build.
 - Decide whether to keep momentum after a finger lift (coast damping is 0.9 per step) once people have played it.

@@ -67,7 +67,7 @@ export function hashWorld(w: World): number {
   const num = (v: number): void => { f[0] = v; word(u[0]); word(u[1]); };
   const p = w.player, b = w.bodies;
   num(w.tick); num(w.score); num(w.rng); num(w.cursor); num(w.dropped); num(PHASE_CODE[w.phase.p]);
-  num(p.x); num(p.y); num(p.vx); num(p.lives); num(p.shield ? 1 : 0); num(p.rapidUntil); num(p.invulnUntil);
+  num(p.x); num(p.y); num(p.vx); num(p.lives); num(p.shield ? 1 : 0); num(p.rapidUntilTick); num(p.invulnUntilTick);
   num(b.count);
   for (let i = 0; i < b.count; i++) { num(b.kind[i]); num(b.x[i]); num(b.y[i]); num(b.hp[i]); }
   if (w.boss !== null) { num(w.boss.hp); num(w.boss.x); num(w.boss.attack); }

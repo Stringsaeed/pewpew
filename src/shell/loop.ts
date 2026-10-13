@@ -98,7 +98,7 @@ export const RAPID_WINDOW_MS = (RAPID_TICKS / TICKS_PER_SEC) * 1000;
 /** Fraction of the rapid window still left, 0 when the pickup is inactive. Read at React render time; the chip animates the rest. */
 export function rapidRemaining(world: World | null): number {
   if (world === null) return 0;
-  const left = world.player.rapidUntil - world.tick;
+  const left = world.player.rapidUntilTick - world.tick;
   if (left <= 0) return 0;
   return Math.min(1, left / RAPID_TICKS);
 }
