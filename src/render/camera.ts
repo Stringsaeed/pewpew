@@ -7,7 +7,10 @@ const VISIBLE_HALF_WIDTH = 5.4;
 const NEAR = 1;
 const FAR = 90;
 
-/** Writes the view and projection into the preallocated 36-float uniform array. No allocation. */
+/** Floats in the uniform block: view, proj, res, camY, time, nebula tint, fx. */
+export const UNIFORM_FLOATS = 44;
+
+/** Writes the view, projection, and clock into the preallocated uniform array. The caller fills tint and fx (floats 36 to 43). No allocation. */
 export function writeCamera(uniforms: Float32Array, camY: number, width: number, height: number, time: number, zoom = 1, shakeX = 0, shakeY = 0): void {
   const aspect = width / height;
   const t = Math.tan(FOV_Y / 2);
@@ -19,7 +22,7 @@ export function writeCamera(uniforms: Float32Array, camY: number, width: number,
   const fy = (ty - ey) / dist;
   const fz = -ez / dist;
   const u = uniforms;
-  u.fill(0);
+  u.fill(0, 0, 36);
   u[0] = 1;
   u[5] = -fz; u[6] = -fy;
   u[9] = fy; u[10] = -fz;

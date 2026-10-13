@@ -40,6 +40,12 @@ export interface Fx {
   hitNext: number;
   /** Any hit flash still live this frame, so the body loop can skip the scan. */
   hitLive: boolean;
+  /** Smoothed scroll speed and warp for the backdrop, and the smoothed nebula tint of the current tier. */
+  speed: number;
+  warp: number;
+  tintR: number;
+  tintG: number;
+  tintB: number;
 }
 
 const HIT_RING = 8;
@@ -51,7 +57,7 @@ export const HIT_FLASH_REACH = 0.5;
 export function createFx(): Fx {
   return { reduceMotion: false, flash: 0, cooldown: 0, hold: HOLD_NONE, holdSeconds: 1, holdT: 0, holdFresh: false, holeAge: 1e3, sparkDebt: 0, smokeDebt: 0, ripple: -1, rippleX: 0, rippleY: 1, dying: 0, bubbleAge: 1e3, trauma: 0,
     hitX: new Float32Array(HIT_RING), hitY: new Float32Array(HIT_RING), hitKind: new Uint8Array(HIT_RING), hitTtl: new Float32Array(HIT_RING),
-    hitNext: 0, hitLive: false };
+    hitNext: 0, hitLive: false, speed: 0, warp: 0, tintR: 0, tintG: 0, tintB: 0 };
 }
 
 /** The hold choreography runs on dt, so a shell that slows dt stretches the hold with it. */

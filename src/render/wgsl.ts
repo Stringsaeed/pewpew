@@ -1,3 +1,4 @@
+import { NEBULA_OCTAVES } from './look';
 import { MESHES } from './meshes.gen';
 
 /** Outer radius of the accretion disc in mesh units, as a WGSL float literal. */
@@ -5,7 +6,8 @@ const RIPPLE_LIFE = '0.8';
 const HOLE_OUTER = MESHES.accretion.radius.toFixed(4);
 
 export const UNIFORMS = /* wgsl */ `
-struct U { view: mat4x4f, proj: mat4x4f, res: vec2f, camY: f32, time: f32 };
+// tint: nebula rgb. fx: x scroll speed (units/s), y warp 0..1, zw spare.
+struct U { view: mat4x4f, proj: mat4x4f, res: vec2f, camY: f32, time: f32, tint: vec4f, fx: vec4f };
 @group(0) @binding(0) var<uniform> u: U;
 `;
 
@@ -21,18 +23,39 @@ fn hash3(p: vec2f) -> vec3f {
   q += dot(q, q.yxz + 33.33);
   return fract((q.xxy + q.yzz) * q.zyx);
 }
+fn lattice(p: vec2f) -> f32 { return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453); }
+fn vnoise(p: vec2f) -> f32 {
+  let i = floor(p);
+  let f = fract(p);
+  let w = f * f * (3.0 - 2.0 * f);
+  return mix(mix(lattice(i), lattice(i + vec2f(1.0, 0.0)), w.x), mix(lattice(i + vec2f(0.0, 1.0)), lattice(i + vec2f(1.0, 1.0)), w.x), w.y);
+}
 @fragment fn fs(i: VO) -> @location(0) vec4f {
   let unit = u.res.y / 23.0;
   var col = mix(vec3f(0.03, 0.01, 0.07), vec3f(0.005, 0.008, 0.025), i.pos.y / u.res.y);
+  // Nebula: low-frequency noise, almost no parallax, tinted per tier.
+  var np = vec2f(i.pos.x, i.pos.y - u.camY * unit * 0.03) / (unit * 11.0);
+  var neb = 0.0;
+  var amp = 0.6;
+  for (var o = 0; o < ${NEBULA_OCTAVES}; o++) {
+    neb += amp * vnoise(np);
+    np = np * 2.3 + vec2f(5.2, 1.7);
+    amp *= 0.5;
+  }
+  col += u.tint.rgb * smoothstep(0.28, 0.85, neb) * 1.6;
   for (var l = 0; l < 3; l++) {
     let fl = f32(l);
     let cell = unit * (1.1 + fl * 0.9);
     let f = vec2f(i.pos.x, i.pos.y - u.camY * unit * (0.06 + fl * 0.12)) / cell + vec2f(fl * 17.0, fl * 31.0);
     let h = hash3(floor(f));
-    let d = length(fract(f) - 0.5 - (h.xy - 0.5) * 0.7) * cell;
+    // The nearest layer stretches along y with scroll speed (and the won-hold warp): speed lines.
+    let stretch = select(1.0, 1.0 + 0.15 * u.fx.x + 6.0 * u.fx.y, l == 2);
+    var d = fract(f) - 0.5 - (h.xy - 0.5) * 0.7;
+    d.y /= stretch;
+    let dist = length(d) * cell;
     let r = unit * (0.05 + 0.05 * h.z + fl * 0.025);
     let twinkle = 0.7 + 0.3 * sin(u.time * (1.0 + 3.0 * h.x) + 6.28 * h.y);
-    let lit = (1.0 - smoothstep(0.0, r, d)) * step(0.62, h.z) * twinkle;
+    let lit = (1.0 - smoothstep(0.0, r, dist)) * step(0.62, h.z) * twinkle / sqrt(stretch);
     col += mix(vec3f(0.55, 0.7, 1.0), vec3f(1.0, 0.7, 0.95), h.x) * lit * (0.45 + 0.3 * fl);
   }
   return vec4f(col, 1.0);

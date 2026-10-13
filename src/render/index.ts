@@ -1,8 +1,9 @@
+import { tierOf } from '../levels';
 import type { NativeCanvas } from 'react-native-webgpu';
 import type { SimEvent, WorldView } from '../sim';
 import { INSTANCE_FLOATS, MESH_IDS, createBatch } from './batch';
-import { writeCamera } from './camera';
-import { LOOK, type Look } from './look';
+import { UNIFORM_FLOATS, writeCamera } from './camera';
+import { LOOK, TIER_TINT, type Look } from './look';
 import { MESHES } from './meshes.gen';
 import { HOLD_LOST, HOLD_NONE, HOLD_WON, SHAKE_REACH, TRAUMA_DECAY, ageHitFlashes, bossPhaseIndex, createFx, holdProgress, smooth, wobble } from './fx';
 import { applyEvents, createPool, emitBossDamage, integrate, spawnExhaust } from './particles';
@@ -80,7 +81,7 @@ export function createRenderer(
   const batch = createBatch();
   const meshInstBuf = buffer(batch.meshInst, GPUBufferUsage.VERTEX);
   const glowInstBuf = buffer(batch.glowInst, GPUBufferUsage.VERTEX);
-  const uniforms = new Float32Array(36);
+  const uniforms = new Float32Array(UNIFORM_FLOATS);
   const uniformBuf = buffer(uniforms, GPUBufferUsage.UNIFORM);
 
   const bindLayout = device.createBindGroupLayout({
@@ -212,6 +213,15 @@ export function createRenderer(
     }
     batch.packParticles(pool);
 
+    // Backdrop: the tier's nebula tint and the scroll speed ease toward their targets, so a new level never snaps.
+    const tier = world ? tierOf(world.spec.n) : 1;
+    const ease = Math.min(1, dt * 2.5);
+    const tint = TIER_TINT[tier - 1];
+    fx.tintR += (tint[0] - fx.tintR) * ease; fx.tintG += (tint[1] - fx.tintG) * ease; fx.tintB += (tint[2] - fx.tintB) * ease;
+    fx.speed += ((fx.reduceMotion ? 0 : world ? world.spec.scroll : 2.5) - fx.speed) * ease;
+    fx.warp = fx.reduceMotion || fx.hold !== HOLD_WON ? 0 : smooth(0, 0.8, holdProgress(fx));
+    uniforms[36] = fx.tintR; uniforms[37] = fx.tintG; uniforms[38] = fx.tintB; uniforms[39] = 1;
+    uniforms[40] = fx.speed; uniforms[41] = fx.warp;
     const shake = fx.trauma * fx.trauma * SHAKE_REACH;
     writeCamera(uniforms, camY, width, height, time, zoom, shake * wobble(time, 0), shake * wobble(time, 11));
     device.queue.writeBuffer(uniformBuf, 0, uniforms);

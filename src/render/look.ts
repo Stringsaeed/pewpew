@@ -52,3 +52,17 @@ export const VISUAL_OVER_HIT = {
   bolt: bolt.size / ARCHETYPES[Kind.Bolt].radius,
   enemyBolt: enemyBolt.size / ARCHETYPES[Kind.EnemyBolt].radius,
 } as const;
+
+/**
+ * Octaves of value noise in the backdrop nebula. This is the only per-pixel cost this pass adds to the fullscreen stars
+ * shader: each octave is four hashes (a sin each) and a bilerp per pixel. Measured on the simulator at 2 octaves; drop to
+ * 1 if a real phone's GPU time says so.
+ */
+export const NEBULA_OCTAVES = 2;
+
+/** Nebula tint per tier (levels 1-10, 11-20, 21-30): violet, teal, crimson. */
+export const TIER_TINT: readonly (readonly [number, number, number])[] = [
+  [0x2a / 255, 0x14 / 255, 0x50 / 255],
+  [0x0c / 255, 0x3a / 255, 0x44 / 255],
+  [0x3e / 255, 0x0c / 255, 0x22 / 255],
+];

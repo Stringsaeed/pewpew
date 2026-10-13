@@ -45,12 +45,12 @@
         {
           "op": "createBuffer",
           "buffer": 4,
-          "size": 144
+          "size": 176
         },
         {
           "op": "writeBuffer",
           "buffer": 4,
-          "byteLength": 144
+          "byteLength": 176
         },
         {
           "op": "createTexture",
@@ -61,7 +61,7 @@
         {
           "op": "writeBuffer",
           "buffer": 4,
-          "byteLength": 144
+          "byteLength": 176
         },
         {
           "op": "writeBuffer",
@@ -185,7 +185,7 @@
         {
           "op": "writeBuffer",
           "buffer": 4,
-          "byteLength": 144
+          "byteLength": 176
         },
         {
           "op": "writeBuffer",
@@ -309,7 +309,7 @@
         {
           "op": "writeBuffer",
           "buffer": 4,
-          "byteLength": 144
+          "byteLength": 176
         },
         {
           "op": "writeBuffer",
@@ -515,12 +515,12 @@
         {
           "op": "createBuffer",
           "buffer": 4,
-          "size": 144
+          "size": 176
         },
         {
           "op": "writeBuffer",
           "buffer": 4,
-          "byteLength": 144
+          "byteLength": 176
         },
         {
           "op": "createTexture",
@@ -531,7 +531,7 @@
         {
           "op": "writeBuffer",
           "buffer": 4,
-          "byteLength": 144
+          "byteLength": 176
         },
         {
           "op": "writeBuffer",
@@ -659,7 +659,7 @@
         {
           "op": "writeBuffer",
           "buffer": 4,
-          "byteLength": 144
+          "byteLength": 176
         },
         {
           "op": "writeBuffer",
@@ -787,7 +787,7 @@
         {
           "op": "writeBuffer",
           "buffer": 4,
-          "byteLength": 144
+          "byteLength": 176
         },
         {
           "op": "writeBuffer",
