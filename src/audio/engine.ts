@@ -1,4 +1,4 @@
-import type { SimEvent } from '../sim';
+import type { EventOf, SimEvent } from '../sim';
 import { tierOf } from '../levels';
 import {
   EVENT_SFX, SFX, SONGS, patchOf,
@@ -181,25 +181,8 @@ function schedulePitch(param: ParamLike, midi: number, when: number, sweep: Patc
   if (at > when && f1 > 0) param.exponentialRampToValueAtTime(f1, at);
 }
 
-function sfxIdFor(ev: SimEvent): SfxId | null {
-  switch (ev.e) {
-    case 'start': return EVENT_SFX.start(ev);
-    case 'fire': return EVENT_SFX.fire(ev);
-    case 'enemyFire': return EVENT_SFX.enemyFire(ev);
-    case 'hit': return EVENT_SFX.hit(ev);
-    case 'destroy': return EVENT_SFX.destroy(ev);
-    case 'pickup': return EVENT_SFX.pickup(ev);
-    case 'shieldBlock': return EVENT_SFX.shieldBlock(ev);
-    case 'playerHit': return EVENT_SFX.playerHit(ev);
-    case 'bossEnter': return EVENT_SFX.bossEnter(ev);
-    case 'wormholeOpen': return EVENT_SFX.wormholeOpen(ev);
-    case 'won': return EVENT_SFX.won(ev);
-    case 'lost': return EVENT_SFX.lost(ev);
-    default: {
-      const neverEv: never = ev;
-      return neverEv;
-    }
-  }
+function sfxIdFor<E extends SimEvent['e']>(ev: EventOf<E>): SfxId | null {
+  return EVENT_SFX[ev.e](ev);
 }
 
 interface Voice { until: number; stop(t: number): void }
