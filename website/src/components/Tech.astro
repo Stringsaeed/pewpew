@@ -1,0 +1,124 @@
+---
+import { SITE } from '../consts';
+---
+<section class="section tech" id="tech" aria-labelledby="tech-h">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">Under the hood</p>
+      <h2 class="h-section" id="tech-h">WebGPU speed. <span class="glow-cyan">TypeScript</span> all the way down.</h2>
+      <p class="lede">WebGPU draws it and Reanimated animates the UI. React Native Audio API synthesizes every sound. AI agents wrote it, then play-tested and profiled it on the iOS Simulator through Argent.</p>
+    </div>
+
+    <figure class="trailer reveal">
+      <video controls playsinline preload="none" poster="/media/trailer-poster.jpg" width="1920" height="1080">
+        <source src="/media/trailer.mp4" type="video/mp4" />
+      </video>
+    </figure>
+
+    <div class="bento">
+      <article class="cell webgpu reveal">
+        <span class="chip c">Rendering</span>
+        <h3>WebGPU</h3>
+        <p>react-native-webgpu gives the game a raw GPU device on iPhone. Four WGSL pipelines draw everything you see:</p>
+        <ol class="pipes">
+          <li><b>stars</b><span>procedural nebula and parallax starfield, one fullscreen triangle</span></li>
+          <li><b>mesh</b><span>instanced flat-shaded geometry with hemisphere light and rim</span></li>
+          <li><b>glow</b><span>additive quads for bolts, exhaust, and explosions</span></li>
+          <li><b>bubble</b><span>the fresnel shield around your rocket</span></li>
+        </ol>
+        <p class="note">The demo at the top of this page runs this same renderer on your browser's WebGPU.</p>
+      </article>
+
+      <article class="cell stat reveal">
+        <b class="big glow-cyan">~3<small>ms</small></b>
+        <p>JS per frame for the whole game: sim, bot, renderer, audio, and HUD. It held 60 fps in a simulator dev build.</p>
+      </article>
+
+      <article class="cell stat reveal">
+        <b class="big glow-yellow">30<small>/30</small></b>
+        <p>levels beaten by a greedy bot on every check, with each replay bit-identical to the last.</p>
+      </article>
+
+      <article class="cell reanimated reveal">
+        <span class="chip m">UI thread</span>
+        <h3>Reanimated 4</h3>
+        <p>Score pops, lost lives, boss health bars, and every panel animate on the UI thread. The game loop never waits on React. A HUD render happens only when a number on screen actually changes.</p>
+      </article>
+
+      <article class="cell audio reveal">
+        <span class="chip y">Sound</span>
+        <h3>Synthesized</h3>
+        <p>React Native Audio API plays tracker songs and effects that are generated at runtime from data. Each tier has its own song, and the bosses have one too. The app ships <b>zero</b> audio files, and its meshes come from a script.</p>
+      </article>
+
+      <article class="cell argent reveal">
+        <span class="chip g">Agent QA</span>
+        <h3>Argent</h3>
+        <p>Argent gave AI agents hands on the iOS Simulator. They tapped through menus, steered the rocket, read the React tree, profiled frames, and recorded runs. They also staged every screenshot and video on this page.</p>
+      </article>
+
+      <article class="cell sim reveal">
+        <span class="chip c">Deterministic</span>
+        <h3>Pure TS sim</h3>
+        <p>The sim is a fixed 60 Hz step with seeded tracks and no rendering or platform code. A greedy bot flies all 30 levels on every check and must match a golden file.</p>
+        <pre><code><span class="dim">$</span> npm run verify
+<span class="dim">step cost 0.0008 ms/step · budget 2 ms</span>
+<span class="g">PASS: 30 levels, every level won by greedyBot</span>
+<span class="g">      replay bit-identical</span></code></pre>
+      </article>
+
+      <article class="cell agents reveal">
+        <span class="chip m">Credits</span>
+        <h3>Built by agents</h3>
+        <p>Agents in Cursor, Claude, GPT, and T3 Code wrote the code, with one human directing them. The whole repo is open, including the <code>.audit/</code> trail of reports, traces, and captures.</p>
+        <a class="btn btn-sm" href={SITE.github} rel="noopener">Read the source</a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<style>
+  .head { max-width: 820px; }
+  .trailer { margin: 56px 0 18px; border-radius: calc(var(--radius) + 4px); overflow: hidden; border: 1px solid var(--line); box-shadow: 0 40px 120px -50px rgba(53, 240, 255, 0.5); background: #000; }
+  .trailer video { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+  .bento { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .cell {
+    --tone: var(--cyan);
+    position: relative; overflow: hidden; padding: 26px; display: grid; gap: 12px; align-content: start; justify-items: start;
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+  }
+  .cell::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(80% 60% at 100% 0%, color-mix(in oklab, var(--tone) 12%, transparent), transparent 70%); }
+  .webgpu { grid-column: span 2; grid-row: span 2; }
+  .reanimated { --tone: var(--magenta); grid-column: span 2; }
+  .audio { --tone: var(--yellow); grid-column: span 2; }
+  .argent { --tone: var(--green); grid-column: span 2; }
+  .sim { grid-column: span 2; }
+  .agents { --tone: var(--magenta); grid-column: span 2; }
+  .stat { align-content: center; }
+  .stat.reveal:nth-of-type(3) { --tone: var(--yellow); }
+  h3 { margin: 0; font-size: clamp(24px, 2.4vw, 32px); letter-spacing: 0.04em; color: var(--tone); text-shadow: 0 0 22px color-mix(in oklab, var(--tone) 50%, transparent); }
+  .cell p { margin: 0; color: var(--text-dim); font-size: 14px; line-height: 1.6; }
+  .cell p b { color: var(--text); }
+  .chip.c { color: var(--cyan); } .chip.m { color: var(--magenta); } .chip.y { color: var(--yellow); } .chip.g { color: var(--green); }
+  .pipes { margin: 4px 0; padding: 0; list-style: none; display: grid; gap: 10px; counter-reset: p; width: 100%; }
+  .pipes li { counter-increment: p; display: grid; grid-template-columns: 34px 80px 1fr; gap: 10px; align-items: baseline; padding: 12px 14px; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); font-size: 13px; color: var(--text-dim); }
+  .pipes li::before { content: '0' counter(p); color: var(--dim); font-size: 11px; letter-spacing: 0.1em; }
+  .pipes b { color: var(--cyan); font-weight: 700; }
+  .note { border-left: 2px solid var(--cyan); padding-left: 12px; }
+  .big { font-size: clamp(48px, 5vw, 72px); line-height: 1; font-weight: 800; letter-spacing: -0.02em; }
+  .big small { font-size: 0.4em; margin-left: 4px; letter-spacing: 0.05em; }
+  code { font-family: var(--mono); font-size: 0.92em; color: var(--text); }
+  pre { margin: 4px 0 0; width: 100%; padding: 14px 16px; border-radius: 10px; background: rgba(0, 0, 0, 0.45); border: 1px solid var(--line); font-size: 13px; line-height: 1.7; overflow-x: auto; }
+  pre .dim { color: var(--dim); } pre .g { color: var(--green); }
+  @media (max-width: 1000px) {
+    .bento { grid-template-columns: repeat(2, 1fr); }
+    .webgpu { grid-row: auto; }
+  }
+  @media (max-width: 640px) {
+    .bento { grid-template-columns: 1fr; }
+    .cell { grid-column: auto !important; }
+    .pipes li { grid-template-columns: 26px 1fr; }
+    .pipes li span { grid-column: 2; }
+    .pipes li::before { grid-row: span 2; }
+  }
+</style>

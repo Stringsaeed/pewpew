@@ -1,0 +1,14 @@
+{
+  "name": "pewpew-marketing",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "screenshots": "node app-store/screenshots.mjs raw ../docs/app-store/screenshots",
+    "preview": "cd .. && bash marketing/video/app-preview.sh",
+    "social": "cd .. && node marketing/video/social.mjs docs/app-store/preview/app-preview.mp4 marketing/out",
+    "og": "node og/og.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.57"
+  }
+}

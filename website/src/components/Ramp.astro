@@ -1,0 +1,77 @@
+---
+import { COL, PLOT_H, PLOT_W, barTop, charts, first, gridY, last } from '../lib/ramp';
+---
+<section class="section ramp" id="levels" aria-labelledby="ramp-h">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">30 hand-tuned levels</p>
+      <h2 class="h-section" id="ramp-h">A ramp that <span class="glow-yellow">never</span> lets up.</h2>
+      <p class="lede">
+        Each level is one row in a typed table. If any difficulty column ever goes down from one level to the next, the game refuses to load.
+        Level 1 scrolls at {first.scroll.toFixed(1)} units a second with {first.density} hazards per 100 units. Level 30 scrolls at {last.scroll.toFixed(1)} with {last.density}, through {last.wells} gravity wells.
+      </p>
+    </div>
+
+    <div class="chart reveal">
+      <div class="tabs" role="radiogroup" aria-label="Metric">
+        {charts.map((c, i) => (
+          <label><input type="radio" name="metric" value={c.key} checked={i === 0} /><span>{c.label}</span></label>
+        ))}
+      </div>
+      {charts.map((c) => (
+        <figure class="plot" data-metric={c.key}>
+          <svg viewBox={`0 0 ${PLOT_W} ${PLOT_H + 26}`} role="img" aria-label={`${c.label} by level, ${c.unit}, from ${c.fmt(c.bars[0]!.v)} to ${c.fmt(c.bars[29]!.v)}`}>
+            {[0.25, 0.5, 0.75, 1].map((f) => <line x1="0" x2={PLOT_W} y1={gridY(f)} y2={gridY(f)} class="grid" />)}
+            {c.bars.map((b, i) => (
+              <g class={b.boss ? 'bar boss' : 'bar'} style={`--tone:${b.tone};--i:${i}`}>
+                <title>Level {b.n}: {c.fmt(b.v)} {c.unit}{b.boss ? ` · ${b.boss.toUpperCase()}` : ''}</title>
+                <rect x={i * COL + 5} y={barTop(b.h)} width="22" height={b.h} rx="3" />
+                {b.boss && <text x={i * COL + 16} y={barTop(b.h) - 8} class="bl">{b.boss.toUpperCase()}</text>}
+                <text x={i * COL + 16} y={PLOT_H + 18} class={b.n % 5 === 0 || b.n === 1 ? 'n' : 'n faint'}>{b.n}</text>
+              </g>
+            ))}
+          </svg>
+          <figcaption>{c.label}, {c.unit}. Peak {c.fmt(c.max)}.</figcaption>
+        </figure>
+      ))}
+      <ul class="legend">
+        <li style="--tone:#9a6bff">Tier 1 · violet · 1–10</li>
+        <li style="--tone:#2fd6c4">Tier 2 · teal · 11–20</li>
+        <li style="--tone:#ff3d6a">Tier 3 · crimson · 21–30</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<style>
+  .head { max-width: 780px; }
+  .chart { margin-top: 48px; padding: clamp(18px, 3vw, 32px); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .tabs label { cursor: pointer; }
+  .tabs input { position: absolute; opacity: 0; pointer-events: none; }
+  .tabs span { display: inline-block; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); transition: all 150ms ease; }
+  .tabs label:hover span { color: var(--text); border-color: var(--text-dim); }
+  .tabs input:checked + span { color: var(--yellow); border-color: var(--yellow); box-shadow: 0 0 16px rgba(255, 210, 63, 0.3); }
+  .tabs input:focus-visible + span { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .plot { display: none; margin: 0; }
+  .chart:has(input[value='density']:checked) [data-metric='density'],
+  .chart:has(input[value='scroll']:checked) [data-metric='scroll'],
+  .chart:has(input[value='fire']:checked) [data-metric='fire'],
+  .chart:has(input[value='length']:checked) [data-metric='length'] { display: block; }
+  svg { width: 100%; height: auto; overflow: visible; }
+  .grid { stroke: var(--line); stroke-dasharray: 2 6; }
+  .bar rect { fill: color-mix(in oklab, var(--tone) 70%, transparent); transform-origin: 50% 100%; transform-box: fill-box; }
+  .bar.boss rect { fill: var(--tone); filter: drop-shadow(0 0 10px var(--tone)); }
+  .bar:hover rect { fill: var(--tone); }
+  @media (prefers-reduced-motion: no-preference) {
+    .plot .bar rect { animation: grow 700ms cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i) * 18ms); }
+    @keyframes grow { from { transform: scaleY(0); } }
+  }
+  .n { fill: var(--text-dim); font: 700 11px var(--mono); text-anchor: middle; }
+  .n.faint { fill: var(--dim); opacity: 0.6; }
+  .bl { fill: var(--tone); font: 700 10px var(--mono); letter-spacing: 0.1em; text-anchor: middle; }
+  figcaption { margin-top: 12px; font-size: 12px; color: var(--dim); letter-spacing: 0.08em; }
+  .legend { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 12px; color: var(--text-dim); }
+  .legend li::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 3px; background: var(--tone); box-shadow: 0 0 10px var(--tone); }
+  @media (max-width: 640px) { .n.faint { display: none; } .bl { font-size: 16px; } }
+</style>

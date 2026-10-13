@@ -1,0 +1,373 @@
+---
+import { BOSSES } from '@game/levels';
+
+const LEVEL_CHIPS = [
+  { n: 1, label: 'LV 1' },
+  { n: 7, label: 'LV 7' },
+  { n: 10, label: 'LV 10', boss: 'warden' },
+  { n: 20, label: 'LV 20', boss: 'hive' },
+  { n: 30, label: 'LV 30', boss: 'core' },
+] as const;
+const ticks = Object.fromEntries(Object.entries(BOSSES).map(([id, b]) => [id, b.phases.slice(1).map((p) => p.atHpFraction)]));
+---
+<div class="demo" data-demo data-ticks={JSON.stringify(ticks)}>
+  <div class="phone">
+    <div class="screen" tabindex="0" aria-label="PewPew, playable demo. Drag or use the arrow keys to steer." data-input>
+      <canvas data-canvas aria-hidden="true"></canvas>
+      <video class="fallback" data-fallback muted loop playsinline preload="none" poster="/media/demo-poster.jpg" aria-label="PewPew gameplay recording">
+        <source src="/media/demo-loop.mp4" type="video/mp4" />
+      </video>
+
+      <div class="hud" data-hud hidden>
+        <div class="scrim"></div>
+        <div class="row">
+          <div class="left">
+            <div class="score" data-score><span class="zeros">00000</span>0</div>
+            <div class="lives-row">
+              <div class="lives" data-lives></div>
+              <span class="chip-s cyan" data-shield hidden>SHIELD</span>
+              <span class="chip-s yellow" data-rapid hidden>RAPID</span>
+            </div>
+          </div>
+          <div class="lv" data-lv>LV 1</div>
+          <span class="auto" data-auto-chip>AUTO</span>
+        </div>
+        <div class="track" data-track><div class="fill" data-progress></div></div>
+        <div class="boss" data-boss hidden>
+          <div class="boss-name" data-boss-name>BOSS</div>
+          <div class="boss-bar"><div class="fill threat" data-boss-hp></div><div data-boss-ticks></div></div>
+        </div>
+      </div>
+      <div class="vignette" data-vignette></div>
+
+      <div class="intro" data-intro hidden>
+        <div class="warn" data-intro-warn hidden>WARNING</div>
+        <div class="intro-line" data-intro-line>SECTOR 1 · LEVEL 1</div>
+      </div>
+
+      <div class="hint" data-hint>
+        <span class="hint-pill">DRAG TO TAKE THE STICK</span>
+      </div>
+
+      <div class="panel-scrim" data-panel hidden>
+        <div class="panel" data-panel-box>
+          <div class="panel-title" data-panel-title>LEVEL CLEAR</div>
+          <div class="stars" data-stars></div>
+          <div class="sub" data-panel-level>LEVEL 1</div>
+          <div class="panel-score" data-panel-score>000000</div>
+          <button class="btn btn-primary pbtn" data-next>NEXT</button>
+          <button class="btn pbtn" data-retry>RETRY</button>
+          <a class="btn pbtn btn-magenta" data-get href="https://apps.apple.com/app/id6822155755" rel="noopener">GET THE APP</a>
+        </div>
+      </div>
+
+      <div class="nogpu" data-nogpu hidden>
+        <p>Your browser has no WebGPU yet, so this is a recording.</p>
+        <p>Open the page in Chrome, Edge, or Safari 26 to play the real thing.</p>
+      </div>
+    </div>
+    <div class="island" aria-hidden="true"></div>
+  </div>
+
+  <div class="controls" data-controls>
+    <div class="levels" role="group" aria-label="Jump to a level">
+      {LEVEL_CHIPS.map((c) => (
+        <button class:list={['lvl', { boss: 'boss' in c }]} data-level={c.n} aria-pressed="false">
+          {c.label}{'boss' in c && <span>{c.boss.toUpperCase()}</span>}
+        </button>
+      ))}
+    </div>
+    <div class="toggles">
+      <button class="tog" data-autopilot aria-pressed="true"><i></i>AUTOPILOT</button>
+      <button class="tog" data-sound aria-pressed="false"><i></i>SOUND</button>
+    </div>
+    <p class="telemetry" data-telemetry aria-live="off"><b class="dot"></b><span data-tele>WEBGPU · STARTING…</span></p>
+  </div>
+</div>
+
+<script>
+  import type { Result } from '../demo/game';
+  import type { LevelNumber } from '@game/levels';
+  import type { Hud } from '@game/sim';
+
+  const ATTRACT: LevelNumber[] = [7, 10, 17, 20, 27, 30];
+
+  const root = document.querySelector<HTMLElement>('[data-demo]')!;
+  const $ = <T extends Element = HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
+  const canvas = $<HTMLCanvasElement>('[data-canvas]');
+  const input = $('[data-input]');
+  const ticks: Record<string, number[]> = JSON.parse(root.dataset.ticks ?? '{}');
+
+  function rocket(alive: boolean) {
+    const tint = alive ? '#35f0ff' : '#ff5a36';
+    return `<svg viewBox="0 0 18 18" class="life${alive ? '' : ' lost'}"><path d="M9 0 L13.5 6.8 H4.5Z" fill="${tint}"/><rect x="4.5" y="6.8" width="9" height="9" fill="${tint}"/><rect x="4.5" y="12.6" width="2.25" height="5.4" fill="#ff3d9a"/><rect x="11.25" y="12.6" width="2.25" height="5.4" fill="#ff3d9a"/></svg>`;
+  }
+
+  async function boot() {
+    const backdrop = document.querySelector<HTMLCanvasElement>('[data-backdrop]');
+    if (!('gpu' in navigator)) return fallback();
+    const { getDevice, mountBackdrop, mountGame } = await import('../demo/game');
+    const device = await getDevice();
+    if (!device) return fallback();
+    device.lost.then(() => fallback());
+    if (backdrop) mountBackdrop(backdrop, device);
+
+    let lastLives = 3;
+    let slots = 3;
+    let bossId: string | null = null;
+    let introTimer = 0;
+    let lastAttract = 0;
+
+    const game = mountGame(canvas, input, device, {
+      hud(h: Hud) {
+        $('[data-hud]').hidden = false;
+        const digits = String(h.score).padStart(6, '0');
+        const zeros = Math.min(/^0*/.exec(digits)![0].length, 5);
+        const score = $('[data-score]');
+        score.innerHTML = `<span class="zeros">${digits.slice(0, zeros)}</span>${digits.slice(zeros)}`;
+        if (h.lives < lastLives) {
+          const v = $('[data-vignette]');
+          v.classList.remove('hurt'); void v.offsetWidth; v.classList.add('hurt');
+        }
+        lastLives = h.lives;
+        slots = Math.max(slots, h.lives);
+        $('[data-lives]').innerHTML = Array.from({ length: slots }, (_, i) => rocket(i < h.lives)).join('');
+        $('[data-shield]').hidden = !h.shield;
+        $('[data-rapid]').hidden = !h.rapid;
+        const boss = h.bossHp !== null;
+        $('[data-track]').hidden = boss;
+        $('[data-boss]').hidden = !boss;
+        if (boss) {
+          $('[data-boss-hp]').style.width = `${h.bossHp}%`;
+          if (bossId) {
+            $('[data-boss-name]').textContent = bossId.toUpperCase();
+            $('[data-boss-ticks]').innerHTML = (ticks[bossId] ?? []).map((t) => `<i style="left:${t * 100}%"></i>`).join('');
+          }
+        } else {
+          $('[data-progress]').style.width = `${h.progress}%`;
+        }
+      },
+      intro(level) {
+        lastLives = 3; slots = 3;
+        bossId = { 10: 'warden', 20: 'hive', 30: 'core' }[level as 10 | 20 | 30] ?? null;
+        $('[data-lv]').textContent = `LV ${level}`;
+        $('[data-panel]').hidden = true;
+        const sector = Math.ceil(level / 10);
+        const intro = $('[data-intro]');
+        $('[data-intro-line]').textContent = `SECTOR ${sector} · LEVEL ${((level - 1) % 10) + 1}`;
+        $('[data-intro-warn]').hidden = bossId === null;
+        intro.classList.toggle('threat', bossId !== null);
+        intro.hidden = false;
+        intro.classList.remove('out');
+        clearTimeout(introTimer);
+        introTimer = window.setTimeout(() => intro.classList.add('out'), 1200);
+        root.querySelectorAll<HTMLButtonElement>('[data-level]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.level) === level)));
+      },
+      ended(result: Result, level, attract) {
+        if (attract) {
+          lastAttract = (ATTRACT.indexOf(level) + 1) % ATTRACT.length;
+          game?.start(ATTRACT[lastAttract]!, true);
+          return;
+        }
+        showPanel(result, level);
+      },
+      mode(attract) {
+        root.classList.toggle('attract', attract);
+        $('[data-hint]').hidden = !attract;
+        $('[data-auto-chip]').hidden = !attract && !autopilot;
+        setAutopilotUi(attract);
+      },
+      telemetry(fps, cpu, bodies) {
+        $('[data-tele]').textContent = `WEBGPU · ${Math.round(fps)} FPS · ${cpu.toFixed(2)} MS/FRAME · ${bodies} BODIES`;
+      },
+    });
+    if (!game) return fallback();
+
+    let autopilot = true;
+    function setAutopilotUi(on: boolean) {
+      autopilot = on;
+      $('[data-autopilot]').setAttribute('aria-pressed', String(on));
+      $('[data-auto-chip]').hidden = !on;
+    }
+
+    function showPanel(result: Result, level: LevelNumber) {
+      const won = result.e === 'won';
+      const panel = $('[data-panel]');
+      panel.classList.toggle('lost', !won);
+      $('[data-panel-title]').textContent = won ? 'LEVEL CLEAR' : 'GAME OVER';
+      $('[data-stars]').innerHTML = won ? [0, 1, 2].map((i) => `<span class="${i < result.stars ? 'on' : ''}" style="--i:${i}">${i < result.stars ? '★' : '☆'}</span>`).join('') : '';
+      $('[data-panel-level]').textContent = `LEVEL ${level}`;
+      $('[data-panel-score]').textContent = String(result.score).padStart(6, '0');
+      const next = $<HTMLButtonElement>('[data-next]');
+      next.hidden = !won || level === 30;
+      panel.hidden = false;
+      (won && level < 30 ? next : $<HTMLButtonElement>('[data-retry]')).focus({ preventScroll: true });
+    }
+
+    $('[data-next]').addEventListener('click', () => game.start(Math.min(30, game.level + 1) as LevelNumber, false));
+    $('[data-retry]').addEventListener('click', () => game.start(game.level, false));
+    root.querySelectorAll<HTMLButtonElement>('[data-level]').forEach((b) =>
+      b.addEventListener('click', () => { game.start(Number(b.dataset.level) as LevelNumber, false); input.focus({ preventScroll: true }); }),
+    );
+    $('[data-autopilot]').addEventListener('click', () => {
+      const on = !autopilot;
+      setAutopilotUi(on);
+      game.setAutopilot(on);
+      $('[data-hint]').hidden = true;
+      root.classList.remove('attract');
+    });
+    const sound = $('[data-sound]');
+    sound.addEventListener('click', () => {
+      const on = sound.getAttribute('aria-pressed') !== 'true';
+      sound.setAttribute('aria-pressed', String(on));
+      game.setSound(on);
+    });
+
+    root.classList.add('live');
+    game.start(ATTRACT[0]!, true);
+  }
+
+  function fallback() {
+    root.classList.add('no-gpu');
+    $('[data-nogpu]').hidden = false;
+    $('[data-hud]').hidden = true;
+    $('[data-hint]').hidden = true;
+    $('[data-controls]').hidden = true;
+    const v = $<HTMLVideoElement>('[data-fallback]');
+    v.preload = 'auto';
+    void v.play().catch(() => {});
+  }
+
+  void boot();
+</script>
+
+<style>
+  .demo { display: grid; justify-items: center; gap: 22px; --w: max(250px, min(27vw, 340px, (100svh - 250px) * 0.46)); }
+  @media (max-width: 900px) { .demo { --w: min(86vw, 340px); } }
+
+  .phone {
+    position: relative;
+    width: var(--w);
+    aspect-ratio: 1320 / 2868;
+    padding: calc(var(--w) * 0.03);
+    border-radius: calc(var(--w) * 0.155);
+    background:
+      linear-gradient(145deg, #2a2d44, #0c0d18 38%, #161828 62%, #2a2d44) border-box;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+      0 0 0 2px #05050f,
+      0 40px 120px -20px rgba(53, 240, 255, 0.28),
+      0 30px 80px -30px rgba(255, 61, 154, 0.4);
+  }
+  .island {
+    position: absolute; top: calc(var(--w) * 0.055); left: 50%; translate: -50% 0;
+    width: 30%; height: calc(var(--w) * 0.085); border-radius: 999px; background: #000; pointer-events: none;
+  }
+  .screen {
+    position: relative; width: 100%; height: 100%; overflow: hidden;
+    border-radius: calc(var(--w) * 0.125);
+    background: #020208;
+    container-type: size;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+  }
+  .screen:active { cursor: grabbing; }
+  .screen:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
+  canvas, .fallback { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .fallback { object-fit: cover; display: none; }
+  :global(.no-gpu) .fallback { display: block; }
+  :global(.no-gpu) canvas { display: none; }
+
+  /* Sizes are device points / 440 (iPhone Pro Max width), so the HUD scales exactly like the app's. */
+  .hud { position: absolute; inset: 0 0 auto; padding: 11.4cqw 3.64cqw 0; display: grid; gap: 1.82cqw; pointer-events: none; }
+  .hud[hidden], [hidden] { display: none !important; }
+  .scrim { position: absolute; inset: 0 0 auto; height: 27cqw; background: linear-gradient(rgba(5, 5, 15, 0.75), transparent); }
+  .row { position: relative; display: flex; align-items: flex-start; gap: 1.82cqw; }
+  .left { display: grid; gap: 0.9cqw; margin-right: auto; }
+  .score { font-size: 5.45cqw; font-weight: 800; letter-spacing: 0.45cqw; color: var(--cyan); line-height: 1.2; }
+  .score :global(.zeros) { color: var(--text-dim); }
+  .lives-row { display: flex; align-items: center; gap: 0.9cqw; }
+  .lives { display: flex; height: 4.1cqw; }
+  .lives :global(.life) { width: 5cqw; height: 4.1cqw; }
+  .chip-s { font-size: 2.5cqw; font-weight: 700; letter-spacing: 0.45cqw; border: 1px solid currentColor; border-radius: 1.8cqw; padding: 0.2cqw 1.8cqw; }
+  .cyan { color: var(--cyan); } .yellow { color: var(--yellow); }
+  .lv { font-size: 2.95cqw; letter-spacing: 0.45cqw; color: var(--text-dim); padding-top: 1.82cqw; margin-right: auto; }
+  .auto {
+    height: 10cqw; display: grid; place-items: center; padding: 0 1.82cqw; border-radius: 2.7cqw; border: 0.45cqw solid var(--yellow);
+    background: rgba(255, 210, 63, 0.2); color: var(--yellow); font-size: 2.7cqw; font-weight: 700; letter-spacing: 0.45cqw;
+  }
+  .track { position: relative; height: 1.36cqw; border-radius: 1cqw; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+  .fill { height: 100%; width: 0; background: var(--green); transition: width 120ms linear; }
+  .fill.threat { background: var(--threat); }
+  .boss { position: relative; display: grid; gap: 0.9cqw; }
+  .boss-name { font-size: 2.5cqw; font-weight: 800; letter-spacing: 0.7cqw; color: var(--text); }
+  .boss-bar { position: relative; height: 2.27cqw; border-radius: 1.2cqw; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+  .boss-bar :global(i) { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--text); }
+
+  .vignette { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 14cqw var(--threat); opacity: 0; }
+  .vignette:global(.hurt) { animation: hurt 180ms ease-out; }
+  @keyframes hurt { 20% { opacity: 1; } to { opacity: 0; } }
+
+  .intro { position: absolute; top: 38%; inset-inline: 0; display: grid; justify-items: center; gap: 1.8cqw; pointer-events: none; color: var(--cyan); animation: fade-in 160ms ease-out both; }
+  .intro:global(.threat) { color: var(--threat); }
+  .intro:global(.out) { animation: fade-out 400ms ease-in both; }
+  .warn { font-size: 2.73cqw; font-weight: 800; letter-spacing: 1.36cqw; text-shadow: 0 0 3.2cqw currentColor; }
+  .intro-line { font-size: 6.36cqw; font-weight: 900; letter-spacing: 0.68cqw; text-shadow: 0 0 3.2cqw currentColor; white-space: nowrap; }
+  @keyframes fade-in { from { opacity: 0; } }
+  @keyframes fade-out { to { opacity: 0; } }
+
+  .hint { position: absolute; inset: auto 0 9%; display: grid; justify-items: center; pointer-events: none; }
+  .hint-pill {
+    font-size: 2.9cqw; font-weight: 700; letter-spacing: 0.6cqw; color: var(--text);
+    padding: 2cqw 4cqw; border-radius: 99px; border: 1px solid rgba(53, 240, 255, 0.5);
+    background: rgba(5, 5, 15, 0.6); backdrop-filter: blur(6px); box-shadow: 0 0 24px rgba(53, 240, 255, 0.25);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.55; } }
+
+  .panel-scrim { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(5, 5, 15, 0.62); animation: fade-in 140ms ease-out both; --tint: var(--green); }
+  .panel-scrim:global(.lost) { --tint: var(--magenta); }
+  .panel {
+    display: grid; justify-items: center; gap: 3cqw; padding: 5.5cqw; min-width: 68cqw;
+    background: var(--panel); border: 0.45cqw solid var(--tint); border-radius: 4.5cqw;
+    box-shadow: 0 0 18px color-mix(in srgb, var(--tint) 45%, transparent);
+    animation: pop 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  }
+  @keyframes pop { from { transform: scale(0.92); opacity: 0; } }
+  .panel-title { font-size: 6.36cqw; font-weight: 900; letter-spacing: 1.1cqw; color: var(--tint); text-shadow: 0 0 3.2cqw var(--tint); }
+  .stars { display: flex; gap: 1.8cqw; font-size: 11cqw; line-height: 1; color: var(--dim); }
+  .stars:empty { display: none; }
+  .stars :global(span) { opacity: 0.35; }
+  .stars :global(.on) { color: var(--yellow); opacity: 1; animation: star 420ms cubic-bezier(0.2, 1.6, 0.4, 1) both; animation-delay: calc(var(--i) * 280ms); }
+  @keyframes star { from { transform: scale(0.2); opacity: 0; } }
+  .sub { font-size: 2.73cqw; letter-spacing: 0.9cqw; color: var(--text-dim); }
+  .panel-score { font-size: 8.2cqw; font-weight: 800; letter-spacing: 0.7cqw; color: var(--text); }
+  .pbtn { width: 100%; min-height: 11cqw; font-size: 3.4cqw; border-radius: 3.2cqw; }
+
+  .nogpu {
+    position: absolute; inset: auto 4cqw 4cqw; padding: 3cqw 4cqw; border-radius: 3cqw;
+    background: rgba(5, 5, 15, 0.8); border: 1px solid var(--line); font-size: 2.9cqw; color: var(--text-dim); backdrop-filter: blur(8px);
+  }
+  .nogpu p { margin: 0; }
+  .nogpu p + p { margin-top: 1cqw; color: var(--cyan); }
+
+  .controls { display: grid; justify-items: center; gap: 14px; width: min(100%, 460px); }
+  .levels { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .lvl, .tog {
+    font: 700 11px/1 var(--mono); letter-spacing: 0.16em; color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px; transition: border-color 120ms, color 120ms, background-color 120ms;
+  }
+  .lvl span { color: var(--threat); font-size: 10px; }
+  .lvl:hover, .tog:hover { color: var(--text); border-color: var(--text-dim); }
+  .lvl[aria-pressed='true'] { color: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 14px rgba(53, 240, 255, 0.3); }
+  .toggles { display: flex; gap: 8px; }
+  .tog i { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); transition: background-color 120ms, box-shadow 120ms; }
+  .tog[aria-pressed='true'] { color: var(--yellow); border-color: rgba(255, 210, 63, 0.6); }
+  .tog[aria-pressed='true'] i { background: var(--yellow); box-shadow: 0 0 10px var(--yellow); }
+  .telemetry { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 0.14em; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
+  :global(.live) .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+</style>

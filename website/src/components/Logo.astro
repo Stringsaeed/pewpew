@@ -1,0 +1,28 @@
+---
+interface Props { size?: 'sm' | 'xl'; as?: 'span' | 'h1' }
+const { size = 'sm', as: Tag = 'span' } = Astro.props;
+---
+<Tag class:list={['logo', size]} aria-label="PewPew">
+  <span class="ghost" aria-hidden="true">PEWPEW</span>
+  <span class="face" aria-hidden="true">PEWPEW</span>
+</Tag>
+
+<style>
+  /* The title screen's mark: cyan logo, a magenta copy 3px down-left for the chromatic split. */
+  .logo { position: relative; display: inline-grid; margin: 0; font-family: var(--mono); font-weight: 900; line-height: 1; }
+  .logo > span { grid-area: 1 / 1; }
+  .face { position: relative; z-index: 1; color: var(--cyan); text-shadow: 0 0 14px rgba(53, 240, 255, 0.9), 0 0 42px rgba(53, 240, 255, 0.35); }
+  .ghost { color: var(--magenta); text-shadow: 0 0 14px rgba(255, 61, 154, 0.85); transform: translate(-0.055em, 0.055em); }
+  .sm { font-size: 20px; letter-spacing: 0.12em; }
+  .sm .ghost { transform: translate(-2px, 2px); }
+  .xl { font-size: clamp(64px, 12vw, 148px); letter-spacing: 0.11em; }
+  @media (prefers-reduced-motion: no-preference) {
+    .xl .ghost { animation: split 5s ease-in-out infinite; }
+    @keyframes split {
+      0%, 86%, 100% { transform: translate(-0.04em, 0.04em); }
+      88% { transform: translate(-0.1em, 0.02em); }
+      90% { transform: translate(0.03em, 0.06em); }
+      92% { transform: translate(-0.04em, 0.04em); }
+    }
+  }
+</style>

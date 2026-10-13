@@ -1,0 +1,78 @@
+---
+import type { MeshId } from '@game/render/meshes.gen';
+import type { Pose } from '../lib/meshSvg';
+import Mesh from './Mesh.astro';
+
+interface Entry { id: MeshId; name: string; tone: 'threat' | 'magenta' | 'cyan' | 'yellow' | 'green'; tag: string; body: string; pose?: Pose }
+
+const hazards: Entry[] = [
+  { id: 'asteroid0', name: 'Asteroid', tone: 'threat', tag: '3 hits · +50', body: 'Cracks into three fragments. Clear the shards or weave through them.', pose: { x: 0.5, y: 0.6 } },
+  { id: 'mine', name: 'Mine', tone: 'magenta', tag: 'Unshootable', body: 'Bolts pass straight through. The only answer is to fly around it.', pose: { x: 0.7, y: 0.3 } },
+  { id: 'drone', name: 'Drone', tone: 'threat', tag: '2 hits · +100', body: 'Sine, zigzag, dive, orbit. From level 6 they shoot back.', pose: { x: -0.9, y: 0.2 } },
+  { id: 'well', name: 'Gravity well', tone: 'magenta', tag: 'Up to 5 a level', body: 'Drags your rocket sideways. Steer against it, or let it slingshot you.', pose: { x: 0.9, y: 0.4 } },
+];
+const pickups: Entry[] = [
+  { id: 'crystal', name: 'Crystal', tone: 'cyan', tag: '+25', body: 'Score. Fly through them.', pose: { x: 0.3, y: 0.7 } },
+  { id: 'shield', name: 'Shield', tone: 'green', tag: 'Blocks 1 hit', body: 'A fresnel bubble that eats one hit for you.', pose: { x: 0.4, y: 0.5 } },
+  { id: 'rapid', name: 'Rapid fire', tone: 'yellow', tag: '2× for 6 s', body: 'Doubles your fire rate for six seconds.', pose: { x: 0.5, y: 0.6 } },
+];
+---
+<section class="section guide" id="guide" aria-labelledby="guide-h">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="eyebrow">How it plays</p>
+      <h2 class="h-section" id="guide-h">One finger. <span class="glow-cyan">Zero</span> buttons.</h2>
+      <p class="lede">Drag anywhere to steer. Your rocket fires on its own. You start every level with three lives, and the lives you finish with are your stars.</p>
+    </div>
+
+    <ol class="steps reveal">
+      <li><b class="glow-cyan">01</b><span>Drag to steer</span><small>Relative drag, so your thumb never covers the rocket.</small></li>
+      <li><b class="glow-magenta">02</b><span>Auto-fire</span><small>Five bolts a second. Ten with rapid fire.</small></li>
+      <li><b class="glow-yellow">03</b><span>Reach the wormhole</span><small>Survive the track. Every tenth level, beat the boss first.</small></li>
+      <li><b class="glow-green">04</b><span>Earn stars</span><small>Lives left at the wormhole. Three is perfect.</small></li>
+    </ol>
+
+    <h3 class="sub reveal">Field guide</h3>
+    <div class="cards">
+      {[...hazards, ...pickups].map((e) => (
+        <article class={`card reveal ${e.tone}`}>
+          <div class="art"><Mesh id={e.id} pose={e.pose} label={e.name} /></div>
+          <div class="txt">
+            <span class="chip">{e.tag}</span>
+            <h4>{e.name}</h4>
+            <p>{e.body}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .head { max-width: 760px; }
+  .steps { list-style: none; padding: 0; margin: 56px 0 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .steps li { background: var(--bg); padding: 24px; display: grid; gap: 6px; align-content: start; }
+  .steps b { font-size: 13px; letter-spacing: 0.2em; }
+  .steps span { font-size: 18px; font-weight: 700; letter-spacing: 0.04em; }
+  .steps small { color: var(--text-dim); font-size: 13px; line-height: 1.5; }
+  .sub { margin: 96px 0 24px; font-size: 12px; letter-spacing: 0.35em; text-transform: uppercase; color: var(--text-dim); font-weight: 700; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+  .card {
+    --tone: var(--cyan);
+    position: relative; display: grid; grid-template-rows: 150px auto; overflow: hidden;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: radial-gradient(120% 80% at 50% 0%, color-mix(in oklab, var(--tone) 14%, transparent), transparent 65%), var(--panel);
+    transition: border-color 200ms ease, transform 200ms ease;
+  }
+  .card:hover { border-color: color-mix(in oklab, var(--tone) 60%, transparent); transform: translateY(-3px); }
+  .card.threat { --tone: var(--threat); } .card.magenta { --tone: var(--magenta); } .card.yellow { --tone: var(--yellow); } .card.green { --tone: var(--green); }
+  .art { display: grid; place-items: center; padding: 22px; }
+  .art :global(svg) { width: auto; height: 100%; max-width: 70%; filter: drop-shadow(0 0 22px color-mix(in oklab, var(--tone) 45%, transparent)); transition: transform 600ms cubic-bezier(.2,.8,.2,1); }
+  .card:hover .art :global(svg) { transform: scale(1.08) rotate(-6deg); }
+  .txt { padding: 0 22px 22px; display: grid; gap: 8px; justify-items: start; }
+  .chip { color: var(--tone); }
+  h4 { margin: 4px 0 0; font-size: 18px; letter-spacing: 0.06em; }
+  .txt p { margin: 0; color: var(--text-dim); font-size: 14px; line-height: 1.55; }
+  @media (max-width: 900px) { .steps { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .steps { grid-template-columns: 1fr; } }
+</style>
