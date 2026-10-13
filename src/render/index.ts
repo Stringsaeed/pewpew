@@ -1,24 +1,11 @@
 import type { NativeCanvas } from 'react-native-webgpu';
 import { ARCHETYPES, Kind, type BossId } from '../levels';
+import { BOSS_RADIUS, LOOK, ROCKET_RADIUS, WORMHOLE_RADIUS, type Look } from './look';
 import { MESHES, type MeshId } from './meshes.gen';
 import { MAX_BODIES, type SimEvent, type WorldView } from '../sim';
 
-/** Kind to look. 'glow' kinds draw as additive billboards, not meshes. A mesh look picks meshes[variant % length]. */
-export type Look =
-  | { readonly draw: 'mesh'; readonly meshes: readonly [MeshId, ...MeshId[]]; readonly tint: readonly [number, number, number] }
-  | { readonly draw: 'glow'; readonly size: number; readonly rgba: readonly [number, number, number, number] };
-export const LOOK: { readonly [K in Kind]: Look } = {
-  [Kind.Asteroid]:  { draw: 'mesh', meshes: ['asteroid0', 'asteroid1', 'asteroid2', 'asteroid3'], tint: [1, 1, 1] },
-  [Kind.Fragment]:  { draw: 'mesh', meshes: ['fragment0', 'fragment1'], tint: [1, 1, 1] },
-  [Kind.Mine]:      { draw: 'mesh', meshes: ['mine'], tint: [1, 1, 1] },
-  [Kind.Drone]:     { draw: 'mesh', meshes: ['drone'], tint: [1, 1, 1] },
-  [Kind.Well]:      { draw: 'mesh', meshes: ['well'], tint: [1, 1, 1] },
-  [Kind.Crystal]:   { draw: 'mesh', meshes: ['crystal'], tint: [1, 1, 1] },
-  [Kind.Shield]:    { draw: 'mesh', meshes: ['shield'], tint: [1, 1, 1] },
-  [Kind.Rapid]:     { draw: 'mesh', meshes: ['rapid'], tint: [1, 1, 1] },
-  [Kind.Bolt]:      { draw: 'glow', size: 0.35, rgba: [0.3, 1, 1, 1] },
-  [Kind.EnemyBolt]: { draw: 'glow', size: 0.4, rgba: [1, 0.3, 0.6, 1] },
-};
+export type { Look };
+export { LOOK };
 
 /**
  * Reads WorldView, never writes it. Owns GPU objects and particles. Three pipelines, drawn in order into one pass
@@ -128,9 +115,6 @@ const INSTANCE_FLOATS = 8;
 const MESH_CAP = MAX_BODIES + 3;
 const PARTICLE_CAP = 2048;
 const GLOW_CAP = MAX_BODIES + PARTICLE_CAP + 2;
-const ROCKET_RADIUS = 0.8;
-const BOSS_RADIUS = 2.4;
-const WORMHOLE_RADIUS = 2.6;
 const FOV_Y = (50 * Math.PI) / 180;
 const PITCH = (16 * Math.PI) / 180;
 const LOOK_AHEAD = 6.5;
