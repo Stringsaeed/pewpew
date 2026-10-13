@@ -7,7 +7,7 @@ The level is a compiled track and the world is a flat pool. This document explai
 Three callers drive the design. They are the app shell, the CI verifier, and the menu screens.
 
 ```ts
-// App.tsx owns the whole input-to-pixels path (App.tsx -> src/sim -> render.ts)
+// src/shell/loop.ts advance() is the input-to-pixels step (shell -> src/sim -> src/render)
 const onTouchStart = (e) => { drag.anchorX = loop.world!.player.x; drag.fx = e.nativeEvent.pageX; };
 const onTouchMove  = (e) => { loop.input = dragInput(drag.anchorX, (e.nativeEvent.pageX - drag.fx) / width); };
 const onTouchEnd   = () => { loop.input = COAST; };
@@ -46,7 +46,7 @@ for (const spec of LEVELS) {
 
 We need a 30-level arcade shooter whose rules can be proved headless in Node and then played on the phone, with the same code doing both. The brief in `.audit/brief.md` adds hard constraints. The sim must be pure and deterministic. The renderer reads the sim and never writes it. Audio reacts only to events. Meshes and music are data. A reader must be able to trace input to pixels in three files.
 
-The shape is non-obvious for three reasons. Hermes punishes per-frame allocation. "Deterministic" breaks quietly when Node (V8) and Hermes disagree in the last bit of `Math.sin`. And "the table is the single source of truth" fails if per-level rules leak into spawn code, the renderer, or audio. `App.tsx` keeps the canvas lifecycle from the toolchain spike (retry on zero layout, resize from `clientWidth * PixelRatio`, `ctx.present()`), and `render.ts` relies on it.
+The shape is non-obvious for three reasons. Hermes punishes per-frame allocation. "Deterministic" breaks quietly when Node (V8) and Hermes disagree in the last bit of `Math.sin`. And "the table is the single source of truth" fails if per-level rules leak into spawn code, the renderer, or audio. `src/shell/useGpu.ts` keeps the canvas lifecycle from the toolchain spike (retry on zero layout, resize from `clientWidth * PixelRatio`, `ctx.present()`), and `src/render` relies on it.
 
 ## Shape
 
@@ -74,14 +74,21 @@ Internals stay unexported, so nothing outside a module can import them. Audio is
 | `src/audio/data.ts` | `PATCHES`, `SFX`, `SONGS`, `EVENT_SFX` (data) | levels, sim (types) |
 | `src/audio/engine.ts` | `AudioEngine`, `createAudio` (the synth engine, sequencer, voice caps, music state) | sim (types), audio data |
 | `src/audio/index.ts` | the public audio API, so `src/audio` keeps resolving | data, engine |
-| `src/render/index.ts` | `Renderer`, `createRenderer` (GPU resources, pipelines, pass, resize, dispose) | render modules, sim (types), meshes |
+| `src/render/index.ts` | `Renderer` (`frame`, `dispose`, optional `hold` and `setReduceMotion`), `createRenderer` (GPU resources, pipelines, pass, resize, dispose) | render modules, sim (types), meshes |
 | `src/render/look.ts` | `Look`, `LOOK`, visual radii | levels, sim, meshes (types) |
 | `src/render/wgsl.ts` | uniform struct and the stars, mesh, and glow shaders | nothing |
 | `src/render/batch.ts` | kind-to-mesh tables, counting sort, instance packing | levels, sim, look, meshes, particles |
 | `src/render/particles.ts` | particle pool, event bursts, integration | levels, sim (types), look |
 | `src/render/camera.ts` | view and projection uniforms | nothing |
 | `src/render/meshes.gen.ts` | `MeshData`, `MeshId`, `MESHES` (generated) | nothing |
-| `App.tsx` | the shell, which owns screen, save, audio, renderer, world, loop, and touch | everything |
+| `src/shell/loop.ts` | mutable `Loop`, `createLoop`, `resetRun`, `setPlaying` (the only writer of `playing`), `advance`, `press`, `drag`, `release`, `rapidRemaining`. Holds a terminal world 1 s on a loss and 1.4 s on a win | sim barrel, `src/sim/rules` (`RAPID_TICKS`), bot, flow (type) |
+| `src/shell/useGpu.ts` | adapter, device, zero-layout retry, rAF, renderer create and dispose, the one pixel-ratio read, Reduce Motion | react-native, webgpu, render, shell/loop |
+| `src/shell/useSave.ts` | load once, `commitSave` (ref, state, writeSave) | react, save |
+| `src/shell/useAudioLifecycle.ts` | AppState foreground, `active`, menu music, mix from the save toggles | react-native, audio, save |
+| `src/ui/Screens.tsx` | which screen is on the canvas, the sector intro card, game-over best and reached | flow, levels, save, sim (types), ui screens |
+| `src/ui/LevelIntro.tsx` | `SECTOR n · LEVEL m`, WARNING on a boss level | theme, reanimated |
+| `src/dev/qa.ts` | `unlockAll`, `logAutoRun`, the tick timer, `createDevTools` (AUTO, `globalThis.pewpew`) | levels, save, sim, shell/loop |
+| `App.tsx` | wiring: screen state, the shell hooks, touch, and dev tools under `__DEV__` | shell, flow, audio, save, ui |
 | `scripts/gen-meshes.ts` | mesh generation (`npm run gen:meshes`) | meshes (types) |
 | `scripts/verify-levels.ts` | the CI proof (`npm run verify`) | levels, sim, bot |
 
@@ -134,7 +141,7 @@ One AsyncStorage key, `pewpew/save/v1`, holds `{ v: 1, levels: [{ best, stars }]
 
 ### Interface depth
 
-The sim exports five functions plus types (`createWorld`, `step`, `hudOf`, `simulate`, `replay`). They hide track compilation, spawning, steering physics, drone patterns, boss phase and attack cycling, collision, scoring, and phase transitions. Audio exposes four methods over a synth, a sequencer, and a voice manager. The renderer exposes one method over three pipelines, instancing, particles, resize, and camera.
+The sim exports five functions plus types (`createWorld`, `step`, `hudOf`, `simulate`, `replay`). They hide track compilation, spawning, steering physics, drone patterns, boss phase and attack cycling, collision, scoring, and phase transitions. Audio exposes four methods over a synth, a sequencer, and a voice manager. The renderer exposes `frame` and `dispose` over three pipelines, instancing, particles, resize, and camera. `hold` and `setReduceMotion` are optional and unimplemented until the game-view unit lands.
 
 ### What it deliberately doesn't do
 

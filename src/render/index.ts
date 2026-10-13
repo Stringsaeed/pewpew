@@ -25,6 +25,10 @@ export interface Renderer {
   /** world null = menu backdrop (stars only). alpha = leftover accumulator / STEP, for interpolation. */
   frame(world: WorldView | null, events: readonly SimEvent[], alpha: number, dtSec: number): void;
   dispose(): void;
+  /** Once, when the sim emits won or lost. The shell keeps framing that world and passes an already scaled dt. */
+  hold?(kind: 'won' | 'lost', seconds: number): void;
+  /** Shake off, flashes at half strength, no slow motion. The shell also fades panels instead of zooming them. */
+  setReduceMotion?(on: boolean): void;
 }
 
 export const MAX_PIXEL_RATIO = 2;
