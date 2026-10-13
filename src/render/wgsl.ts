@@ -1,3 +1,8 @@
+import { MESHES } from './meshes.gen';
+
+/** Outer radius of the accretion disc in mesh units, as a WGSL float literal. */
+const HOLE_OUTER = MESHES.accretion.radius.toFixed(4);
+
 export const UNIFORMS = /* wgsl */ `
 struct U { view: mat4x4f, proj: mat4x4f, res: vec2f, camY: f32, time: f32 };
 @group(0) @binding(0) var<uniform> u: U;
@@ -49,7 +54,7 @@ struct VI {
 };
 struct VO {
   @builtin(position) pos: vec4f, @location(0) nrm: vec3f, @location(1) col: vec3f, @location(2) flash: f32,
-  @location(3) heat: f32, @location(4) pulse: f32, @location(5) lp: vec3f,
+  @location(3) heat: f32, @location(4) pulse: f32, @location(5) lp: vec3f, @location(6) mode: f32,
 };
 fn rotZ(r: f32) -> mat3x3f { return mat3x3f(vec3f(cos(r), sin(r), 0.0), vec3f(-sin(r), cos(r), 0.0), vec3f(0.0, 0.0, 1.0)); }
 fn rotX(r: f32) -> mat3x3f { return mat3x3f(vec3f(1.0, 0.0, 0.0), vec3f(0.0, cos(r), sin(r)), vec3f(0.0, -sin(r), cos(r))); }
@@ -74,6 +79,7 @@ fn rotY(r: f32) -> mat3x3f { return mat3x3f(vec3f(cos(r), 0.0, -sin(r)), vec3f(0
   o.heat = select(v.ex.x, 0.0, mode > 2.5);
   o.pulse = pulse;
   o.lp = v.pos;
+  o.mode = mode;
   return o;
 }
 @fragment fn fs(i: VO) -> @location(0) vec4f {
@@ -81,7 +87,9 @@ fn rotY(r: f32) -> mat3x3f { return mat3x3f(vec3f(cos(r), 0.0, -sin(r)), vec3f(0
   let lit = i.col * (0.3 + 0.7 * lam);
   let emissive = step(1.0001, max(i.col.r, max(i.col.g, i.col.b)));
   let glow = i.col * (0.7 * (1.0 + 0.6 * i.heat) * (1.0 + i.pulse * sin(u.time * 6.5 + i.lp.x * 3.0 + i.lp.y * 2.0))) + i.heat * vec3f(0.1, 0.28, 0.2);
-  return vec4f(mix(lit, glow, emissive) + vec3f(i.flash), 1.0);
+  // The accretion disc (mode 2) dims toward its outer edge instead of ending in a hard violet rim. It keeps a trace, so the edge never reads as a black plate against the halo.
+  let rim = select(1.0, mix(1.0, 0.16, smoothstep(0.5, 1.0, length(i.lp.xy) / ${HOLE_OUTER})), i.mode > 1.5 && i.mode < 2.5);
+  return vec4f(mix(lit, glow, emissive) * rim + vec3f(i.flash), 1.0);
 }
 `;
 

@@ -204,8 +204,8 @@ export function createBatch(): MeshBatch {
       putMesh(cursor[MESH_INDEX.accretion]++, 0, hy, time * 0.5, size, 1, 1, 1, 0, 0, MODE_DISC, 0, BLACKHOLE_TILT);
       const r = BLACKHOLE_RADIUS * (0.06 + 0.94 * grow);
       const haloY = hy - HALO_Z * PITCH_TAN;
-      putGlow(0, haloY, r * 1.5, r * 1.5, 1, 0.5, 0.18, 0.34 * grow, GLOW_HALO, HALO_Z);
-      putGlow(0, haloY, r * 2.3, r * 2.3, 0.55, 0.3, 1, 0.3 * grow, GLOW_HALO, HALO_Z);
+      putGlow(0, haloY, r * 1.5, r * 1.5, 1, 0.5, 0.18, 0.2 * grow, GLOW_HALO, HALO_Z);
+      putGlow(0, haloY, r * 2.3, r * 2.3, 0.55, 0.3, 1, 0.24 * grow, GLOW_HALO, HALO_Z);
     }
     if (pl.shield) putGlow(px, py, 1.3, 1.3, 0.35, 0.65, 1, 0.9, GLOW_RING);
     if (fx.hold === HOLD_WON) {

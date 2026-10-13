@@ -49,8 +49,8 @@ const PALETTE = {
   bossEmber: [1.15, 0.12, 0.62] as Rgb,
   holeCore: [0, 0, 0] as Rgb,
   photon: [3, 2.7, 2.2] as Rgb,
-  /** Accretion disc, inner edge to outer edge: white-hot, amber, deep orange, magenta, violet. Every channel set peaks above 1, so the disc is unlit. */
-  disc: [[2.8, 2.6, 2.1], [2.5, 2.0, 1.1], [2.2, 1.4, 0.5], [1.9, 0.9, 0.25], [1.6, 0.55, 0.15], [1.4, 0.3, 0.3], [1.2, 0.25, 0.75], [0.8, 0.2, 1.3], [0.5, 0.15, 1.15]] as readonly Rgb[],
+  /** Accretion disc, inner edge to outer edge: white-hot, amber, deep orange, magenta, violet fading to near-black. Every channel set peaks above 1, so the disc is unlit. */
+  disc: [[3, 2.9, 2.6], [2.8, 2.5, 1.8], [2.5, 1.8, 0.8], [2.2, 1.2, 0.4], [1.9, 0.8, 0.22], [1.6, 0.5, 0.2], [1.4, 0.3, 0.4], [1.1, 0.25, 0.9], [0.7, 0.18, 1.1], [0.4, 0.1, 1.02]] as readonly Rgb[],
 } as const;
 
 function mulberry32(seed: number): () => number {
@@ -225,13 +225,13 @@ function ring(segments: number, major: number, minor: number, tube: number, pain
   return m;
 }
 
-/** Flat annulus in the xy plane facing +z, with equal-width bands from `inner` to `outer`. paint(band, segment). */
-function disc(inner: number, outer: number, segments: number, bands: number, paint: Paint): RawMesh {
+/** Flat annulus in the xy plane facing +z. Band edges follow (j / bands) ** curve, so curve above 1 packs thin bands against the inner edge. paint(band, segment). */
+function disc(inner: number, outer: number, segments: number, bands: number, curve: number, paint: Paint): RawMesh {
   const m = mesh();
   const at = (r: number, a: number): Vec3 => [r * Math.cos(a), r * Math.sin(a), 0];
   for (let j = 0; j < bands; j++) {
-    const r0 = inner + ((outer - inner) * j) / bands;
-    const r1 = inner + ((outer - inner) * (j + 1)) / bands;
+    const r0 = inner + (outer - inner) * (j / bands) ** curve;
+    const r1 = inner + (outer - inner) * ((j + 1) / bands) ** curve;
     for (let i = 0; i < segments; i++) {
       const a0 = (i / segments) * TAU, a1 = ((i + 1) / segments) * TAU;
       const color = paint(j, i);
@@ -295,12 +295,12 @@ function blackhole(): RawMesh {
   return merge(horizon, photon);
 }
 
-const HOLE_DISC = { inner: 1.25, outer: 2.9 } as const;
+const HOLE_DISC = { inner: 1.1, outer: 2.9 } as const;
 
 /** Flat in the xy plane. Three spiral arms of brighter segments, so the spin reads on an otherwise symmetric disc. */
 function accretion(): RawMesh {
-  const bands = 14;
-  return disc(HOLE_DISC.inner, HOLE_DISC.outer, 56, bands, (j, i) => {
+  const bands = 18;
+  return disc(HOLE_DISC.inner, HOLE_DISC.outer, 56, bands, 1.7, (j, i) => {
     const t = (j / (bands - 1)) * (PALETTE.disc.length - 1);
     const lo = Math.floor(t), hi = Math.min(lo + 1, PALETTE.disc.length - 1);
     const f = t - lo;

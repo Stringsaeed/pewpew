@@ -31,7 +31,7 @@ export const BOSS_RADIUS = 2.4;
 /** The black hole has no collider. This is the drawn radius of its accretion disc. */
 export const BLACKHOLE_RADIUS = 2.6;
 /** The disc is authored face-on; the shader tilts it about x by this much (radians). Negative puts the near half below the hole. */
-export const BLACKHOLE_TILT = -0.95;
+export const BLACKHOLE_TILT = -0.7;
 
 const bolt = LOOK[Kind.Bolt];
 const enemyBolt = LOOK[Kind.EnemyBolt];
