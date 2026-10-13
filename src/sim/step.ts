@@ -7,14 +7,12 @@ import {
   ROW_DY, ROW_GAP, SHIELD_INVULN_TICKS, SPAWN_AHEAD, STEER_ACCEL, STEER_GAIN, STEP, TICKS_PER_SEC,
   TRACK_END_CLEAR, TRACK_HALF_WIDTH, TRACK_START, WELL_REACH_Y,
 } from './rules';
+import { PI, TWO_PI, clamp, cosT, rand, sinT } from './math';
+import type { Rng } from './math';
 
 // This file and levels.ts may use only + - * / and Math.sqrt, imul, floor, min, max, abs (sim.test.ts enforces it).
 // Engine trig differs in the last ulp between Hermes and V8, which would make the verifier prove a slightly different
 // game than the one on the phone. Those operations are correctly rounded by IEEE 754 on every engine.
-
-const PI = 3.141592653589793;
-const TWO_PI = 2 * PI;
-const HALF_PI = PI / 2;
 
 /** One input per step. targetX is the world x the rocket steers toward. null means the finger is up, so the rocket coasts and wells pull it. */
 export interface Input { readonly targetX: number | null }
@@ -233,28 +231,6 @@ export function hashWorld(w: World): number {
   if (w.boss !== null) { num(w.boss.hp); num(w.boss.x); num(w.boss.attack); }
   return h >>> 0;
 }
-
-function clamp(v: number, lo: number, hi: number): number { return Math.min(hi, Math.max(lo, v)); }
-
-interface Rng { rng: number }
-/** mulberry32. Math.imul and 32-bit integer ops are exact on every engine. */
-function rand(s: Rng): number {
-  s.rng = (s.rng + 0x6d2b79f5) | 0;
-  let t = s.rng;
-  t = Math.imul(t ^ (t >>> 15), t | 1);
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-}
-
-/** Range-reduced odd polynomial, bit-identical across engines. Error under 1e-7 on the reduced range. */
-function sinT(x: number): number {
-  let r = x - Math.floor(x / TWO_PI + 0.5) * TWO_PI;
-  if (r > HALF_PI) r = PI - r;
-  else if (r < -HALF_PI) r = -PI - r;
-  const r2 = r * r;
-  return r * (1 + r2 * (-1 / 6 + r2 * (1 / 120 + r2 * (-1 / 5040 + r2 * (1 / 362880 + r2 * (-1 / 39916800))))));
-}
-function cosT(x: number): number { return sinT(x + HALF_PI); }
 
 function createBodies(): Bodies {
   const f = (): Float32Array => new Float32Array(MAX_BODIES);
