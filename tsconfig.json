@@ -1,6 +1,19 @@
 {
-  "extends": "expo/tsconfig.base",
+  // Inlined from expo/tsconfig.base instead of extending it: the website builds
+  // ../src with only website/node_modules installed, where expo can't resolve.
   "compilerOptions": {
+    "allowJs": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "lib": ["DOM", "ESNext"],
+    "module": "preserve",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "customConditions": ["react-native"],
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "target": "ESNext",
     "strict": true,
     "types": [
       "node",
