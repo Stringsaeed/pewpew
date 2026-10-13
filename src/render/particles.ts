@@ -7,7 +7,9 @@ export const PARTICLE_CAP = 2048;
 /** DOT shrinks as it fades. RING grows from a pinprick to full size as it fades. */
 export const DOT = 0;
 export const RING = 1;
-export type ParticleKind = typeof DOT | typeof RING;
+/** SMOKE grows and fades faintly. Glow is additive, so it reads as a dim haze rather than a dark cloud. */
+export const SMOKE = 2;
+export type ParticleKind = typeof DOT | typeof RING | typeof SMOKE;
 
 export interface ParticlePool {
   count: number;
@@ -144,5 +146,24 @@ export function spawnExhaust(pool: ParticlePool, nx: number, ny: number, hx: num
     const sx = (Math.random() - 0.5) * 0.8, sy = (Math.random() - 0.5) * 0.18 * k;
     spawn(pool, nx + sy * hy, ny - sy * hx, -hx * back + sx * hy, -hy * back - sx * hx,
       0.22 + 0.2 * Math.random(), (0.22 + 0.12 * Math.random()) * k, 1, 0.45 + 0.45 * heat, 0.1 + 0.3 * heat * heat);
+  }
+}
+
+const BOSS_HULL = 1.5;
+
+/** Sparks and smoke off the hull of a boss that has passed a phase threshold. `phase` is its phase index: 0 emits nothing. */
+export function emitBossDamage(pool: ParticlePool, fx: Fx, x: number, y: number, phase: number, dt: number): void {
+  if (phase <= 0) return;
+  fx.sparkDebt += dt * 12 * phase;
+  fx.smokeDebt += dt * 6 * phase;
+  for (; fx.sparkDebt >= 1; fx.sparkDebt -= 1) {
+    const a = Math.random() * Math.PI * 2, r = BOSS_HULL * Math.sqrt(Math.random());
+    const v = 2 + Math.random() * 3;
+    const b = Math.random() * Math.PI * 2;
+    spawn(pool, x + Math.cos(a) * r, y + Math.sin(a) * r, Math.cos(b) * v, Math.sin(b) * v - 1.5, 0.35 + Math.random() * 0.35, 0.22 + 0.14 * Math.random(), 1, 0.55 + 0.4 * Math.random(), 0.15);
+  }
+  for (; fx.smokeDebt >= 1; fx.smokeDebt -= 1) {
+    const a = Math.random() * Math.PI * 2, r = BOSS_HULL * Math.sqrt(Math.random());
+    spawn(pool, x + Math.cos(a) * r, y + Math.sin(a) * r, (Math.random() - 0.5) * 0.6, -1.2 - Math.random(), 1 + 0.6 * Math.random(), 0.5 + 0.3 * Math.random(), 0.6, 0.4, 0.55, SMOKE);
   }
 }

@@ -38,17 +38,15 @@ const PALETTE = {
   amberBright: [1.6, 1.05, 0.25] as Rgb,
   white: [1.5, 1.45, 1.9] as Rgb,
   violet: [0.6, 0.32, 1.15] as Rgb,
-  armor: [0.34, 0.32, 0.52] as Rgb,
-  armorDark: [0.2, 0.19, 0.32] as Rgb,
-  wardenEye: [2, 1, 0.12] as Rgb,
-  gun: [0.9, 0.12, 0.25] as Rgb,
-  comb: [0.55, 0.8, 0.18] as Rgb,
-  combDark: [0.32, 0.48, 0.1] as Rgb,
-  hiveHeart: [1.8, 0.2, 1.4] as Rgb,
-  shell: [0.14, 0.2, 0.38] as Rgb,
-  shellLight: [0.22, 0.3, 0.52] as Rgb,
-  coreRing: [0.1, 0.85, 1] as Rgb,
-  coreEye: [1.6, 2, 2] as Rgb,
+  /** Bosses: dark armor with magenta emissive accents, so the brand color reads as the threat. */
+  bossArmor: [0.17, 0.15, 0.27] as Rgb,
+  bossLit: [0.3, 0.27, 0.43] as Rgb,
+  bossDeep: [0.085, 0.075, 0.15] as Rgb,
+  bossChitin: [0.22, 0.13, 0.22] as Rgb,
+  bossChitinDeep: [0.11, 0.07, 0.13] as Rgb,
+  bossMagenta: [2.1, 0.2, 1.05] as Rgb,
+  bossHot: [2.8, 0.75, 1.9] as Rgb,
+  bossEmber: [1.15, 0.12, 0.62] as Rgb,
   holeCore: [0, 0, 0] as Rgb,
   photon: [3, 2.7, 2.2] as Rgb,
   /** Accretion disc, inner edge to outer edge: white-hot, amber, deep orange, magenta, violet. Every channel set peaks above 1, so the disc is unlit. */
@@ -98,6 +96,7 @@ function transform(m: RawMesh, f: (p: Vec3) => Vec3): RawMesh {
 }
 const rotX = (t: number) => (p: Vec3): Vec3 => [p[0], p[1] * Math.cos(t) - p[2] * Math.sin(t), p[1] * Math.sin(t) + p[2] * Math.cos(t)];
 const rotY = (t: number) => (p: Vec3): Vec3 => [p[0] * Math.cos(t) + p[2] * Math.sin(t), p[1], -p[0] * Math.sin(t) + p[2] * Math.cos(t)];
+const rotZ = (t: number) => (p: Vec3): Vec3 => [p[0] * Math.cos(t) - p[1] * Math.sin(t), p[0] * Math.sin(t) + p[1] * Math.cos(t), p[2]];
 const place = (s: Vec3, at: Vec3) => (p: Vec3): Vec3 => [p[0] * s[0] + at[0], p[1] * s[1] + at[1], p[2] * s[2] + at[2]];
 
 /** Revolves an (r, y) profile, ordered bottom to top, around the y axis. paint(band, segment). */
@@ -312,43 +311,84 @@ function accretion(): RawMesh {
   });
 }
 
+/** Every boss bolt spawns at the sim's (boss.x, boss.y - 1.4). The bosses are authored in world units around that point. */
+const MUZZLE_Y = -1.4;
+type Poly = readonly (readonly [number, number])[];
+const mirror = (poly: Poly): Poly => poly.map(([x, y]) => [-x, y] as const);
+const at = (m: RawMesh, x: number, y: number, z: number): RawMesh => transform(m, place([1, 1, 1], [x, y, z]));
+/** A convex plate: caps in `top`, sides alternating `side` and `edge`, centred on z. */
+const plate = (poly: Poly, depth: number, x: number, y: number, z: number, top: Rgb, side: Rgb, edge: Rgb = side): RawMesh =>
+  at(extrude(poly, depth, (s, i) => (s === 0 ? top : i % 2 === 0 ? side : edge)), x, y, z);
+
+/** Heavy gunship: twin cannons flank the firing port, one big eye, a larger right wing and a broken left one. */
 function warden(rng: () => number): RawMesh {
-  const hull = extrude([[-1.2, 0.35], [-0.7, 0.62], [0.7, 0.62], [1.2, 0.35], [0.95, -0.35], [0.4, -0.6], [-0.4, -0.6], [-0.95, -0.35]], 0.55,
-    (s, i) => (s === 0 ? PALETTE.armor : i % 2 === 0 ? PALETTE.armorDark : PALETTE.armor));
-  const pod = prism(6, 0.36, 0.8, (s) => (s === 0 ? PALETTE.armorDark : PALETTE.armor));
-  const pods = [-1, 1].map((sx) => transform(pod, place([1, 1, 1], [sx * 1.3, -0.05, 0])));
-  const guns = spikes([[0, -1, 0]], 0.2, 0.75, 0.1, 4, solid(PALETTE.gun));
-  const gunPair = [-1, 1].map((sx) => transform(guns, place([1, 1, 1], [sx * 1.3, -0.2, 0])));
-  const eye = transform(icosphere(1, 0, rng, solid(PALETTE.wardenEye)), place([0.3, 0.3, 0.3], [0, -0.12, 0.3]));
-  return merge(hull, ...pods, ...gunPair, eye);
+  const { bossArmor: A, bossLit: L, bossDeep: D, bossMagenta: M, bossHot: H } = PALETTE;
+  const hull = plate([[-0.5, 1], [0.5, 1], [1.05, 0.55], [1.4, -0.1], [0.95, -0.75], [0.45, -1.05], [-0.45, -1.05], [-0.95, -0.75], [-1.4, -0.1], [-1.05, 0.55]], 0.5, 0, 0, 0, A, D, L);
+  const wingR: Poly = [[1.2, 0.75], [2, 0.5], [2.3, -0.2], [2.1, -0.8], [1.5, -0.95], [1, -0.3]];
+  const wingL: Poly = [[-1.15, 0.7], [-1.85, 0.35], [-2.05, -0.35], [-1.55, -0.85], [-1, -0.3]];
+  const wings = [plate(wingR, 0.34, 0, 0, -0.08, D, A, L), plate(wingL, 0.3, 0, 0, -0.1, D, A, L)];
+  const dorsal = plate([[-0.8, 0.55], [0.8, 0.55], [1, -0.1], [0.55, -0.55], [-0.55, -0.55], [-1, -0.1]], 0.12, 0, 0, 0.3, L, A, D);
+  const slashes = [1, -1].map((sx) => plate([[0.55, 0.62], [0.95, 0.42], [1.02, 0.3], [0.6, 0.5]].map(([x, y]) => [x * sx, y] as const), 0.05, 0, 0, 0.38, M, M));
+  const vents = [at(extrude([[1.45, 0.05], [2, 0.05], [2.05, -0.1], [1.4, -0.1]], 0.04, solid(M)), 0, 0, 0.1),
+    at(extrude([[-1.4, -0.05], [-1.8, -0.05], [-1.85, -0.2], [-1.4, -0.2]], 0.04, solid(M)), 0, 0, 0.08)];
+  const barrel = lathe([[0.12, -1.5], [0.2, -1.38], [0.2, -0.5]], 8, (j) => (j === 0 ? H : A));
+  const housing = prism(6, 0.36, 0.5, (sd) => (sd === 0 ? D : L));
+  const cannons = [-1, 1].flatMap((sx) => [at(barrel, sx * 0.62, 0, 0.3), at(housing, sx * 0.62, -0.5, 0.18)]);
+  const portHousing = at(prism(8, 0.3, 0.3, (sd) => (sd === 0 ? D : A)), 0, MUZZLE_Y + 0.1, 0.18);
+  const port = at(prism(8, 0.15, 0.2, solid(H)), 0, MUZZLE_Y, 0.3);
+  const eyeSocket = at(prism(6, 0.55, 0.25, (sd) => (sd === 0 ? D : L)), 0, 0.2, 0.36);
+  const eye = at(transform(icosphere(1, 0, rng, solid(H)), place([0.36, 0.36, 0.36], [0, 0, 0])), 0, 0.2, 0.5);
+  const dish = at(prism(5, 0.22, 0.3, (sd) => (sd === 0 ? M : A)), 1.85, 0.2, 0.2);
+  const aerial = at(spikes([[0.2, 1, 0]], 0.1, 0.9, 0.07, 4, solid(L)), -1.7, 0.4, 0.05);
+  return merge(hull, ...wings, dorsal, ...slashes, ...vents, ...cannons, portHousing, port, eyeSocket, eye, dish, aerial);
 }
 
+/** Honeycomb of dark chitin cells with pulsing magenta pupils, a bright heart, and the launch cell at the firing point. */
 function hive(rng: () => number): RawMesh {
-  const cells: RawMesh[] = [];
-  const w = 0.42;
-  for (let k = 0; k < 6; k++) {
-    const a = Math.PI / 6 + (k / 6) * TAU;
-    const depth = 0.4 + rng() * 0.35;
-    const cell = prism(6, w * 0.95, depth, (s) => (s === 0 ? PALETTE.comb : PALETTE.combDark), Math.PI / 6);
-    cells.push(transform(cell, place([1, 1, 1], [Math.cos(a) * w * 1.73, Math.sin(a) * w * 1.73, 0])));
+  const { bossChitin: C, bossChitinDeep: CD, bossMagenta: M, bossHot: H, bossEmber: E } = PALETTE;
+  const rc = 0.43;
+  const parts: RawMesh[] = [];
+  for (let q = -3; q <= 3; q++) {
+    for (let r = -3; r <= 3; r++) {
+      const layer = Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r));
+      const x = rc * Math.sqrt(3) * (q + r / 2), y = -rc * 1.5 * r;
+      const reach = Math.hypot(x, y);
+      if (layer === 0 || layer > 3 || reach > 1.95) continue;
+      if (layer === 3 && rng() > 0.55) continue;
+      if (layer === 2 && rng() < 0.15) continue;
+      if (Math.abs(x) < 0.05 && y < -1.2) continue;
+      const depth = 0.62 - layer * 0.1 + rng() * 0.16;
+      parts.push(at(prism(6, rc * 0.93, depth, (sd, i) => (sd === 0 ? C : i % 2 === 0 ? CD : C)), x, y, 0));
+      if (rng() < 0.6) parts.push(at(prism(6, rc * 0.5, 0.05, solid(rng() < 0.5 ? M : E)), x, y, depth / 2 + 0.02));
+    }
   }
-  for (let k = 0; k < 6; k++) {
-    const a = (k / 6) * TAU;
-    const depth = 0.25 + rng() * 0.2;
-    const cell = prism(6, w * 0.8, depth, (s) => (s === 0 ? PALETTE.combDark : PALETTE.comb), Math.PI / 6);
-    cells.push(transform(cell, place([1, 1, 1], [Math.cos(a) * w * 3, Math.sin(a) * w * 3, -0.1])));
-  }
-  const heart = transform(icosphere(1, 0.08, rng, solid(PALETTE.hiveHeart)), place([0.42, 0.42, 0.42], [0, 0, 0.12]));
-  return merge(...cells, heart);
+  const launch = [at(prism(6, 0.4, 0.5, (sd, i) => (sd === 0 ? CD : i % 2 === 0 ? C : CD)), 0, MUZZLE_Y, 0),
+    at(prism(6, 0.24, 0.08, solid(H)), 0, MUZZLE_Y, 0.27)];
+  const heart = at(transform(icosphere(1, 0.06, rng, solid(H)), place([0.44, 0.44, 0.44], [0, 0, 0])), 0, 0, 0.55);
+  const aura = at(ring(32, 0.62, 0.05, 6, solid(M)), 0, 0, 0.45);
+  const dirs: Vec3[] = [[0.2, 1, 0], [1, 0.55, 0], [-1, 0.3, 0], [-0.8, -0.7, 0], [0.9, -0.6, 0]];
+  const barbs = spikes(dirs, 1.75, 2.4, 0.13, 4, (k, i) => (i % 2 === 0 ? CD : k % 2 === 0 ? M : C));
+  return merge(...parts, ...launch, heart, aura, barbs);
 }
 
+/** Caged sphere: a dark shell inside two crossing rings, barbs through the cage, a reactor eye, and a lance at the firing point. */
 function core(rng: () => number): RawMesh {
-  const shell = icosphere(2, 0.04, rng, (f) => (f % 4 === 0 ? PALETTE.shellLight : PALETTE.shell));
-  const halo = transform(ring(32, 1.45, 0.07, 6, solid(PALETTE.coreRing)), rotX(1.15));
-  const equator = Array.from({ length: 8 }, (_, k): Vec3 => [Math.cos((k / 8) * TAU), Math.sin((k / 8) * TAU), 0]);
-  const barbs = spikes(equator, 0.9, 1.5, 0.14, 4, solid(PALETTE.steel));
-  const eye = transform(icosphere(1, 0, rng, solid(PALETTE.coreEye)), place([0.36, 0.36, 0.36], [0, -0.25, 0.85]));
-  return merge(shell, halo, barbs, eye);
+  const { bossArmor: A, bossLit: L, bossDeep: D, bossMagenta: M, bossHot: H } = PALETTE;
+  const shell = transform(icosphere(1, 0.03, rng, (f) => (f % 4 === 0 ? L : A)), place([1.05, 1.05, 1.05], [0, 0, 0]));
+  const band = (i: number) => (i % 8 < 2 ? M : A);
+  const cageA = transform(ring(40, 1.55, 0.08, 6, (i) => band(i)), rotX(1.2));
+  const cageB = transform(ring(40, 1.55, 0.08, 6, (i) => band(i + 4)), rotY(1.2));
+  const hoop = ring(40, 1.75, 0.06, 6, (i) => (i % 5 === 0 ? H : D));
+  const angles = [0.25, 0.95, 1.7, 2.45, 3.2, 3.95, 5.6];
+  const lengths = [2.35, 2.1, 2.4, 1.9, 2.35, 2.2, 2.4];
+  const barbs = angles.map((a, k) => spikes([[Math.cos(a), Math.sin(a), 0]], 1.6, lengths[k], 0.16, 4, (_, i) => (i % 2 === 0 ? D : k % 2 === 0 ? M : L)));
+  const socket = at(prism(8, 0.75, 0.2, (sd) => (sd === 0 ? D : A)), 0, 0.05, 0.9);
+  const eye = at(transform(icosphere(1, 0, rng, solid(H)), place([0.42, 0.42, 0.42], [0, 0, 0])), 0, 0.05, 1);
+  const iris = at(ring(32, 0.6, 0.06, 6, solid(M)), 0, 0.05, 0.95);
+  const lance = spikes([[0, -1, 0]], 1.05, 1.5, 0.15, 4, (_, i) => (i % 2 === 0 ? D : M));
+  const muzzle = at(transform(icosphere(0, 0, rng, solid(H)), place([0.15, 0.15, 0.15], [0, 0, 0])), 0, MUZZLE_Y, 0.2);
+  const satellite = at(prism(5, 0.2, 0.3, (sd) => (sd === 0 ? M : A)), -1.9, 1.05, 0.1);
+  return merge(shell, cageA, cageB, hoop, ...barbs, socket, eye, iris, lance, muzzle, satellite);
 }
 
 const BUILDERS = {
@@ -397,6 +437,7 @@ function emit(): string {
   const entries = ids.map((id) => {
     const m = flatten(BUILDERS[id](rng));
     const count = m.positions.length / 3;
+    if ((id === 'warden' || id === 'hive' || id === 'core') && !(m.radius > 2.2 && m.radius < 2.5)) throw new Error(`${id}: radius ${m.radius} strays from the drawn boss radius 2.4`);
     if (count > 0xffff) throw new Error(`${id}: ${count} vertices overflow Uint16 indices`);
     vertices += count;
     return [

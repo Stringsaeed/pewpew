@@ -2,9 +2,9 @@ import { ARCHETYPES, Kind, type BossId } from '../levels';
 import { MAX_BODIES, type WorldView } from '../sim';
 import { PITCH_TAN } from './camera';
 import { BLACKHOLE_RADIUS, BLACKHOLE_TILT, BOSS_RADIUS, LOOK, ROCKET_RADIUS } from './look';
-import { HOLD_LOST, HOLD_WON, HOLE_OPEN_SECONDS, createDive, holdProgress, pose, smooth, type Fx } from './fx';
+import { HOLD_LOST, HOLD_WON, HOLE_OPEN_SECONDS, bossHeat, createDive, holdProgress, pose, smooth, type Fx } from './fx';
 import { MESHES, type MeshId } from './meshes.gen';
-import { PARTICLE_CAP, RING, type BurstTables, type ParticlePool } from './particles';
+import { PARTICLE_CAP, RING, SMOKE, type BurstTables, type ParticlePool } from './particles';
 
 export const MESH_IDS = Object.keys(MESHES) as MeshId[];
 /** Mesh and glow instances share one stride: see the layout comment in wgsl.ts. */
@@ -19,6 +19,8 @@ export const MODE_FLAT = 1;
 export const MODE_DISC = 2;
 export const MODE_DIVE = 3;
 const GLOW_Z = 0.4;
+/** Emissive accents on a boss breathe by this fraction, as a wave across the hull. */
+const BOSS_PULSE = 0.22;
 /** Glow quads sit in the plane of the bodies. The hole's halo goes behind the whole accretion disc, so the core stays black and the disc takes no seam. */
 const HALO_Z = -2.6;
 /** In front of every mesh, so the flash covers the near half of the accretion disc too. */
@@ -192,7 +194,7 @@ export function createBatch(): MeshBatch {
       const b = world.boss;
       const m = BOSS_MESH[b.id];
       putMesh(cursor[m]++, b.px + (b.x - b.px) * alpha, b.y, Math.sin(time * 0.8) * 0.08,
-        BOSS_RADIUS / MESHES[b.id].radius, 1, 1, 1, 0.45 * Math.min(1, fx.flash / 0.06), 0, MODE_FLAT);
+        BOSS_RADIUS / MESHES[b.id].radius, 1, 1, 1, 0.45 * Math.min(1, fx.flash / 0.06), bossHeat(b.id, b.hp), MODE_FLAT, BOSS_PULSE);
     }
     if (world.wormholeY !== null) {
       const hy = world.wormholeY;
@@ -219,6 +221,9 @@ export function createBatch(): MeshBatch {
       if (pool.kind[i] === RING) {
         const s = pool.size[i] * (0.2 + 1.4 * (1 - a));
         putGlow(pool.x[i], pool.y[i], s, s, pool.r[i], pool.g[i], pool.b[i], a * 0.9, GLOW_RING);
+      } else if (pool.kind[i] === SMOKE) {
+        const s = pool.size[i] * (1 + 1.4 * (1 - a));
+        putGlow(pool.x[i], pool.y[i], s, s, pool.r[i], pool.g[i], pool.b[i], a * 0.4);
       } else {
         const s = pool.size[i] * (0.4 + 0.6 * a);
         putGlow(pool.x[i], pool.y[i], s, s, pool.r[i], pool.g[i], pool.b[i], a);

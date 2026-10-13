@@ -4,8 +4,8 @@ import { INSTANCE_FLOATS, MESH_IDS, createBatch } from './batch';
 import { writeCamera } from './camera';
 import { LOOK, type Look } from './look';
 import { MESHES } from './meshes.gen';
-import { HOLD_LOST, HOLD_NONE, HOLD_WON, createFx, holdProgress, smooth } from './fx';
-import { applyEvents, createPool, integrate, spawnExhaust } from './particles';
+import { HOLD_LOST, HOLD_NONE, HOLD_WON, bossPhaseIndex, createFx, holdProgress, smooth } from './fx';
+import { applyEvents, createPool, emitBossDamage, integrate, spawnExhaust } from './particles';
 import { GLOW, MESH, STARS } from './wgsl';
 
 export type { Look };
@@ -187,6 +187,7 @@ export function createRenderer(
     if (world) {
       batch.packWorld(world, alpha, time, fx);
       camY = batch.py;
+      if (world.boss) emitBossDamage(pool, fx, world.boss.x, world.boss.y, bossPhaseIndex(world.boss.id, world.boss.hp), dt);
       if (batch.exhaust) spawnExhaust(pool, batch.nozzleX, batch.nozzleY, batch.headX, batch.headY, batch.puff, dt);
       if (fx.hold === HOLD_WON && world.wormholeY !== null) {
         const e = smooth(0, 0.8, holdProgress(fx));

@@ -80,7 +80,7 @@ fn rotY(r: f32) -> mat3x3f { return mat3x3f(vec3f(cos(r), 0.0, -sin(r)), vec3f(0
   let lam = max(dot(normalize(i.nrm), normalize(vec3f(-0.45, 0.55, 0.7))), 0.0);
   let lit = i.col * (0.3 + 0.7 * lam);
   let emissive = step(1.0001, max(i.col.r, max(i.col.g, i.col.b)));
-  let glow = i.col * (0.7 * (1.0 + i.pulse * sin(u.time * 6.5 + i.lp.x * 3.0 + i.lp.y * 2.0)));
+  let glow = i.col * (0.7 * (1.0 + 0.6 * i.heat) * (1.0 + i.pulse * sin(u.time * 6.5 + i.lp.x * 3.0 + i.lp.y * 2.0))) + i.heat * vec3f(0.1, 0.28, 0.2);
   return vec4f(mix(lit, glow, emissive) + vec3f(i.flash), 1.0);
 }
 `;
