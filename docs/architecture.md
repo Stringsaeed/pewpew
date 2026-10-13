@@ -168,6 +168,7 @@ Internals stay unexported, so nothing outside a module can import them. Callers 
 | Change a look or mesh | `src/render/look.ts` for tints and radii, `scripts/gen-meshes.ts` for geometry, `src/render/wgsl.ts` for a shader | `npm run check`. The render snapshot if instance layout or draw counts change. Device smoke for a shader (the fake GPU does not compile WGSL) |
 | Add a HUD element or screen | `src/sim/hud.ts` when it is a new visible fact, the component in `src/ui/`, `src/ui/Screens.tsx` to mount it, `src/flow.ts` when it is a new screen | `npm run check`. Device smoke for the screen |
 | Change the frame loop or hold timing | `src/shell/loop.ts` (`MAX_STEPS_PER_FRAME`, `LOSS_HOLD_MS`, `WIN_HOLD_MS`, `SLOW_MOTION`), `src/shell/loop.test.ts`, then `src/render/fx.ts` and `src/render/index.ts` if the choreography changes | `npm run check`. Device smoke if the beat changes |
+| Change the app icon | `design/rocket-icon/` (the Icon Composer bundle `PewPew.icon` and the `layers/`), then `scripts/gen-icons.sh` for the Android layers, then `npx expo prebuild --platform ios --clean` | Build to a device; the `.icon` bundle only renders on iOS 26, older systems get Xcode's flattened copy |
 | Add a dev tool | `src/dev/qa.ts` (`createDevTools`), then `App.tsx` under `__DEV__` | `npm run check`. Device smoke under `__DEV__` |
 
 

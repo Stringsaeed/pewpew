@@ -1,0 +1,60 @@
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "glass" : false,
+          "image-name" : "07-porthole.png",
+          "name" : "07-porthole"
+        },
+        {
+          "glass" : false,
+          "image-name" : "06-rocket-body.png",
+          "name" : "06-rocket-body"
+        },
+        {
+          "glass" : false,
+          "image-name" : "05-fins.png",
+          "name" : "05-fins"
+        },
+        {
+          "glass" : false,
+          "image-name" : "04-flame.png",
+          "name" : "04-flame"
+        },
+        {
+          "glass" : false,
+          "image-name" : "03-pink-echo.png",
+          "name" : "03-pink-echo"
+        },
+        {
+          "glass" : false,
+          "image-name" : "02-stars.png",
+          "name" : "02-stars"
+        },
+        {
+          "glass" : false,
+          "image-name" : "01-space.png",
+          "name" : "01-space"
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.3
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
