@@ -36,6 +36,8 @@ export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnloc
   const onMenu = screen.s === 'title' || screen.s === 'levels' || (screen.s === 'settings' && run === null);
   const level = run?.level ?? 1;
   const intro = useIntro(hud, run);
+  const reached = useRef(0);
+  if (hud !== null) reached.current = hud.progress;
   return (
     <>
       {onMenu ? <View pointerEvents="none" style={styles.dim} /> : null}
@@ -93,7 +95,14 @@ export function Screens({ save, screen, hud, run, act, commitSave, auto, onUnloc
         />
       ) : null}
       {screen.s === 'gameover' ? (
-        <GameOver level={screen.level} score={screen.score} onRetry={() => act({ a: 'retry' })} onLevels={() => act({ a: 'quit' })} />
+        <GameOver
+          level={screen.level}
+          score={screen.score}
+          best={save.levels[screen.level - 1].best}
+          reached={reached.current}
+          onRetry={() => act({ a: 'retry' })}
+          onLevels={() => act({ a: 'quit' })}
+        />
       ) : null}
     </>
   );
