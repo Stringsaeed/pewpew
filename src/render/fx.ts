@@ -30,10 +30,12 @@ export interface Fx {
   dying: number;
   /** Seconds since the bubble formed, for its grow-in. */
   bubbleAge: number;
+  /** Screen shake energy, 0..1. Offsets scale with its square. Decays on its own and is never added under reduce motion. */
+  trauma: number;
 }
 
 export function createFx(): Fx {
-  return { reduceMotion: false, flash: 0, cooldown: 0, hold: HOLD_NONE, holdSeconds: 1, holdT: 0, holdFresh: false, holeAge: 1e3, sparkDebt: 0, smokeDebt: 0, ripple: -1, rippleX: 0, rippleY: 1, dying: 0, bubbleAge: 1e3 };
+  return { reduceMotion: false, flash: 0, cooldown: 0, hold: HOLD_NONE, holdSeconds: 1, holdT: 0, holdFresh: false, holeAge: 1e3, sparkDebt: 0, smokeDebt: 0, ripple: -1, rippleX: 0, rippleY: 1, dying: 0, bubbleAge: 1e3, trauma: 0 };
 }
 
 /** The hold choreography runs on dt, so a shell that slows dt stretches the hold with it. */
@@ -106,3 +108,14 @@ export function bossHeat(id: BossId, hp: number): number {
   const phase = steps > 0 ? bossPhaseIndex(id, hp) / steps : 0;
   return clamp01(phase * 0.75 + (1 - hp / spec.hp) * 0.25);
 }
+
+export const TRAUMA_DECAY = 1.6;
+export const SHAKE_REACH = 0.25;
+
+export function addTrauma(fx: Fx, amount: number): void {
+  if (!fx.reduceMotion) fx.trauma = Math.min(1, fx.trauma + amount);
+}
+
+/** Smooth pseudo-noise in [-1, 1] from a few incommensurate sines. No allocation, no state. */
+export const wobble = (t: number, seed: number): number =>
+  (Math.sin(t * 47.1 + seed) + Math.sin(t * 29.7 + seed * 2.3 + 1.7) + Math.sin(t * 71.3 + seed * 0.7 + 4.1)) / 3;

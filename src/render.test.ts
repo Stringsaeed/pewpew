@@ -107,6 +107,36 @@ describe('renderer', { concurrency: false }, () => {
     }
   });
 
+  test('hits shake the camera, reduce motion does not, and the shake dies away', () => {
+    const restore = installRandom(3);
+    try {
+      const shakeAfter = (reduce: boolean): number[] => {
+        const gpu = createFakeGpu();
+        const renderer = createRenderer(gpu.device, gpu.context, 'bgra8unorm', MAX_PIXEL_RATIO);
+        renderer.setReduceMotion(reduce);
+        const world = createWorld(1);
+        const out: number[] = [];
+        const hit: SimEvent = { e: 'playerHit', x: 0, y: 0, lives: 2 };
+        for (const [events, dt] of [[[hit], 0.016], [[], 0.016], [[], 1.5]] as const) {
+          renderer.frame(world, events, 0, dt);
+          const uniform = gpu.buffers[4]!.id;
+          let at = 0, last = -1;
+          for (const call of gpu.calls) if (call.op === 'writeBuffer') { if (call.buffer === uniform) last = at; at++; }
+          const floats = new Float32Array(gpu.writes[last]!.buffer.slice(0));
+          out.push(Math.abs(floats[12]!));
+        }
+        renderer.dispose();
+        return out;
+      };
+      const shaken = shakeAfter(false);
+      assert.ok(shaken[0]! > 0.001 && shaken[1]! > 0.001);
+      assert.equal(shaken[2], 0);
+      assert.deepEqual(shakeAfter(true), [0, 0, 0]);
+    } finally {
+      restore();
+    }
+  });
+
   test('the shield bubble draws last in its own pipeline and lingers half a second after a block', () => {
     const restore = installRandom(5);
     try {

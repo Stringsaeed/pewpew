@@ -1,6 +1,6 @@
 import { ARCHETYPES, Kind, type BossId } from '../levels';
 import type { SimEvent, WorldView } from '../sim';
-import { BUBBLE_POP_SECONDS, HOLD_LOST, type Fx } from './fx';
+import { BUBBLE_POP_SECONDS, HOLD_LOST, addTrauma, type Fx } from './fx';
 
 export const PARTICLE_CAP = 2048;
 
@@ -97,7 +97,9 @@ export function applyEvents(pool: ParticlePool, world: WorldView | null, events:
           const m = world?.boss ? tables.bossMesh[world.boss.id] : tables.core;
           burstAt(pool, ev.x, ev.y, 220, 9, 0.5, 1.4, tables.bossBurst, m * 3);
           fx.flash = 0.3;
+          addTrauma(fx, 1);
         } else {
+          addTrauma(fx, 0.08);
           burstAt(pool, ev.x, ev.y, 18 + Math.round(ARCHETYPES[ev.target].radius * 30), 6, 0.32, 0.8, tables.burst, ev.target * 3);
         }
         break;
@@ -109,7 +111,10 @@ export function applyEvents(pool: ParticlePool, world: WorldView | null, events:
           fx.cooldown = 0.15;
         }
         break;
-      case 'playerHit': burstAt(pool, ev.x, ev.y, 48, 7, 0.4, 0.9, RED, 0); break;
+      case 'playerHit':
+        burstAt(pool, ev.x, ev.y, 48, 7, 0.4, 0.9, RED, 0);
+        addTrauma(fx, 0.6);
+        break;
       case 'pickup':
         burstAt(pool, ev.x, ev.y, 22, 4, 0.25, 0.5, tables.burst, ev.kind * 3);
         if (ev.kind === Kind.Shield) fx.bubbleAge = 0;
@@ -119,6 +124,7 @@ export function applyEvents(pool: ParticlePool, world: WorldView | null, events:
         impactToward(fx, world, ev.x, ev.y);
         fx.ripple = 0;
         fx.dying = BUBBLE_POP_SECONDS;
+        addTrauma(fx, 0.3);
         break;
       case 'wormholeOpen': {
         // The sim announces the hole 24 units out, before it can be seen, so the opening waits until it is about to enter the view.
@@ -139,6 +145,7 @@ export function applyEvents(pool: ParticlePool, world: WorldView | null, events:
       burstAt(pool, p.x, p.y, 60, 5, 0.9, 1, RED, 0);
       ringAt(pool, p.x, p.y, 3.4, 0.9, RED);
       ringAt(pool, p.x, p.y, 2.4, 0.9, WHITE, 0.12);
+      addTrauma(fx, 1);
     }
   }
 }

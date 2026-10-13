@@ -8,11 +8,11 @@ const NEAR = 1;
 const FAR = 90;
 
 /** Writes the view and projection into the preallocated 36-float uniform array. No allocation. */
-export function writeCamera(uniforms: Float32Array, camY: number, width: number, height: number, time: number, zoom = 1): void {
+export function writeCamera(uniforms: Float32Array, camY: number, width: number, height: number, time: number, zoom = 1, shakeX = 0, shakeY = 0): void {
   const aspect = width / height;
   const t = Math.tan(FOV_Y / 2);
   const dist = Math.max(VISIBLE_HALF_WIDTH / (t * aspect), 14) * zoom;
-  const ty = camY + LOOK_AHEAD;
+  const ty = camY + shakeY + LOOK_AHEAD;
   const ey = ty - dist * Math.sin(PITCH);
   const ez = dist * Math.cos(PITCH);
   // Eye and target share x = 0, so the basis is right = +x, forward = (0, fy, fz), up = (0, -fz, fy).
@@ -23,7 +23,7 @@ export function writeCamera(uniforms: Float32Array, camY: number, width: number,
   u[0] = 1;
   u[5] = -fz; u[6] = -fy;
   u[9] = fy; u[10] = -fz;
-  u[13] = -(-fz * ey + fy * ez); u[14] = fy * ey + fz * ez; u[15] = 1;
+  u[12] = -shakeX; u[13] = -(-fz * ey + fy * ez); u[14] = fy * ey + fz * ez; u[15] = 1;
   const f = 1 / t;
   const nf = 1 / (NEAR - FAR);
   u[16] = f / aspect; u[21] = f; u[26] = FAR * nf; u[27] = -1; u[30] = NEAR * FAR * nf;

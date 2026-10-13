@@ -4,7 +4,7 @@ import { INSTANCE_FLOATS, MESH_IDS, createBatch } from './batch';
 import { writeCamera } from './camera';
 import { LOOK, type Look } from './look';
 import { MESHES } from './meshes.gen';
-import { HOLD_LOST, HOLD_NONE, HOLD_WON, bossPhaseIndex, createFx, holdProgress, smooth } from './fx';
+import { HOLD_LOST, HOLD_NONE, HOLD_WON, SHAKE_REACH, TRAUMA_DECAY, bossPhaseIndex, createFx, holdProgress, smooth, wobble } from './fx';
 import { applyEvents, createPool, emitBossDamage, integrate, spawnExhaust } from './particles';
 import { BUBBLE, GLOW, MESH, STARS } from './wgsl';
 
@@ -186,6 +186,7 @@ export function createRenderer(
     fx.cooldown = Math.max(0, fx.cooldown - dt);
     fx.holeAge += dt;
     fx.bubbleAge += dt;
+    fx.trauma = Math.max(0, fx.trauma - TRAUMA_DECAY * dt);
     fx.dying = Math.max(0, fx.dying - dt);
     if (fx.ripple >= 0) fx.ripple += dt;
     if (fx.hold !== HOLD_NONE) fx.holdT += dt;
@@ -210,7 +211,8 @@ export function createRenderer(
     }
     batch.packParticles(pool);
 
-    writeCamera(uniforms, camY, width, height, time, zoom);
+    const shake = fx.trauma * fx.trauma * SHAKE_REACH;
+    writeCamera(uniforms, camY, width, height, time, zoom, shake * wobble(time, 0), shake * wobble(time, 11));
     device.queue.writeBuffer(uniformBuf, 0, uniforms);
     if (batch.meshSlots > 0) device.queue.writeBuffer(meshInstBuf, 0, batch.meshInst, 0, batch.meshSlots * INSTANCE_FLOATS);
     if (batch.glowCount > 0) device.queue.writeBuffer(glowInstBuf, 0, batch.glowInst, 0, batch.glowCount * INSTANCE_FLOATS);
@@ -251,7 +253,10 @@ export function createRenderer(
 
   return {
     frame,
-    setReduceMotion(on) { fx.reduceMotion = on; },
+    setReduceMotion(on) {
+      fx.reduceMotion = on;
+      if (on) fx.trauma = 0;
+    },
     hold(kind, seconds) {
       fx.hold = kind === 'won' ? HOLD_WON : HOLD_LOST;
       fx.holdSeconds = Math.max(seconds, 0.1);
