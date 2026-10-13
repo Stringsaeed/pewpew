@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { describe, test } from 'node:test';
 import { greedyBot } from './bot';
 import { Kind } from './levels';
-import { MESHES, type MeshId } from './meshes.gen';
+import { MESHES, type MeshId } from './render/meshes.gen';
 import { MAX_PIXEL_RATIO, LOOK, createRenderer } from './render';
 import { STEP, createWorld, step, type SimEvent, type World } from './sim';
 import { createFakeGpu, type FakeGpu, type GpuCall } from './testing/fake-gpu';

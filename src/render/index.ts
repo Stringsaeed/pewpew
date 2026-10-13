@@ -1,7 +1,7 @@
 import type { NativeCanvas } from 'react-native-webgpu';
-import { ARCHETYPES, Kind, type BossId } from './levels';
+import { ARCHETYPES, Kind, type BossId } from '../levels';
 import { MESHES, type MeshId } from './meshes.gen';
-import { MAX_BODIES, type SimEvent, type WorldView } from './sim';
+import { MAX_BODIES, type SimEvent, type WorldView } from '../sim';
 
 /** Kind to look. 'glow' kinds draw as additive billboards, not meshes. A mesh look picks meshes[variant % length]. */
 export type Look =
