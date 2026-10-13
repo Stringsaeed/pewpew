@@ -92,3 +92,4 @@ ts	phase	decision	why	evidence	result
 2026-10-13T01:48:14Z	wave1	W1-render rerun on grok delegate_task without the device smoke; smoke done by lead after merge	opus native agents are session-limited until 20:30 Dubai; the render split is mechanical refactoring which the pstack config routes to grok anyway	429 on both opus seats, worktree clean at game	launched
 2026-10-13T01:48:14Z	wave1	W1-ui rerun on a native sonnet agent	it needs argent device tools, which only native agents have, and opus is limited	429 on the opus seat	launched
 2026-10-13T01:52:01Z	wave1	merged w1-sim into game (aa02063), fixed three stale sim.ts mentions	ten cut-and-paste commits, 53 tests, golden unchanged, no deep imports, Math-ban probe confirmed	task summary, wc -l src/sim, merge-tree 0 conflicts	ok
+2026-10-13T02:04:40Z	wave1	merged w1-ui into game	eleven design items plus two glow-clip fixes, src/ui only, ten screenshots reviewed by lead	check green after merge; .audit/w1-ui/*.png	ok
