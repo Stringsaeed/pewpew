@@ -8,9 +8,22 @@ export {
   TICKS_PER_SEC,
   TRACK_HALF_WIDTH,
 } from './rules';
+export { createWorld } from './world';
+export type {
+  Bodies,
+  Boss,
+  EventName,
+  EventOf,
+  Phase,
+  Player,
+  SimEvent,
+  Stars,
+  Target,
+  World,
+  WorldView,
+} from './world';
 export {
   COAST,
-  createWorld,
   dragInput,
   hashWorld,
   hudOf,
@@ -20,21 +33,10 @@ export {
   steerVelocity,
 } from './step';
 export type {
-  Bodies,
-  Boss,
   Bot,
-  EventName,
-  EventOf,
   Hud,
   Input,
-  Phase,
-  Player,
   RunResult,
-  SimEvent,
   Spawn,
-  Stars,
-  Target,
   Track,
-  World,
-  WorldView,
 } from './step';

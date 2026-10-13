@@ -1,14 +1,16 @@
 import { ARCHETYPES, BOSSES, DRONE_PATTERNS, Kind, levelSpec } from '../levels';
-import type { BossAttack, BossId, BossPhase, BossSpec, DronePattern, LevelNumber, LevelSpec, PickupKind } from '../levels';
+import type { BossAttack, BossPhase, BossSpec, DronePattern, LevelNumber, LevelSpec, PickupKind } from '../levels';
 import {
   AIM_SPREAD, BOLT_RANGE, BOLT_SPEED, BOSS_DIST, BOSS_GRACE_TICKS, BOSS_R, BOSS_SCORE_PER_HP, BOSS_SWEEP,
   COAST_DAMPING, DEAD, DESPAWN_BEHIND, DRAG_GAIN, DRONE_ANCHOR_LIMIT, ENEMY_BOLT_SPEED, FIRE_TICKS,
-  HIT_INVULN_TICKS, MAX_BODIES, PICKUP_SLACK, PLAYER_MAX_VX, PLAYER_RADIUS, PLAYER_X_LIMIT, RAPID_TICKS,
+  HIT_INVULN_TICKS, PICKUP_SLACK, PLAYER_MAX_VX, PLAYER_RADIUS, PLAYER_X_LIMIT, RAPID_TICKS,
   ROW_DY, ROW_GAP, SHIELD_INVULN_TICKS, SPAWN_AHEAD, STEER_ACCEL, STEER_GAIN, STEP, TICKS_PER_SEC,
   TRACK_END_CLEAR, TRACK_HALF_WIDTH, TRACK_START, WELL_REACH_Y,
 } from './rules';
 import { PI, TWO_PI, clamp, cosT, rand, sinT } from './math';
 import type { Rng } from './math';
+import { add, createWorld, remove } from './world';
+import type { Bodies, Boss, Player, SimEvent, Stars, World, WorldView } from './world';
 
 // This file and levels.ts may use only + - * / and Math.sqrt, imul, floor, min, max, abs (sim.test.ts enforces it).
 // Engine trig differs in the last ulp between Hermes and V8, which would make the verifier prove a slightly different
@@ -22,106 +24,9 @@ export function dragInput(anchorX: number, dxFrac: number): Input {
   return { targetX: clamp(anchorX + dxFrac * DRAG_GAIN, -PLAYER_X_LIMIT, PLAYER_X_LIMIT) };
 }
 
-/** Struct-of-arrays pool, dense in [0, count). Removal swaps the last body in, so indices are not identities. */
-export interface Bodies {
-  count: number;
-  readonly kind: Uint8Array;
-  readonly variant: Uint8Array; // mesh variant for asteroids; DronePattern index for drones
-  readonly x: Float32Array; readonly y: Float32Array;
-  readonly px: Float32Array; readonly py: Float32Array; // previous step, for render interpolation
-  readonly vx: Float32Array; readonly vy: Float32Array;
-  readonly rot: Float32Array; readonly spin: Float32Array;
-  readonly t: Float32Array;     // per-body clock: pattern phase, fire timer
-  readonly param: Float32Array; // pattern anchor x for drones, pull for wells
-  readonly hp: Int16Array;
-}
-
-export interface Player {
-  x: number; px: number; vx: number;
-  y: number; py: number;
-  lives: 0 | 1 | 2 | 3;
-  shield: boolean;
-  rapidUntil: number;  // tick
-  invulnUntil: number; // tick
-  fireAt: number;      // tick
-}
-/** t is the sweep angle; it accumulates so a phase change alters speed without a jump in x. */
-export interface Boss { readonly id: BossId; x: number; px: number; y: number; hp: number; attack: number; attackAt: number; t: number }
-
-export type Stars = 1 | 2 | 3;
-/** Run phase. 'won' and 'lost' are terminal, so step() on them is a no-op that emits nothing. */
-export type Phase =
-  | { readonly p: 'fly' }
-  | { readonly p: 'boss' }
-  | { readonly p: 'won'; readonly stars: Stars }
-  | { readonly p: 'lost' };
-
 export interface Spawn { readonly y: number; readonly x: number; readonly kind: Kind; readonly variant: number; readonly param: number }
 /** Compiled from (LevelSpec, seed) once at createWorld, sorted by y. */
 export type Track = readonly Spawn[];
-
-export interface World {
-  readonly spec: LevelSpec;
-  readonly track: Track;
-  cursor: number;           // next Spawn index
-  tick: number;
-  rng: number;              // mulberry32 state; the only randomness source
-  phase: Phase;
-  score: number;
-  wormholeY: number | null; // null while a boss lives
-  readonly player: Player;
-  readonly bodies: Bodies;
-  boss: Boss | null;
-  dropped: number;          // spawns refused at MAX_BODIES; verifier asserts 0
-}
-
-type Column = ArrayLike<number>;
-type View<T> = T extends Float32Array | Uint8Array | Int16Array ? Column
-  : T extends object ? { readonly [K in keyof T]: View<T[K]> } : T;
-/** What the renderer, HUD, and bots get. Mutation does not typecheck. */
-export type WorldView = View<World>;
-
-function readonlyViewProof(view: WorldView): void {
-  // @ts-expect-error readers cannot write body columns
-  view.bodies.x[0] = 1;
-  // @ts-expect-error readers cannot move the player
-  view.player.x = 1;
-}
-
-export type Target = Kind | 'boss';
-export type SimEvent =
-  | { readonly e: 'start'; readonly level: LevelNumber }
-  | { readonly e: 'fire'; readonly x: number; readonly y: number; readonly rapid: boolean }
-  | { readonly e: 'enemyFire'; readonly x: number; readonly y: number }
-  | { readonly e: 'hit'; readonly target: Target; readonly x: number; readonly y: number }     // shot landed, target survived
-  | { readonly e: 'destroy'; readonly target: Target; readonly x: number; readonly y: number } // includes mine detonation
-  | { readonly e: 'pickup'; readonly kind: PickupKind; readonly x: number; readonly y: number }
-  | { readonly e: 'shieldBlock'; readonly x: number; readonly y: number }
-  | { readonly e: 'playerHit'; readonly x: number; readonly y: number; readonly lives: number }
-  | { readonly e: 'bossEnter'; readonly boss: BossId }
-  | { readonly e: 'wormholeOpen'; readonly y: number }
-  | { readonly e: 'won'; readonly score: number; readonly stars: Stars }
-  | { readonly e: 'lost'; readonly score: number };
-export type EventName = SimEvent['e'];
-export type EventOf<E extends EventName> = Extract<SimEvent, { e: E }>;
-
-export function createWorld(n: LevelNumber): World {
-  const spec = levelSpec(n);
-  return {
-    spec,
-    track: compileTrack(spec),
-    cursor: 0,
-    tick: 0,
-    rng: (spec.seed ^ 0x5bd1e995) | 0,
-    phase: { p: 'fly' },
-    score: 0,
-    wormholeY: spec.boss === null ? spec.length : null,
-    player: { x: 0, px: 0, vx: 0, y: 0, py: 0, lives: 3, shield: false, rapidUntil: 0, invulnUntil: 0, fireAt: 0 },
-    bodies: createBodies(),
-    boss: null,
-    dropped: 0,
-  };
-}
 
 /**
  * Advance one STEP. Appends events to `out`; the caller clears it once per rendered frame, after several steps.
@@ -230,33 +135,6 @@ export function hashWorld(w: World): number {
   for (let i = 0; i < b.count; i++) { num(b.kind[i]); num(b.x[i]); num(b.y[i]); num(b.hp[i]); }
   if (w.boss !== null) { num(w.boss.hp); num(w.boss.x); num(w.boss.attack); }
   return h >>> 0;
-}
-
-function createBodies(): Bodies {
-  const f = (): Float32Array => new Float32Array(MAX_BODIES);
-  return {
-    count: 0, kind: new Uint8Array(MAX_BODIES), variant: new Uint8Array(MAX_BODIES),
-    x: f(), y: f(), px: f(), py: f(), vx: f(), vy: f(), rot: f(), spin: f(), t: f(), param: f(),
-    hp: new Int16Array(MAX_BODIES),
-  };
-}
-const COLUMNS = ['kind', 'variant', 'x', 'y', 'px', 'py', 'vx', 'vy', 'rot', 'spin', 't', 'param', 'hp'] as const;
-
-/** Returns the new index, or -1 when the pool is full (counted in w.dropped). */
-function add(w: World, kind: Kind, x: number, y: number, vx: number, vy: number): number {
-  const b = w.bodies;
-  if (b.count === MAX_BODIES) { w.dropped++; return -1; }
-  const i = b.count++;
-  b.kind[i] = kind; b.variant[i] = 0;
-  b.x[i] = x; b.y[i] = y; b.px[i] = x; b.py[i] = y; b.vx[i] = vx; b.vy[i] = vy;
-  b.rot[i] = 0; b.spin[i] = 0; b.t[i] = 0; b.param[i] = 0;
-  b.hp[i] = ARCHETYPES[kind].hp;
-  return i;
-}
-function remove(b: Bodies, i: number): void {
-  const last = --b.count;
-  if (i === last) return;
-  for (const c of COLUMNS) b[c][i] = b[c][last];
 }
 
 /** The rocket's lateral velocity after one held-finger STEP, before well pull. Exported so a bot can plan with the real handling. */
@@ -571,7 +449,7 @@ function transition(w: World, out: SimEvent[]): void {
  * Stratified placement on rows ROW_DY apart. Each row first picks a gap whose centre random-walks no faster than the
  * rocket can follow, then places its hazards (and any well) outside that gap, so a 1.6-unit path always exists.
  */
-function compileTrack(spec: LevelSpec): Track {
+export function compileTrack(spec: LevelSpec): Track {
   const s: Rng = { rng: spec.seed | 0 };
   const out: Spawn[] = [];
   const mix: readonly (readonly [Kind, number])[] = [
