@@ -1,51 +1,16 @@
 import { ARCHETYPES, BOSSES, DRONE_PATTERNS, Kind, levelSpec } from '../levels';
 import type { BossAttack, BossId, BossPhase, BossSpec, DronePattern, LevelNumber, LevelSpec, PickupKind } from '../levels';
+import {
+  AIM_SPREAD, BOLT_RANGE, BOLT_SPEED, BOSS_DIST, BOSS_GRACE_TICKS, BOSS_R, BOSS_SCORE_PER_HP, BOSS_SWEEP,
+  COAST_DAMPING, DEAD, DESPAWN_BEHIND, DRAG_GAIN, DRONE_ANCHOR_LIMIT, ENEMY_BOLT_SPEED, FIRE_TICKS,
+  HIT_INVULN_TICKS, MAX_BODIES, PICKUP_SLACK, PLAYER_MAX_VX, PLAYER_RADIUS, PLAYER_X_LIMIT, RAPID_TICKS,
+  ROW_DY, ROW_GAP, SHIELD_INVULN_TICKS, SPAWN_AHEAD, STEER_ACCEL, STEER_GAIN, STEP, TICKS_PER_SEC,
+  TRACK_END_CLEAR, TRACK_HALF_WIDTH, TRACK_START, WELL_REACH_Y,
+} from './rules';
 
 // This file and levels.ts may use only + - * / and Math.sqrt, imul, floor, min, max, abs (sim.test.ts enforces it).
 // Engine trig differs in the last ulp between Hermes and V8, which would make the verifier prove a slightly different
 // game than the one on the phone. Those operations are correctly rounded by IEEE 754 on every engine.
-
-export const TICKS_PER_SEC = 60;
-export const STEP = 1 / 60;
-export const TRACK_HALF_WIDTH = 4.5;
-export const MAX_BODIES = 512;
-
-export const PLAYER_RADIUS = 0.35;
-export const PLAYER_X_LIMIT = TRACK_HALF_WIDTH - 0.5;
-const PLAYER_MAX_VX = 9;
-const STEER_GAIN = 10;
-const STEER_ACCEL = 60;
-const COAST_DAMPING = 0.9;
-// A full-width finger drag crosses the track with a little to spare.
-const DRAG_GAIN = 2 * TRACK_HALF_WIDTH * 1.25;
-
-export const FIRE_TICKS = 12;
-const RAPID_TICKS = 360;
-const HIT_INVULN_TICKS = 90;
-const SHIELD_INVULN_TICKS = 30;
-const PICKUP_SLACK = 0.25;
-export const BOLT_SPEED = 28;
-const ENEMY_BOLT_SPEED = 8;
-const DEAD = -1;
-
-const SPAWN_AHEAD = 24;
-const DESPAWN_BEHIND = 6;
-const BOLT_RANGE = 26;
-
-const TRACK_START = 20;
-const TRACK_END_CLEAR = 12;
-const ROW_DY = 5;
-const ROW_GAP = 1.6;
-const DRONE_ANCHOR_LIMIT = TRACK_HALF_WIDTH - 2.3;
-
-const BOSS_DIST = 12;
-const BOSS_R = 1.4;
-const BOSS_SWEEP = 3.2;
-const BOSS_GRACE_TICKS = 90;
-const BOSS_SCORE_PER_HP = 10;
-// Neighbouring aimed bolts land about 2 units apart at the rocket's row, wide enough to thread by finger.
-const AIM_SPREAD = 0.2;
-const WELL_REACH_Y = 5;
 
 const PI = 3.141592653589793;
 const TWO_PI = 2 * PI;

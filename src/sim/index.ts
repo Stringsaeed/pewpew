@@ -1,6 +1,5 @@
 export {
   BOLT_SPEED,
-  COAST,
   FIRE_TICKS,
   MAX_BODIES,
   PLAYER_RADIUS,
@@ -8,6 +7,9 @@ export {
   STEP,
   TICKS_PER_SEC,
   TRACK_HALF_WIDTH,
+} from './rules';
+export {
+  COAST,
   createWorld,
   dragInput,
   hashWorld,
