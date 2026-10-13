@@ -59,19 +59,19 @@ function spawn(pool: ParticlePool, x: number, y: number, vx: number, vy: number,
   pool.life[i] = ttl + delay; pool.ttl[i] = ttl; pool.size[i] = size; pool.r[i] = r; pool.g[i] = g; pool.b[i] = b; pool.kind[i] = kind;
 }
 
-function burstAt(pool: ParticlePool, x: number, y: number, n: number, speed: number, size: number, ttl: number, rgb: Float32Array, o: number): void {
+function burstAt(pool: ParticlePool, x: number, y: number, n: number, speed: number, size: number, ttl: number, rgb: Float32Array, o: number, delay = 0): void {
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2;
     const s = speed * (0.3 + 0.7 * Math.random());
     const hot = Math.random() < 0.3 ? 1 : 0;
     spawn(pool, x, y, Math.cos(a) * s, Math.sin(a) * s, ttl * (0.5 + 0.5 * Math.random()), size * (0.6 + 0.8 * Math.random()),
-      hot || rgb[o], hot || rgb[o + 1], hot || rgb[o + 2]);
+      hot || rgb[o], hot || rgb[o + 1], hot || rgb[o + 2], DOT, delay);
   }
 }
 
 /** A shockwave: one particle whose quad grows to `size` while it fades. */
-export function ringAt(pool: ParticlePool, x: number, y: number, size: number, ttl: number, rgb: Float32Array, delay = 0): void {
-  spawn(pool, x, y, 0, 0, ttl, size, rgb[0], rgb[1], rgb[2], RING, delay);
+export function ringAt(pool: ParticlePool, x: number, y: number, size: number, ttl: number, rgb: Float32Array, delay = 0, o = 0): void {
+  spawn(pool, x, y, 0, 0, ttl, size, rgb[o], rgb[o + 1], rgb[o + 2], RING, delay);
 }
 
 /**
@@ -116,11 +116,21 @@ export function applyEvents(pool: ParticlePool, world: WorldView | null, events:
         if (ev.target === 'boss') {
           const m = world?.boss ? tables.bossMesh[world.boss.id] : tables.core;
           burstAt(pool, ev.x, ev.y, 220, 9, 0.5, 1.4, tables.bossBurst, m * 3);
+          // Three staggered shockwaves, then secondary blasts walking across the wreck.
+          for (let r = 0; r < 3; r++) {
+            if (r === 1) ringAt(pool, ev.x, ev.y, 4.8, 0.9, WHITE, 0.15);
+            else ringAt(pool, ev.x, ev.y, 6 - r * 1.2, 0.9, tables.bossBurst, r * 0.15, m * 3);
+          }
+          for (let c = 0; c < 6; c++) {
+            const a = Math.random() * Math.PI * 2, d = 1.6 * Math.sqrt(Math.random());
+            burstAt(pool, ev.x + Math.cos(a) * d, ev.y + Math.sin(a) * d, 36, 6, 0.4, 0.9, tables.bossBurst, m * 3, 0.1 + c * 0.11);
+          }
           fx.flash = 0.3;
           addTrauma(fx, 1);
         } else {
           addTrauma(fx, 0.08);
           burstAt(pool, ev.x, ev.y, 18 + Math.round(ARCHETYPES[ev.target].radius * 30), 6, 0.32, 0.8, tables.burst, ev.target * 3);
+          ringAt(pool, ev.x, ev.y, 1.1 + ARCHETYPES[ev.target].radius * 2.2, 0.45, tables.burst, 0, ev.target * 3);
         }
         break;
       }
@@ -134,6 +144,7 @@ export function applyEvents(pool: ParticlePool, world: WorldView | null, events:
         break;
       case 'playerHit':
         burstAt(pool, ev.x, ev.y, 48, 7, 0.4, 0.9, RED, 0);
+        ringAt(pool, ev.x, ev.y, 2.6, 0.55, RED);
         addTrauma(fx, 0.6);
         break;
       case 'pickup':
@@ -142,6 +153,7 @@ export function applyEvents(pool: ParticlePool, world: WorldView | null, events:
         break;
       case 'shieldBlock':
         burstAt(pool, ev.x, ev.y, 36, 6, 0.3, 0.6, SHIELD_BLUE, 0);
+        ringAt(pool, ev.x, ev.y, 2.8, 0.5, SHIELD_BLUE);
         impactToward(fx, world, ev.x, ev.y);
         fx.ripple = 0;
         fx.dying = BUBBLE_POP_SECONDS;
