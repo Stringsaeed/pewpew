@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 import { Canvas, useCanvasRef } from 'react-native-webgpu';
 import { createAudio, type AudioEngine } from './src/audio';
-import { createDevTools, type DevTools } from './src/dev/qa';
+import { createDevTools, PERF, PERF_AUTORUN, PERF_PLAN, perfLog, type DevTools } from './src/dev/qa';
 import { reduce, runOf, TITLE, type Action, type Screen } from './src/flow';
 import { allEntries, BOARD, winEntries } from './src/leaderboards';
 import { parseSave, recordRun } from './src/save';
@@ -38,7 +38,7 @@ export default function App() {
   const audio = audioRef.current;
   const loop = useRef(createLoop()).current;
   const toolsRef = useRef<DevTools | null>(null);
-  if (__DEV__ && toolsRef.current === null) toolsRef.current = createDevTools(loop, setAutoOn);
+  if ((__DEV__ || PERF) && toolsRef.current === null) toolsRef.current = createDevTools(loop, setAutoOn);
   const tools = toolsRef.current;
   const run = useMemo(() => runOf(screen), [screen]);
   const onMenu = screen.s === 'title' || screen.s === 'levels' || (screen.s === 'settings' && run === null);
@@ -50,6 +50,23 @@ export default function App() {
       setHud(null);
     }
   }, [screen, run, loop, tools]);
+
+  // A perf autorun build plays level 1 once per PERF_PLAN entry by itself, with AUTO on or off as planned (see src/dev/qa.ts).
+  const perfRuns = useRef(0);
+  useEffect(() => {
+    if (!PERF_AUTORUN || save === null || tools === null) return;
+    const id = setTimeout(() => {
+      if (screen.s === 'title') dispatch({ a: 'start' });
+      else if (screen.s === 'levels') dispatch({ a: 'pick', level: 1 });
+      else if (screen.s === 'play' && loop.auto !== (PERF_PLAN[perfRuns.current] === 'auto')) tools.toggleAuto();
+      else if (screen.s === 'complete' || screen.s === 'gameover') {
+        perfRuns.current += 1;
+        if (perfRuns.current < PERF_PLAN.length) dispatch({ a: 'retry' });
+        else perfLog(`[pewpew] perf done after ${perfRuns.current} runs`);
+      }
+    }, 1500);
+    return () => clearTimeout(id);
+  }, [screen, save, tools, loop]);
 
   // Once per sign-in, push every best the save already holds, so progress made offline or signed out catches up.
   const playerId = gc.player?.id ?? null;

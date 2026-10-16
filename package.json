@@ -13,14 +13,18 @@
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-webgpu": "0.5.17",
-    "react-native-worklets": "0.10.1"
+    "react-native-worklets": "0.10.1",
+    "typegpu": "0.12.7"
   },
   "devDependencies": {
+    "@babel/core": "7.29.7",
     "@types/node": "26.6.5",
     "@types/react": "~19.2.2",
     "@webgpu/types": "0.1.65",
+    "babel-preset-expo": "~57.0.14",
     "tsx": "4.23.15",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "unplugin-typegpu": "0.12.5"
   },
   "scripts": {
     "start": "expo start",
@@ -28,7 +32,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test \"src/**/*.test.ts\"",
+    "test": "tsx --import ./scripts/typegpu-hooks.mjs --test \"src/**/*.test.ts\"",
     "verify": "tsx scripts/verify-levels.ts",
     "check": "npm run typecheck && npm test && npm run verify && npm run gen:meshes -- --check",
     "gen:meshes": "tsx scripts/gen-meshes.ts",

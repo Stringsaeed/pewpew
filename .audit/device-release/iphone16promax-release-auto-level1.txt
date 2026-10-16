@@ -1,0 +1,28 @@
+[pewpew] startup first frame 240 ms after bundle start
+[pewpew] tick level 1 auto window 1 avg 4.48 ms p95 10.30 ms max 13.54 ms over 600 frames | frame p50 8.34 p95 11.20 p99 12.81 max 19.26 ms, long 9 | heap 12.0 MB allocated 6.6 MB
+[pewpew] tick level 1 auto window 2 avg 6.60 ms p95 10.56 ms max 30.42 ms over 600 frames | frame p50 8.36 p95 11.13 p99 13.01 max 30.54 ms, long 9 | heap 12.0 MB allocated 7.6 MB
+[pewpew] tick level 1 auto window 3 avg 8.04 ms p95 10.68 ms max 14.70 ms over 600 frames | frame p50 8.46 p95 11.55 p99 13.12 max 14.85 ms, long 7 | heap 12.0 MB allocated 5.5 MB
+[pewpew] tick level 1 auto window 4 avg 7.51 ms p95 11.02 ms max 12.74 ms over 600 frames | frame p50 8.38 p95 11.34 p99 12.75 max 18.30 ms, long 7 | heap 12.0 MB allocated 6.8 MB
+[pewpew] tick level 1 auto window 5 avg 5.28 ms p95 10.56 ms max 13.87 ms over 600 frames | frame p50 8.34 p95 10.95 p99 12.81 max 15.17 ms, long 6 | heap 12.0 MB allocated 8.0 MB
+[pewpew] tick level 1 auto window 6 avg 6.32 ms p95 11.00 ms max 13.86 ms over 600 frames | frame p50 8.36 p95 11.21 p99 13.42 max 16.86 ms, long 10 | heap 16.0 MB allocated 8.8 MB
+[pewpew] tick level 1 auto window 7 avg 8.06 ms p95 11.70 ms max 12.96 ms over 600 frames | frame p50 8.42 p95 12.13 p99 13.01 max 15.08 ms, long 12 | heap 16.0 MB allocated 8.9 MB
+[pewpew] tick level 1 auto window 8 avg 5.99 ms p95 11.80 ms max 13.95 ms over 600 frames | frame p50 8.34 p95 12.28 p99 13.73 max 15.95 ms, long 19 | heap 16.0 MB allocated 7.4 MB
+[pewpew] tick level 1 auto window 1 avg 4.92 ms p95 9.36 ms max 14.30 ms over 600 frames | frame p50 8.33 p95 9.83 p99 14.30 max 15.68 ms, long 13 | heap 16.0 MB allocated 6.6 MB
+[pewpew] tick level 1 auto window 2 avg 4.65 ms p95 8.79 ms max 14.78 ms over 600 frames | frame p50 8.34 p95 9.75 p99 13.45 max 15.12 ms, long 10 | heap 16.0 MB allocated 7.7 MB
+[pewpew] tick level 1 auto window 3 avg 3.73 ms p95 6.00 ms max 7.18 ms over 600 frames | frame p50 8.34 p95 8.77 p99 9.65 max 11.44 ms, long 0 | heap 16.0 MB allocated 8.7 MB
+[pewpew] tick level 1 auto window 4 avg 3.72 ms p95 6.01 ms max 7.62 ms over 600 frames | frame p50 8.34 p95 8.53 p99 9.38 max 13.13 ms, long 1 | heap 16.0 MB allocated 9.0 MB
+[pewpew] tick level 1 auto window 5 avg 4.16 ms p95 8.15 ms max 12.71 ms over 600 frames | frame p50 8.34 p95 8.84 p99 11.97 max 16.46 ms, long 4 | heap 16.0 MB allocated 6.8 MB
+[pewpew] tick level 1 auto window 6 avg 3.75 ms p95 5.93 ms max 7.91 ms over 600 frames | frame p50 8.34 p95 8.58 p99 9.64 max 12.58 ms, long 1 | heap 16.0 MB allocated 7.7 MB
+[pewpew] tick level 1 auto window 7 avg 4.91 ms p95 9.16 ms max 14.39 ms over 600 frames | frame p50 8.33 p95 9.62 p99 13.04 max 14.62 ms, long 8 | heap 16.0 MB allocated 7.7 MB
+[pewpew] tick level 1 auto window 8 avg 4.95 ms p95 8.97 ms max 13.96 ms over 600 frames | frame p50 8.34 p95 9.76 p99 13.74 max 16.48 ms, long 14 | heap 16.0 MB allocated 9.4 MB
+[pewpew] level 1 hash e9ab99ad steps 2701
+[pewpew] tick level 1 auto window 1 avg 6.42 ms p95 11.90 ms max 13.49 ms over 600 frames | frame p50 8.35 p95 12.14 p99 13.16 max 13.67 ms, long 18 | heap 16.0 MB allocated 8.9 MB
+[pewpew] tick level 1 auto window 2 avg 3.55 ms p95 6.26 ms max 12.10 ms over 600 frames | frame p50 8.34 p95 8.86 p99 10.07 max 16.70 ms, long 1 | heap 16.0 MB allocated 8.9 MB
+[pewpew] tick level 1 auto window 3 avg 4.74 ms p95 9.22 ms max 13.51 ms over 600 frames | frame p50 8.34 p95 10.11 p99 12.82 max 18.49 ms, long 9 | heap 16.0 MB allocated 6.0 MB
+[pewpew] tick level 1 auto window 4 avg 3.40 ms p95 6.09 ms max 8.09 ms over 600 frames | frame p50 8.33 p95 8.58 p99 10.06 max 12.34 ms, long 0 | heap 16.0 MB allocated 7.2 MB
+[pewpew] tick level 1 auto window 5 avg 3.33 ms p95 5.95 ms max 7.13 ms over 600 frames | frame p50 8.33 p95 8.57 p99 9.69 max 12.29 ms, long 0 | heap 16.0 MB allocated 7.3 MB
+[pewpew] tick level 1 auto window 6 avg 3.35 ms p95 6.04 ms max 8.25 ms over 600 frames | frame p50 8.33 p95 8.53 p99 9.76 max 13.33 ms, long 1 | heap 16.0 MB allocated 9.2 MB
+[pewpew] tick level 1 auto window 7 avg 7.96 ms p95 12.05 ms max 14.67 ms over 600 frames | frame p50 8.37 p95 12.31 p99 13.50 max 14.86 ms, long 19 | heap 16.0 MB allocated 9.4 MB
+[pewpew] tick level 1 auto window 8 avg 6.33 ms p95 11.80 ms max 13.38 ms over 600 frames | frame p50 8.35 p95 12.12 p99 13.24 max 14.60 ms, long 15 | heap 16.0 MB allocated 6.1 MB
+[pewpew] level 1 hash e9ab99ad steps 2701
+[pewpew] perf done after 3 runs

@@ -11,11 +11,13 @@
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
-    "astro": "^7.3.8"
+    "astro": "^7.3.8",
+    "typegpu": "0.12.7"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "@webgpu/types": "^0.1.74",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "unplugin-typegpu": "0.12.5"
   }
 }

@@ -7,7 +7,7 @@ import { MESHES, type MeshId } from './meshes.gen';
 import { PARTICLE_CAP, RING, SMOKE, type BurstTables, type ParticlePool } from './particles';
 
 export const MESH_IDS = Object.keys(MESHES) as MeshId[];
-/** Mesh and glow instances share one stride: see the layout comment in wgsl.ts. */
+/** Mesh and glow instances share one stride: see Instance in shaders.ts. */
 export const INSTANCE_FLOATS = 12;
 export const GLOW_SPOT = 0;
 export const GLOW_RING = 1;

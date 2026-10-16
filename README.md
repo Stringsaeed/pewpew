@@ -36,7 +36,7 @@ It's a React Native app with no game engine. Every frame is drawn by **WebGPU**,
 
 | Layer | What it does |
 | --- | --- |
-| [react-native-webgpu](https://github.com/wcandillon/react-native-webgpu) | Four WGSL pipelines: a procedural nebula and starfield, instanced flat-shaded meshes, additive glow, and a fresnel shield bubble. Instance data goes up in three buffer writes per frame. |
+| [react-native-webgpu](https://github.com/wcandillon/react-native-webgpu) + [TypeGPU](https://typegpu.com) | Four pipelines with shaders written in TypeScript and resolved to WGSL by TypeGPU: a procedural nebula and starfield, instanced flat-shaded meshes, additive glow, and a fresnel shield bubble. Instance data goes up in three buffer writes per frame. |
 | [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) | Score pops, lost lives, boss bars, and panels run on the UI thread. React renders the HUD only when a value on it changes. |
 | [React Native Audio API](https://docs.swmansion.com/react-native-audio-api/) | Tracker songs and effects synthesized at runtime from data. The app ships zero audio files. |
 | [Argent](https://github.com/software-mansion/argent) | Agents drove the simulator: they tapped, swiped, read the React tree, profiled, and recorded. They also staged every screenshot and video in the launch kit. |
@@ -52,7 +52,7 @@ The whole JS frame (sim, bot, renderer, audio, and HUD) takes about 3 ms and hel
 src/sim/       deterministic simulation: world, step, boss, drones, input, HUD
 src/levels.ts  the 30-row level table, validated at import
 src/bot.ts     greedyBot, used by AUTO mode and the verifier
-src/render/    WebGPU renderer, WGSL shaders, generated meshes
+src/render/    WebGPU renderer, TypeGPU shaders, generated meshes
 src/audio/     synth engine and song data
 src/shell/     the frame loop and React hooks (GPU, save, audio lifecycle)
 src/ui/        React Native screens and HUD

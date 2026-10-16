@@ -1,4 +1,5 @@
 import { greedyBot } from '../bot';
+import { FRAME_TIMING } from '../frameTiming';
 import type { Run } from '../flow';
 import { COAST, RAPID_TICKS, STEP, TICKS_PER_SEC, createWorld, dragInput, hudOf, step, type EventOf, type Hud, type Input, type SimEvent, type World } from '../sim';
 
@@ -122,9 +123,18 @@ export function advance(loop: Loop, now: number, sinks: Sinks): void {
   if (loop.playing && loop.hold === null && finished === null && world) {
     loop.acc += dt;
     let steps = 0;
+    const timing = FRAME_TIMING;
     while (loop.acc >= STEP && steps < MAX_STEPS_PER_FRAME) {
       if (!loop.auto) loop.botOnly = false;
-      step(world, loop.auto ? greedyBot(world) : loop.input, loop.events);
+      let mark = timing.on ? performance.now() : 0;
+      const input = loop.auto ? greedyBot(world) : loop.input;
+      if (timing.on) {
+        const now = performance.now();
+        timing.bot += now - mark;
+        mark = now;
+      }
+      step(world, input, loop.events);
+      if (timing.on) timing.step += performance.now() - mark;
       loop.acc -= STEP;
       steps += 1;
     }

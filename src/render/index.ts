@@ -1,3 +1,4 @@
+import { FRAME_TIMING } from '../frameTiming';
 import { tierOf } from '../levels';
 import type { NativeCanvas } from 'react-native-webgpu';
 import type { SimEvent, WorldView } from '../sim';
@@ -7,7 +8,7 @@ import { LOOK, TIER_TINT, type Look } from './look';
 import { MESHES } from './meshes.gen';
 import { HOLD_LOST, HOLD_NONE, HOLD_WON, SHAKE_REACH, TRAUMA_DECAY, ageHitFlashes, bossPhaseIndex, createFx, holdProgress, smooth, wobble } from './fx';
 import { applyEvents, createPool, emitBossDamage, integrate, spawnExhaust } from './particles';
-import { BUBBLE, GLOW, MESH, STARS } from './wgsl';
+import { SHADERS, instanceLayout, meshVertexLayout, shaderCode, type ShaderPair } from './shaders';
 
 export type { Look };
 export { LOOK };
@@ -17,12 +18,13 @@ export { LOOK };
  * with a depth buffer:
  *  stars  fullscreen triangle, procedural hashed star layers parallaxed by a camera y uniform. No buffers.
  *  mesh   one shared vertex and index buffer holding every MeshData (interleaved pos|normal|color, 36 B), plus one
- *         instance buffer (x, y, rot, scale, tint rgb, flash = 8 f32). Per frame: counting-sort live bodies by MeshId,
+ *         instance buffer (12 f32 per instance, see Instance in shaders.ts). Per frame: counting-sort live bodies by MeshId,
  *         one writeBuffer, then drawIndexed per non-empty mesh with the vertex and instance buffers bound at that mesh's offsets.
  *         Rocket, boss, and the black hole (horizon plus accretion disc) are appended from the player, boss, and wormholeY
- *         scalars. Lambert plus emissive vertex color. The instance's mode column picks the transform (see wgsl.ts).
+ *         scalars. Lambert plus emissive vertex color. The instance's mode column picks the transform (see shaders.ts).
  *  glow   instanced quads, additive blend, no depth write: bolts, exhaust, explosion particles, rings, halos, shield bubble.
  * Particles live here (CPU SoA, 2048 cap) and spawn from SimEvents; the sim never knows they exist.
+ * The shaders are TypeGPU functions (shaders.ts), resolved to WGSL once here. Pipelines and draws stay raw WebGPU.
  */
 export interface Renderer {
   /** world null = menu backdrop (stars only). alpha = leftover accumulator / STEP, for interpolation. */
@@ -40,6 +42,8 @@ export interface Renderer {
 
 export const MAX_PIXEL_RATIO = 2;
 const BUBBLE_MESH = MESH_IDS.indexOf('bubble');
+const VERTEX_BYTES = meshVertexLayout.vertexLayout.arrayStride;
+const INSTANCE_BYTES = instanceLayout.vertexLayout.arrayStride;
 
 export function createRenderer(
   device: GPUDevice,
@@ -92,54 +96,38 @@ export function createRenderer(
   const DEPTH: GPUTextureFormat = 'depth24plus';
   const additive: GPUBlendComponent = { srcFactor: 'one', dstFactor: 'one', operation: 'add' };
 
-  const starsModule = device.createShaderModule({ code: STARS });
-  const meshModule = device.createShaderModule({ code: MESH });
-  const glowModule = device.createShaderModule({ code: GLOW });
-  const bubbleModule = device.createShaderModule({ code: BUBBLE });
+  // Each module holds one vertex and one fragment entry point, so the pipelines leave entryPoint to WebGPU.
+  const module = (pair: ShaderPair) => device.createShaderModule({ code: shaderCode(pair) });
+  const starsModule = module(SHADERS.stars);
+  const meshModule = module(SHADERS.mesh);
+  const glowModule = module(SHADERS.glow);
+  const bubbleModule = module(SHADERS.bubble);
   const starsPipe = device.createRenderPipeline({
     layout,
-    vertex: { module: starsModule, entryPoint: 'vs' },
-    fragment: { module: starsModule, entryPoint: 'fs', targets: [{ format }] },
+    vertex: { module: starsModule },
+    fragment: { module: starsModule, targets: [{ format }] },
     depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'always' },
   });
-  const meshBuffers: GPUVertexBufferLayout[] = [
-    { arrayStride: 36, attributes: [
-      { shaderLocation: 0, offset: 0, format: 'float32x3' },
-      { shaderLocation: 1, offset: 12, format: 'float32x3' },
-      { shaderLocation: 2, offset: 24, format: 'float32x3' },
-    ] },
-    { arrayStride: INSTANCE_FLOATS * 4, stepMode: 'instance', attributes: [
-      { shaderLocation: 3, offset: 0, format: 'float32x4' },
-      { shaderLocation: 4, offset: 16, format: 'float32x4' },
-      { shaderLocation: 5, offset: 32, format: 'float32x4' },
-    ] },
-  ];
+  const meshBuffers = [meshVertexLayout.vertexLayout, instanceLayout.vertexLayout];
   const meshPipe = device.createRenderPipeline({
     layout,
-    vertex: { module: meshModule, entryPoint: 'vs', buffers: meshBuffers },
-    fragment: { module: meshModule, entryPoint: 'fs', targets: [{ format }] },
+    vertex: { module: meshModule, buffers: meshBuffers },
+    fragment: { module: meshModule, targets: [{ format }] },
     primitive: { topology: 'triangle-list', cullMode: 'back' },
     depthStencil: { format: DEPTH, depthWriteEnabled: true, depthCompare: 'less' },
   });
   // The shield bubble: the same vertex layout, its own shader, additive, no depth write, drawn after everything else.
   const bubblePipe = device.createRenderPipeline({
     layout,
-    vertex: { module: bubbleModule, entryPoint: 'vs', buffers: meshBuffers },
-    fragment: { module: bubbleModule, entryPoint: 'fs', targets: [{ format, blend: { color: additive, alpha: additive } }] },
+    vertex: { module: bubbleModule, buffers: meshBuffers },
+    fragment: { module: bubbleModule, targets: [{ format, blend: { color: additive, alpha: additive } }] },
     primitive: { topology: 'triangle-list', cullMode: 'back' },
     depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'less' },
   });
   const glowPipe = device.createRenderPipeline({
     layout,
-    vertex: {
-      module: glowModule, entryPoint: 'vs',
-      buffers: [{ arrayStride: INSTANCE_FLOATS * 4, stepMode: 'instance', attributes: [
-        { shaderLocation: 0, offset: 0, format: 'float32x4' },
-        { shaderLocation: 1, offset: 16, format: 'float32x4' },
-        { shaderLocation: 2, offset: 32, format: 'float32x4' },
-      ] }],
-    },
-    fragment: { module: glowModule, entryPoint: 'fs', targets: [{ format, blend: { color: additive, alpha: additive } }] },
+    vertex: { module: glowModule, buffers: [instanceLayout.vertexLayout] },
+    fragment: { module: glowModule, targets: [{ format, blend: { color: additive, alpha: additive } }] },
     primitive: { topology: 'triangle-strip' },
     depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'less' },
   });
@@ -180,6 +168,8 @@ export function createRenderer(
 
   function frame(world: WorldView | null, events: readonly SimEvent[], alpha: number, dt: number): void {
     if (!resize()) return;
+    const timing = FRAME_TIMING;
+    let mark = timing.on ? performance.now() : 0;
     time += dt;
     // A new run, or the menu, ends the hold: the shell never says so.
     if (fx.hold !== HOLD_NONE && (!world || (world.phase.p !== 'won' && world.phase.p !== 'lost'))) fx.hold = HOLD_NONE;
@@ -228,7 +218,9 @@ export function createRenderer(
     if (batch.meshSlots > 0) device.queue.writeBuffer(meshInstBuf, 0, batch.meshInst, 0, batch.meshSlots * INSTANCE_FLOATS);
     if (batch.glowCount > 0) device.queue.writeBuffer(glowInstBuf, 0, batch.glowInst, 0, batch.glowCount * INSTANCE_FLOATS);
 
+    if (timing.on) mark = lap(timing, 'pack', mark);
     colorAttachment.view = ctx.getCurrentTexture().createView();
+    if (timing.on) mark = lap(timing, 'acquire', mark);
     const encoder = device.createCommandEncoder();
     const pass = encoder.beginRenderPass(passDesc);
     pass.setBindGroup(0, bind);
@@ -241,8 +233,8 @@ export function createRenderer(
         if (batch.counts[m] === 0 || m === BUBBLE_MESH) continue;
         // Dawn rejects a nonzero baseVertex or firstInstance unless the device enabled 'indirect-first-instance',
         // so both offsets go into the vertex buffer bindings and the renderer works with whatever device it is given.
-        pass.setVertexBuffer(0, vertexBuf, baseVertex[m] * 36);
-        pass.setVertexBuffer(1, meshInstBuf, batch.starts[m] * INSTANCE_FLOATS * 4);
+        pass.setVertexBuffer(0, vertexBuf, baseVertex[m] * VERTEX_BYTES);
+        pass.setVertexBuffer(1, meshInstBuf, batch.starts[m] * INSTANCE_BYTES);
         pass.drawIndexed(indexCountOf[m], batch.counts[m], firstIndex[m], 0, 0);
       }
     }
@@ -253,13 +245,17 @@ export function createRenderer(
     }
     if (batch.counts[BUBBLE_MESH] > 0) {
       pass.setPipeline(bubblePipe);
-      pass.setVertexBuffer(0, vertexBuf, baseVertex[BUBBLE_MESH] * 36);
-      pass.setVertexBuffer(1, meshInstBuf, batch.starts[BUBBLE_MESH] * INSTANCE_FLOATS * 4);
+      pass.setVertexBuffer(0, vertexBuf, baseVertex[BUBBLE_MESH] * VERTEX_BYTES);
+      pass.setVertexBuffer(1, meshInstBuf, batch.starts[BUBBLE_MESH] * INSTANCE_BYTES);
       pass.drawIndexed(indexCountOf[BUBBLE_MESH], batch.counts[BUBBLE_MESH], firstIndex[BUBBLE_MESH], 0, 0);
     }
     pass.end();
-    device.queue.submit([encoder.finish()]);
+    const commands = encoder.finish();
+    if (timing.on) mark = lap(timing, 'encode', mark);
+    device.queue.submit([commands]);
+    if (timing.on) mark = lap(timing, 'submit', mark);
     ctx.present();
+    if (timing.on) lap(timing, 'present', mark);
   }
 
   return {
@@ -279,4 +275,11 @@ export function createRenderer(
       depth?.destroy();
     },
   };
+}
+
+/** Adds the time since `since` to one frame phase and returns now. */
+function lap(timing: typeof FRAME_TIMING, phase: 'pack' | 'acquire' | 'encode' | 'submit' | 'present', since: number): number {
+  const now = performance.now();
+  timing[phase] += now - since;
+  return now;
 }
