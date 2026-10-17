@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": [
+      "@webgpu/types"
+    ],
+    "paths": {
+      "pewpew-internals": [
+        "./src/internals.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "stubs/**/*.ts"
+  ]
+}
