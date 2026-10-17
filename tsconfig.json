@@ -20,5 +20,5 @@
       "@webgpu/types"
     ]
   },
-  "exclude": ["node_modules", "website", "marketing"]
+  "exclude": ["node_modules", "website", "marketing", "explainer"]
 }
