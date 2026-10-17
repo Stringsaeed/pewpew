@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, test } from 'node:test';
 import { d } from 'typegpu';
 import { INSTANCE_FLOATS } from './batch';
 import { UNIFORM_FLOATS } from './camera';
+import { generate } from '../../scripts/gen-shaders';
 import { SHADERS, Uniforms, instanceLayout, meshVertexLayout, shaderCode } from './shaders';
 
 const count = (text: string, pattern: RegExp): number => text.match(pattern)?.length ?? 0;
@@ -18,6 +20,11 @@ describe('shaders', () => {
       assert.equal(count(wgsl, /@group\(/g), 1);
     });
   }
+
+  test('shaders.gen.ts is up to date: the app ships this WGSL, not the TypeGPU functions', () => {
+    const current = readFileSync(new URL('./shaders.gen.ts', import.meta.url), 'utf8');
+    assert.ok(current === generate(), 'src/render/shaders.gen.ts is stale; run npm run gen:shaders');
+  });
 
   test('the schemas match what camera.ts, the renderer, and the batcher pack', () => {
     assert.equal(d.sizeOf(Uniforms), UNIFORM_FLOATS * 4);

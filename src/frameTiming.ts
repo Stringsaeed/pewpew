@@ -12,3 +12,6 @@ export const FRAME_TIMING = { on: false, bot: 0, step: 0, pack: 0, acquire: 0, e
 
 export type FramePhase = Exclude<keyof typeof FRAME_TIMING, 'on'>;
 export const FRAME_PHASES: readonly FramePhase[] = ['bot', 'step', 'pack', 'acquire', 'encode', 'submit', 'present'];
+
+/** Milliseconds createRenderer took (buffers, shader modules, pipelines), written once. A perf build logs it with the first frame. */
+export const STARTUP = { renderer: 0 };

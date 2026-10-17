@@ -17,6 +17,10 @@ eas submit --platform ios --profile production --id BUILD_ID
 ```
 
 EAS assigns an increasing build number. The public version is `version` in `app.config.ts`.
+
+After the build, tag the commit it came from (`git tag v1.2.0 <commit> && git push origin v1.2.0`). The tag runs the
+frame benchmark against the previous release. Then record the device benchmarks; see "After every release" in
+[performance.md](performance.md).
 An upload does not submit the App Store version for review. Select the processed build in App Store Connect and complete the listing before submitting.
 
 ## Publish compatible updates

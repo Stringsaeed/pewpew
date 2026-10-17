@@ -1,0 +1,62 @@
+{
+  "version": "1.1.0",
+  "commit": "9b21673",
+  "label": "iphone-16-pro-max",
+  "platform": "ios-device",
+  "device": "iPhone 16 Pro Max, iOS 27.0",
+  "date": "2026-10-15T16:14:24.705Z",
+  "startupMs": 260,
+  "warmup": {
+    "jsAvg": 4.79,
+    "worstFrameMs": 109.9,
+    "longFrames": 2
+  },
+  "modes": {
+    "bot": {
+      "windows": 7,
+      "frames": 4200,
+      "hz": 60,
+      "jsAvg": 5.56,
+      "jsP95": 7.05,
+      "jsMax": 20.48,
+      "longFrames": 0,
+      "longPct": 0,
+      "worstFrameMs": 22.34,
+      "frameP99Ms": 16.79,
+      "phases": {
+        "bot": 4.214285714285714,
+        "step": 0.06571428571428571,
+        "pack": 0.2771428571428572,
+        "acquire": 0.08,
+        "encode": 0.14428571428571432,
+        "submit": 0.16999999999999998,
+        "present": 0.40857142857142864,
+        "other": 0.08857142857142855
+      },
+      "heapMb": 16
+    },
+    "play": {
+      "windows": 8,
+      "frames": 4800,
+      "hz": 60,
+      "jsAvg": 1.66,
+      "jsP95": 2.25,
+      "jsMax": 12.07,
+      "longFrames": 0,
+      "longPct": 0,
+      "worstFrameMs": 23.78,
+      "frameP99Ms": 16.8,
+      "phases": {
+        "bot": 0.15125,
+        "step": 0.10499999999999998,
+        "pack": 0.38875000000000004,
+        "acquire": 0.09749999999999999,
+        "encode": 0.18124999999999997,
+        "submit": 0.21375,
+        "present": 0.47625000000000006,
+        "other": 0.11499999999999999
+      },
+      "heapMb": 12
+    }
+  }
+}

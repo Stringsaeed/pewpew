@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 import { Canvas, useCanvasRef } from 'react-native-webgpu';
@@ -113,7 +113,8 @@ export default function App() {
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics} style={styles.root}>
       <StatusBar style="light" />
-      <Canvas ref={canvasRef} style={StyleSheet.absoluteFill} />
+      {/* Android: the default SurfaceView is its own layer and hid every screen drawn over it; a TextureView composes in view order. */}
+      <Canvas ref={canvasRef} style={StyleSheet.absoluteFill} transparent={Platform.OS === 'android'} />
       {save === null ? null : (
         <Screens
           save={save}
