@@ -36,7 +36,7 @@ It's a React Native app with no game engine. Every frame is drawn by **WebGPU**,
 
 | Layer | What it does |
 | --- | --- |
-| [react-native-webgpu](https://github.com/wcandillon/react-native-webgpu) + [TypeGPU](https://typegpu.com) | Four pipelines with shaders written in TypeScript and resolved to WGSL by TypeGPU: a procedural nebula and starfield, instanced flat-shaded meshes, additive glow, and a fresnel shield bubble. Instance data goes up in three buffer writes per frame. |
+| [react-native-webgpu](https://github.com/wcandillon/react-native-webgpu) + [TypeGPU](https://typegpu.com) | Four pipelines with shaders written in TypeScript with TypeGPU and resolved to WGSL at build time (`npm run gen:shaders`), so the app ships plain WGSL: a procedural nebula and starfield, instanced flat-shaded meshes, additive glow, and a fresnel shield bubble. Instance data goes up in three buffer writes per frame. |
 | [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) | Score pops, lost lives, boss bars, and panels run on the UI thread. React renders the HUD only when a value on it changes. |
 | [React Native Audio API](https://docs.swmansion.com/react-native-audio-api/) | Tracker songs and effects synthesized at runtime from data. The app ships zero audio files. |
 | [Argent](https://github.com/software-mansion/argent) | Agents drove the simulator: they tapped, swiped, read the React tree, profiled, and recorded. They also staged every screenshot and video in the launch kit. |

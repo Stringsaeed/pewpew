@@ -1,4 +1,4 @@
-import { FRAME_TIMING } from '../frameTiming';
+import { FRAME_TIMING, STARTUP } from '../frameTiming';
 import { tierOf } from '../levels';
 import type { NativeCanvas } from 'react-native-webgpu';
 import type { SimEvent, WorldView } from '../sim';
@@ -8,7 +8,7 @@ import { LOOK, TIER_TINT, type Look } from './look';
 import { MESHES } from './meshes.gen';
 import { HOLD_LOST, HOLD_NONE, HOLD_WON, SHAKE_REACH, TRAUMA_DECAY, ageHitFlashes, bossPhaseIndex, createFx, holdProgress, smooth, wobble } from './fx';
 import { applyEvents, createPool, emitBossDamage, integrate, spawnExhaust } from './particles';
-import { SHADERS, instanceLayout, meshVertexLayout, shaderCode, type ShaderPair } from './shaders';
+import { INSTANCE_LAYOUT, MESH_VERTEX_LAYOUT, WGSL } from './shaders.gen';
 
 export type { Look };
 export { LOOK };
@@ -42,8 +42,8 @@ export interface Renderer {
 
 export const MAX_PIXEL_RATIO = 2;
 const BUBBLE_MESH = MESH_IDS.indexOf('bubble');
-const VERTEX_BYTES = meshVertexLayout.vertexLayout.arrayStride;
-const INSTANCE_BYTES = instanceLayout.vertexLayout.arrayStride;
+const VERTEX_BYTES = MESH_VERTEX_LAYOUT.arrayStride;
+const INSTANCE_BYTES = INSTANCE_LAYOUT.arrayStride;
 
 export function createRenderer(
   device: GPUDevice,
@@ -51,6 +51,7 @@ export function createRenderer(
   format: GPUTextureFormat,
   pixelRatio: number,
 ): Renderer {
+  const started = performance.now();
   const canvas = ctx.canvas as unknown as NativeCanvas;
 
   let vertexCount = 0;
@@ -96,19 +97,19 @@ export function createRenderer(
   const DEPTH: GPUTextureFormat = 'depth24plus';
   const additive: GPUBlendComponent = { srcFactor: 'one', dstFactor: 'one', operation: 'add' };
 
-  // Each module holds one vertex and one fragment entry point, so the pipelines leave entryPoint to WebGPU.
-  const module = (pair: ShaderPair) => device.createShaderModule({ code: shaderCode(pair) });
-  const starsModule = module(SHADERS.stars);
-  const meshModule = module(SHADERS.mesh);
-  const glowModule = module(SHADERS.glow);
-  const bubbleModule = module(SHADERS.bubble);
+  // WGSL generated at build time from the TypeGPU shaders (scripts/gen-shaders.ts). Each module holds one vertex and
+  // one fragment entry point, so the pipelines leave entryPoint to WebGPU.
+  const starsModule = device.createShaderModule({ code: WGSL.stars });
+  const meshModule = device.createShaderModule({ code: WGSL.mesh });
+  const glowModule = device.createShaderModule({ code: WGSL.glow });
+  const bubbleModule = device.createShaderModule({ code: WGSL.bubble });
   const starsPipe = device.createRenderPipeline({
     layout,
     vertex: { module: starsModule },
     fragment: { module: starsModule, targets: [{ format }] },
     depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'always' },
   });
-  const meshBuffers = [meshVertexLayout.vertexLayout, instanceLayout.vertexLayout];
+  const meshBuffers = [MESH_VERTEX_LAYOUT, INSTANCE_LAYOUT];
   const meshPipe = device.createRenderPipeline({
     layout,
     vertex: { module: meshModule, buffers: meshBuffers },
@@ -126,7 +127,7 @@ export function createRenderer(
   });
   const glowPipe = device.createRenderPipeline({
     layout,
-    vertex: { module: glowModule, buffers: [instanceLayout.vertexLayout] },
+    vertex: { module: glowModule, buffers: [INSTANCE_LAYOUT] },
     fragment: { module: glowModule, targets: [{ format, blend: { color: additive, alpha: additive } }] },
     primitive: { topology: 'triangle-strip' },
     depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'less' },
@@ -134,6 +135,7 @@ export function createRenderer(
 
   const pool = createPool();
   const fx = createFx();
+  STARTUP.renderer = performance.now() - started;
 
   let depth: GPUTexture | null = null;
   let width = 0;

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FRAME_PHASES, FRAME_TIMING } from '../frameTiming';
+import { FRAME_PHASES, FRAME_TIMING, STARTUP } from '../frameTiming';
 import { LEVELS } from '../levels';
 import { recordRun, type Save } from '../save';
 import type { Loop } from '../shell/loop';
@@ -68,6 +68,8 @@ export function createDevTools(loop: Loop, onAuto: (on: boolean) => void): DevTo
     sample(now, tick) {
       if (!started) {
         started = true;
+        // scripts/perf-device.ts reads the log from storage, which still holds the previous session's lines until this one writes.
+        if (PERF) perfLog(`[pewpew] perf session ${Date.now()}`);
         logStartup();
       }
       const interval = last === 0 ? 0 : now - last;
@@ -93,7 +95,8 @@ const mb = (bytes: number) => (bytes / 1048576).toFixed(1);
 function logStartup(): void {
   const start = (globalThis as { __BUNDLE_START_TIME__?: number }).__BUNDLE_START_TIME__;
   if (start === undefined) return;
-  perfLog(`[pewpew] startup first frame ${(performance.now() - start).toFixed(0)} ms after bundle start`);
+  perfLog(`[pewpew] startup first frame ${(performance.now() - start).toFixed(0)} ms after bundle start`
+    + ` | renderer ${STARTUP.renderer.toFixed(1)} ms`);
 }
 
 const pick = (sorted: Float64Array, q: number) => sorted[Math.min(FRAMES - 1, Math.floor(FRAMES * q))];

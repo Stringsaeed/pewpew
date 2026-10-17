@@ -1,0 +1,57 @@
+name: perf
+
+# Frame benchmark for every release: pushing a v* tag runs scripts/bench.ts on that tag and on the previous v* tag, on
+# the same runner, so runner speed cancels out. The job fails when a level's frame got more than 15% slower, and the
+# table goes to the run summary. Run it by hand to compare any branch with a ref of your choice.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Ref to compare against (default the latest v* tag before this commit)
+        required: false
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Find the previous release
+        id: base
+        env:
+          BASE: ${{ inputs.base }}
+        run: |
+          if [ -z "$BASE" ]; then BASE=$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null || true); fi
+          echo "ref=$BASE" >> "$GITHUB_OUTPUT"
+      - name: Benchmark the previous release
+        if: steps.base.outputs.ref != ''
+        env:
+          BASE: ${{ steps.base.outputs.ref }}
+        run: |
+          git worktree add "$RUNNER_TEMP/base" "$BASE"
+          cd "$RUNNER_TEMP/base"
+          if [ ! -f scripts/bench.ts ]; then
+            echo "$BASE has no scripts/bench.ts; nothing to compare with." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          npm ci
+          npm run -s bench -- --out "$RUNNER_TEMP/base.json"
+      - name: Benchmark this commit
+        run: |
+          baseline=()
+          if [ -f "$RUNNER_TEMP/base.json" ]; then baseline=(--baseline "$RUNNER_TEMP/base.json"); fi
+          npm run -s bench -- --out bench.json "${baseline[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-${{ github.ref_name }}
+          path: bench.json
+          if-no-files-found: ignore

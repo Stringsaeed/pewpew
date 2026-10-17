@@ -57,6 +57,8 @@ const config: ExpoConfig = {
       },
     ],
     './plugins/with-ios-scene-delegate',
+    // react-native-webgpu's Android code uses AHardwareBuffer, which needs API 26; Expo's default minimum is 24.
+    ['expo-build-properties', { android: { minSdkVersion: 26 } }],
   ],
   extra: {
     eas: {
