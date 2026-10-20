@@ -20,7 +20,7 @@ Open http://localhost:8787 in Chrome (WebGPU needs a secure context, and localho
 ## Files
 
 - `post.md`: the article, in a small Markdown dialect. `^[note]` adds a numbered endnote, and `{{figure}}` or `{{code:NAME}}` on its own line places a figure.
-- `build.mjs`: renders the post, reads every code excerpt from `src/` at build time (`EXCERPTS`), and bundles the figures with esbuild. Its `pewpew-internals` plugin exposes the private stage functions of `step.ts` to the bundle only. The game source does not change.
+- `build.mjs`: renders the post, reads every code excerpt from `src/` at build time (`EXCERPTS`), and bundles the figures with esbuild. The figures import the stage functions of `step.ts` and `boss.ts` directly; the sim exports them for that reason.
 - `src/code.ts`: the highlighter and live code blocks with call peeks. `src/figure.ts`: figure card, playback controls, and the walkthrough component.
 - `src/figures/*.ts`: one file per topic. `src/world2d.ts`: a 2D world reader and an exact world clone.
 - `stubs/`: empty stand-ins for AsyncStorage and react-native-audio-api, the only native imports on the bundled path.

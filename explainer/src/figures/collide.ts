@@ -6,7 +6,7 @@ import { ARCHETYPES, Kind } from '../../../src/levels';
 import { createWorld, PLAYER_RADIUS, type SimEvent, type World } from '../../../src/sim';
 import { add } from '../../../src/sim/world';
 import { PICKUP_SLACK } from '../../../src/sim/rules';
-import { collide } from 'pewpew-internals';
+import { collide } from '../../../src/sim/step';
 
 const KINDS = [Kind.Asteroid, Kind.Mine, Kind.Drone, Kind.Well, Kind.Crystal, Kind.Shield, Kind.EnemyBolt] as const;
 const W = 330, H = 250, S = 46;

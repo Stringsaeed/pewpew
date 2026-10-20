@@ -7,7 +7,7 @@ import { add, createWorld } from '../../../src/sim/world';
 import { DRONE_MOVES } from '../../../src/sim/drones';
 import { sinT } from '../../../src/sim/math';
 import { BOSS_GRACE_TICKS, BOSS_SWEEP, STEP, TICKS_PER_SEC, TRACK_HALF_WIDTH } from '../../../src/sim/rules';
-import { bossPhase } from 'pewpew-internals';
+import { bossPhase } from '../../../src/sim/boss';
 
 const PATTERN_NOTE: Record<DronePattern, string> = {
   sine: 'Weaves around its anchor `param` with `sinT`, sinking at a steady 1.2 units/s. `driveX` writes x and the matching vx.',

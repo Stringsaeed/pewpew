@@ -5,7 +5,7 @@ import { greedyBot } from '../../../src/bot';
 import type { LevelNumber } from '../../../src/levels';
 import { createWorld, hashWorld, step, STEP, type Input, type SimEvent, type World } from '../../../src/sim';
 import { runBoss } from '../../../src/sim/boss';
-import { collide, despawn, fire, moveBodies, spawnFromTrack, steer, transition } from 'pewpew-internals';
+import { collide, despawn, fire, moveBodies, spawnFromTrack, steer, transition } from '../../../src/sim/step';
 
 type Line = { readonly t: '+' | '-' | '~' | '·'; readonly s: string };
 
