@@ -13,12 +13,7 @@
     "resolveJsonModule": true,
     "types": [
       "@webgpu/types"
-    ],
-    "paths": {
-      "pewpew-internals": [
-        "./src/internals.ts"
-      ]
-    }
+    ]
   },
   "include": [
     "src/**/*.ts",

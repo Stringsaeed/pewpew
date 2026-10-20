@@ -14,16 +14,16 @@ const WATCH = process.argv.includes('--watch');
 /** Every excerpt the post can show or peek into. The pattern matches the first line; the excerpt runs to its closing brace. */
 const EXCERPTS = {
   step: ['src/sim/step.ts', /^export function step\(/],
-  steer: ['src/sim/step.ts', /^function steer\(/],
-  wellPull: ['src/sim/step.ts', /^function wellPull\(/],
-  spawnFromTrack: ['src/sim/step.ts', /^function spawnFromTrack\(/],
-  fire: ['src/sim/step.ts', /^function fire\(/],
-  moveBodies: ['src/sim/step.ts', /^function moveBodies\(/],
-  collide: ['src/sim/step.ts', /^function collide\(/],
+  steer: ['src/sim/step.ts', /^export function steer\(/],
+  wellPull: ['src/sim/step.ts', /^export function wellPull\(/],
+  spawnFromTrack: ['src/sim/step.ts', /^export function spawnFromTrack\(/],
+  fire: ['src/sim/step.ts', /^export function fire\(/],
+  moveBodies: ['src/sim/step.ts', /^export function moveBodies\(/],
+  collide: ['src/sim/step.ts', /^export function collide\(/],
   collect: ['src/sim/step.ts', /^function collect\(/],
   split: ['src/sim/step.ts', /^function split\(/],
-  despawn: ['src/sim/step.ts', /^function despawn\(/],
-  transition: ['src/sim/step.ts', /^function transition\(/],
+  despawn: ['src/sim/step.ts', /^export function despawn\(/],
+  transition: ['src/sim/step.ts', /^export function transition\(/],
   hurt: ['src/sim/step.ts', /^function hurt\(/],
   Bodies: ['src/sim/world.ts', /^export interface Bodies/],
   World: ['src/sim/world.ts', /^export interface World /],
@@ -42,7 +42,7 @@ const EXCERPTS = {
   droneClock: ['src/sim/drones.ts', /^export function droneClock\(/],
   runBoss: ['src/sim/boss.ts', /^export function runBoss\(/],
   bossAttack: ['src/sim/boss.ts', /^function bossAttack\(/],
-  bossPhase: ['src/sim/boss.ts', /^function bossPhase\(/],
+  bossPhase: ['src/sim/boss.ts', /^export function bossPhase\(/],
   simulate: ['src/sim/run.ts', /^export function simulate\(/],
   replay: ['src/sim/run.ts', /^export function replay\(/],
   run: ['src/sim/run.ts', /^function run\(/],
@@ -182,28 +182,6 @@ function markdown(md) {
   return out.join('\n');
 }
 
-// ---------- Exposing sim internals to the figures, without touching the game source ----------
-// step() calls ten private stage functions. The step-by-step figure calls the same functions in the same order, so this
-// plugin appends an export line to step.ts and boss.ts in the bundle only. The figure then checks its result against a
-// world advanced by the real step(), so the walkthrough cannot quietly diverge from the game.
-const STEP_INTERNALS = ['steer', 'wellPull', 'spawnFromTrack', 'fire', 'moveBodies', 'collide', 'despawn', 'transition'];
-const internals = {
-  name: 'pewpew-internals',
-  setup(b) {
-    b.onResolve({ filter: /^pewpew-internals$/ }, () => ({ path: 'pewpew-internals', namespace: 'pewpew-internals' }));
-    b.onLoad({ filter: /.*/, namespace: 'pewpew-internals' }, () => ({
-      contents: `export { ${STEP_INTERNALS.join(', ')} } from './src/sim/step';\nexport { bossPhase } from './src/sim/boss';\n`,
-      resolveDir: ROOT,
-      loader: 'ts',
-    }));
-    b.onLoad({ filter: /[\\/]src[\\/]sim[\\/](step|boss)\.ts$/ }, (args) => {
-      const src = readFileSync(args.path, 'utf8');
-      const extra = args.path.endsWith('step.ts') ? `export { ${STEP_INTERNALS.join(', ')} };` : 'export { bossPhase };';
-      return { contents: `${src}\n${extra}\n`, loader: 'ts' };
-    });
-  },
-};
-
 function buildData() {
   mkdirSync(join(HERE, 'build'), { recursive: true });
   const excerpts = {};
@@ -235,7 +213,7 @@ const options = {
     '@react-native-async-storage/async-storage': join(HERE, 'stubs/async-storage.ts'),
     'react-native-audio-api': join(HERE, 'stubs/audio-api.ts'),
   },
-  plugins: [internals, {
+  plugins: [{
     name: 'page',
     setup(b) { b.onStart(() => { buildData(); buildPage(); }); },
   }],

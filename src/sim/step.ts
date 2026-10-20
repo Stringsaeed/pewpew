@@ -41,7 +41,7 @@ export function step(w: World, input: Input, out: SimEvent[]): void {
   w.tick++;
 }
 
-function steer(w: World, input: Input): void {
+export function steer(w: World, input: Input): void {
   const p = w.player;
   p.vx = input.targetX === null ? p.vx * COAST_DAMPING : steerVelocity(p.x, p.vx, input.targetX);
   p.vx += wellPull(w) * STEP;
@@ -51,7 +51,7 @@ function steer(w: World, input: Input): void {
 }
 
 /** Lateral acceleration from every field body in reach: peaks at `param` about 0.7 units off the core, zero at the core. */
-function wellPull(w: World): number {
+export function wellPull(w: World): number {
   const p = w.player, b = w.bodies;
   let a = 0;
   for (let i = 0; i < b.count; i++) {
@@ -64,7 +64,7 @@ function wellPull(w: World): number {
   return a;
 }
 
-function spawnFromTrack(w: World): void {
+export function spawnFromTrack(w: World): void {
   const b = w.bodies;
   while (w.cursor < w.track.length && w.track[w.cursor].y <= w.player.y + SPAWN_AHEAD) {
     const s = w.track[w.cursor++];
@@ -78,7 +78,7 @@ function spawnFromTrack(w: World): void {
   }
 }
 
-function fire(w: World, out: SimEvent[]): void {
+export function fire(w: World, out: SimEvent[]): void {
   const p = w.player;
   if (w.tick < p.fireAtTick) return;
   const rapid = w.tick < p.rapidUntilTick;
@@ -87,7 +87,7 @@ function fire(w: World, out: SimEvent[]): void {
   out.push({ e: 'fire', x: p.x, y: p.y + 0.8, rapid });
 }
 
-function moveBodies(w: World, out: SimEvent[]): void {
+export function moveBodies(w: World, out: SimEvent[]): void {
   const b = w.bodies, p = w.player;
   const rate = w.spec.droneFireRate;
   for (let i = 0; i < b.count; i++) {
@@ -135,7 +135,7 @@ function collect(w: World, kind: PickupKind, x: number, y: number, out: SimEvent
   out.push({ e: 'pickup', kind, x, y });
 }
 
-function collide(w: World, out: SimEvent[]): void {
+export function collide(w: World, out: SimEvent[]): void {
   const p = w.player, b = w.bodies;
   const n = b.count;
   for (let i = 0; i < n; i++) {
@@ -202,7 +202,7 @@ function split(w: World, i: number, kind: Kind, count: number): void {
   }
 }
 
-function despawn(w: World): void {
+export function despawn(w: World): void {
   const b = w.bodies, p = w.player;
   const behind = p.y - DESPAWN_BEHIND, ahead = p.y + BOLT_RANGE, side = TRACK_HALF_WIDTH + 2;
   for (let i = b.count - 1; i >= 0; i--) {
@@ -210,7 +210,7 @@ function despawn(w: World): void {
   }
 }
 
-function transition(w: World, out: SimEvent[]): void {
+export function transition(w: World, out: SimEvent[]): void {
   const p = w.player;
   if (p.lives === 0) {
     w.phase = { p: 'lost' };

@@ -38,7 +38,7 @@ The walkthrough runs those stages one at a time on a real world. Each › calls 
 
 {{step}}
 
-After the last stage, the walkthrough hashes its world and compares it with a copy advanced by the real `step()`. The hashes match, so what you stepped through is what the game does.^[The stage functions are private to `step.ts`. The post's bundler adds an export line to that file in its own bundle only. The game's source does not change. See `internals` in `build.mjs`.]
+After the last stage, the walkthrough hashes its world and compares it with a copy advanced by the real `step()`. The hashes match, so what you stepped through is what the game does.^[`step.ts` exports each stage function, and the walkthrough imports them from there. `index.ts`, the sim's public surface, still exports only `step()`.]
 
 Two details are easy to miss. `collide` only marks a body dead by setting `hp = -1`, and nothing leaves the pool until `despawn`, so slot numbers stay valid inside the collision loops. Every result also goes into the `events` array as a plain object, such as `{ e: 'destroy', target, x, y }`. Code outside the sim learns what happened only from that array.
 

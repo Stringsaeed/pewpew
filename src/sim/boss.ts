@@ -9,7 +9,7 @@ import { add } from './world';
 import type { Boss, SimEvent, World } from './world';
 
 /** The last phase whose fraction is at or above the remaining health. Derived from hp, never stored. */
-function bossPhase(spec: BossSpec, hp: number): BossPhase {
+export function bossPhase(spec: BossSpec, hp: number): BossPhase {
   const health = hp / spec.hp;
   let phase: BossPhase = spec.phases[0];
   for (const ph of spec.phases) if (ph.atHpFraction >= health) phase = ph;
