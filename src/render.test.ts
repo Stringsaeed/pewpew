@@ -4,7 +4,7 @@ import { describe, test } from 'node:test';
 import { greedyBot } from './bot';
 import { Kind } from './levels';
 import { MESHES, type MeshId } from './render/meshes.gen';
-import { MAX_PIXEL_RATIO, LOOK, createRenderer } from './render';
+import { CLOCK_PERIOD, MAX_PIXEL_RATIO, LOOK, SAMPLE_COUNT, createRenderer } from './render';
 import { STEP, createWorld, step, type SimEvent, type World } from './sim';
 import { add } from './sim/world';
 import { createFakeGpu, type FakeGpu, type GpuCall } from './testing/fake-gpu';
@@ -31,10 +31,14 @@ describe('renderer', { concurrency: false }, () => {
     assert.equal(gpu.canvas.width, 300);
     assert.equal(gpu.canvas.height, 150);
     assert.equal(gpu.configures, 1);
-    const texture = gpu.calls.find((call) => call.op === 'createTexture');
-    assert.deepEqual(texture, { op: 'createTexture', width: 300, height: 150, format: 'depth24plus' });
+    const textures = gpu.calls.filter((call) => call.op === 'createTexture');
+    assert.deepEqual(textures, [
+      { op: 'createTexture', width: 300, height: 150, format: 'bgra8unorm', sampleCount: SAMPLE_COUNT },
+      { op: 'createTexture', width: 300, height: 150, format: 'depth24plus', sampleCount: SAMPLE_COUNT },
+    ]);
     renderer.dispose();
     assert.ok(gpu.buffers.length > 0 && gpu.buffers.every((buffer) => buffer.destroyed));
+    assert.ok(gpu.textures.length === 2 && gpu.textures.every((texture) => texture.destroyed));
   });
 
   test('a zero layout draws nothing', () => {
@@ -213,6 +217,45 @@ describe('renderer', { concurrency: false }, () => {
         assert.ok(frame.some((call) => call.op === 'draw' && call.vertexCount === 4 && call.instanceCount > 20));
       }
       renderer.dispose();
+    } finally {
+      restore();
+    }
+  });
+
+  test('the clock wraps at CLOCK_PERIOD and everything it drives lands on the same phase', () => {
+    const restore = installRandom(13);
+    try {
+      // The same world drawn half a second into a session and half a second after the wrap must pack identical
+      // mesh instances: the pickup spins on the clock, and the boss sways on it.
+      const meshAt = (first: number): { floats: number[]; time: number } => {
+        const gpu = createFakeGpu();
+        const renderer = createRenderer(gpu.device, gpu.context, 'bgra8unorm', MAX_PIXEL_RATIO);
+        const world = createWorld(10);
+        reachBoss(world);
+        add(world, Kind.Crystal, 1, world.player.y + 6, 0, 0);
+        if (first > 0) renderer.frame(world, [], 0, first);
+        const mark = gpu.writes.length;
+        renderer.frame(world, [], 0, 0.5);
+        const calls = gpu.calls.filter((call) => call.op === 'writeBuffer');
+        let floats: number[] = [];
+        let time = -1;
+        gpu.writes.slice(mark).forEach((bytes, k) => {
+          const call = calls[mark + k]!;
+          const f = Array.from(new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4));
+          if (call.op === 'writeBuffer' && call.buffer === gpu.buffers[2]!.id) floats = f;
+          if (call.op === 'writeBuffer' && call.buffer === gpu.buffers[4]!.id) time = f[35]!;
+        });
+        renderer.dispose();
+        return { floats, time };
+      };
+      const fresh = meshAt(0);
+      const wrapped = meshAt(CLOCK_PERIOD);
+      assert.ok(fresh.floats.length > 0);
+      assert.equal(wrapped.time, fresh.time);
+      assert.equal(wrapped.floats.length, fresh.floats.length);
+      for (let i = 0; i < fresh.floats.length; i++) {
+        assert.ok(Math.abs(wrapped.floats[i]! - fresh.floats[i]!) < 1e-5, `instance float ${i}: ${wrapped.floats[i]} vs ${fresh.floats[i]}`);
+      }
     } finally {
       restore();
     }

@@ -26,7 +26,8 @@ const MINE_PULSE = 0.55;
 /** Pickups spin at this rate (rad/s) and sit in a halo: matte means rock, hot means threat, haloed means take it. */
 const PICKUP_SPIN = 3.2;
 const HALO_SCALE = 3.1;
-const HALO_HZ = 2;
+/** Pickup halo pulse in rad/s (about 2 Hz). Every rate on the renderer clock is a multiple of 0.05, see CLOCK_PERIOD. */
+const HALO_PULSE = 12.6;
 /** Glow quads sit in the plane of the bodies. The hole's halo goes behind the whole accretion disc, so the core stays black and the disc takes no seam. */
 const HALO_Z = -2.6;
 /** In front of every mesh, so the flash covers the near half of the accretion disc too. */
@@ -193,7 +194,7 @@ export function createBatch(): MeshBatch {
       const y = bodies.py[i] + (bodies.y[i] - bodies.py[i]) * alpha;
       const halo = haloOf[k];
       if (halo > 0) {
-        const pulse = 0.5 + 0.15 * Math.sin(time * HALO_HZ * 6.2832 + x);
+        const pulse = 0.5 + 0.15 * Math.sin(time * HALO_PULSE + x);
         putGlow(x, y, halo, halo, burst[k * 3], burst[k * 3 + 1], burst[k * 3 + 2], pulse);
       }
       // A body that has taken a shot glows hotter the closer it is to dying, and flashes white when a shot lands on it.

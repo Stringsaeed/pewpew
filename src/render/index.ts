@@ -41,6 +41,17 @@ export interface Renderer {
 }
 
 export const MAX_PIXEL_RATIO = 2;
+/**
+ * Every pipeline renders into a 4x multisampled color texture that resolves into the swapchain, with a matching
+ * multisampled depth buffer. Phone GPUs resolve on-tile, so the edges of every mesh go smooth for almost no bandwidth.
+ */
+export const SAMPLE_COUNT = 4;
+/**
+ * The renderer clock wraps here. Phone GPUs approximate sin badly for large arguments, so `u.time` must stay small.
+ * The period is 20 turns, so every rate that multiplies the clock (CPU or shader) must be a multiple of 0.05 rad/s;
+ * then rate * period is a whole number of turns and nothing jumps at the wrap.
+ */
+export const CLOCK_PERIOD = 20 * 2 * Math.PI;
 const BUBBLE_MESH = MESH_IDS.indexOf('bubble');
 const VERTEX_BYTES = MESH_VERTEX_LAYOUT.arrayStride;
 const INSTANCE_BYTES = INSTANCE_LAYOUT.arrayStride;
@@ -96,6 +107,7 @@ export function createRenderer(
   const bind = device.createBindGroup({ layout: bindLayout, entries: [{ binding: 0, resource: { buffer: uniformBuf } }] });
   const DEPTH: GPUTextureFormat = 'depth24plus';
   const additive: GPUBlendComponent = { srcFactor: 'one', dstFactor: 'one', operation: 'add' };
+  const multisample: GPUMultisampleState = { count: SAMPLE_COUNT };
 
   // WGSL generated at build time from the TypeGPU shaders (scripts/gen-shaders.ts). Each module holds one vertex and
   // one fragment entry point, so the pipelines leave entryPoint to WebGPU.
@@ -108,6 +120,7 @@ export function createRenderer(
     vertex: { module: starsModule },
     fragment: { module: starsModule, targets: [{ format }] },
     depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'always' },
+    multisample,
   });
   const meshBuffers = [MESH_VERTEX_LAYOUT, INSTANCE_LAYOUT];
   const meshPipe = device.createRenderPipeline({
@@ -116,6 +129,7 @@ export function createRenderer(
     fragment: { module: meshModule, targets: [{ format }] },
     primitive: { topology: 'triangle-list', cullMode: 'back' },
     depthStencil: { format: DEPTH, depthWriteEnabled: true, depthCompare: 'less' },
+    multisample,
   });
   // The shield bubble: the same vertex layout, its own shader, additive, no depth write, drawn after everything else.
   const bubblePipe = device.createRenderPipeline({
@@ -124,6 +138,7 @@ export function createRenderer(
     fragment: { module: bubbleModule, targets: [{ format, blend: { color: additive, alpha: additive } }] },
     primitive: { topology: 'triangle-list', cullMode: 'back' },
     depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'less' },
+    multisample,
   });
   const glowPipe = device.createRenderPipeline({
     layout,
@@ -131,21 +146,25 @@ export function createRenderer(
     fragment: { module: glowModule, targets: [{ format, blend: { color: additive, alpha: additive } }] },
     primitive: { topology: 'triangle-strip' },
     depthStencil: { format: DEPTH, depthWriteEnabled: false, depthCompare: 'less' },
+    multisample,
   });
 
   const pool = createPool();
   const fx = createFx();
   STARTUP.renderer = performance.now() - started;
 
+  let color: GPUTexture | null = null;
   let depth: GPUTexture | null = null;
   let width = 0;
   let height = 0;
   let time = 0;
   let menuY = 0;
+  // The multisampled texture is only ever resolved, so its own samples are discarded after the pass.
   const colorAttachment: GPURenderPassColorAttachment = {
     view: undefined as unknown as GPUTextureView,
+    resolveTarget: undefined as unknown as GPUTextureView,
     clearValue: { r: 0.01, g: 0.01, b: 0.03, a: 1 },
-    loadOp: 'clear', storeOp: 'store',
+    loadOp: 'clear', storeOp: 'discard',
   };
   const depthAttachment: GPURenderPassDepthStencilAttachment = {
     view: undefined as unknown as GPUTextureView, depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: 'discard',
@@ -160,8 +179,12 @@ export function createRenderer(
     canvas.width = w;
     canvas.height = h;
     ctx.configure({ device, format, alphaMode: 'opaque' });
+    color?.destroy();
     depth?.destroy();
-    depth = device.createTexture({ size: [w, h], format: DEPTH, usage: GPUTextureUsage.RENDER_ATTACHMENT });
+    const usage = GPUTextureUsage.RENDER_ATTACHMENT;
+    color = device.createTexture({ size: [w, h], format, usage, sampleCount: SAMPLE_COUNT });
+    depth = device.createTexture({ size: [w, h], format: DEPTH, usage, sampleCount: SAMPLE_COUNT });
+    colorAttachment.view = color.createView();
     depthAttachment.view = depth.createView();
     width = w;
     height = h;
@@ -173,6 +196,7 @@ export function createRenderer(
     const timing = FRAME_TIMING;
     let mark = timing.on ? performance.now() : 0;
     time += dt;
+    if (time >= CLOCK_PERIOD) time -= CLOCK_PERIOD;
     // A new run, or the menu, ends the hold: the shell never says so.
     if (fx.hold !== HOLD_NONE && (!world || (world.phase.p !== 'won' && world.phase.p !== 'lost'))) fx.hold = HOLD_NONE;
     fx.flash = Math.max(0, fx.flash - dt);
@@ -221,7 +245,7 @@ export function createRenderer(
     if (batch.glowCount > 0) device.queue.writeBuffer(glowInstBuf, 0, batch.glowInst, 0, batch.glowCount * INSTANCE_FLOATS);
 
     if (timing.on) mark = lap(timing, 'pack', mark);
-    colorAttachment.view = ctx.getCurrentTexture().createView();
+    colorAttachment.resolveTarget = ctx.getCurrentTexture().createView();
     if (timing.on) mark = lap(timing, 'acquire', mark);
     const encoder = device.createCommandEncoder();
     const pass = encoder.beginRenderPass(passDesc);
@@ -274,6 +298,7 @@ export function createRenderer(
     },
     dispose() {
       for (const b of [vertexBuf, indexBuf, meshInstBuf, glowInstBuf, uniformBuf]) b.destroy();
+      color?.destroy();
       depth?.destroy();
     },
   };

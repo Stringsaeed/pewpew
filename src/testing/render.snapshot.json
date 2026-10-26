@@ -56,7 +56,15 @@
           "op": "createTexture",
           "width": 780,
           "height": 1688,
-          "format": "depth24plus"
+          "format": "bgra8unorm",
+          "sampleCount": 4
+        },
+        {
+          "op": "createTexture",
+          "width": 780,
+          "height": 1688,
+          "format": "depth24plus",
+          "sampleCount": 4
         },
         {
           "op": "writeBuffer",
@@ -526,7 +534,15 @@
           "op": "createTexture",
           "width": 780,
           "height": 1688,
-          "format": "depth24plus"
+          "format": "bgra8unorm",
+          "sampleCount": 4
+        },
+        {
+          "op": "createTexture",
+          "width": 780,
+          "height": 1688,
+          "format": "depth24plus",
+          "sampleCount": 4
         },
         {
           "op": "writeBuffer",

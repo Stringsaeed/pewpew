@@ -39,9 +39,15 @@ const KEY_LIGHT = std.normalize(d.vec3f(-0.45, 0.55, 0.7));
 /** Toward the camera from a body, along the camera's 16 degree pitch. Rims and the bubble's fresnel use it. */
 const TOWARD_CAMERA = d.vec3f(0, -0.276, 0.961);
 
+/**
+ * Both hashes avoid sin: Adreno and Mali approximate it for large arguments, and the classic sin(dot(p, k)) hash
+ * feeds it tens of thousands, which turned the nebula into flat rectangles on real Android phones.
+ */
 const hash21 = (p: d.v2f): number => {
   'use gpu';
-  return std.fract(std.sin(std.dot(p, d.vec2f(127.1, 311.7))) * 43758.5453);
+  let q = std.fract(d.vec3f(p.x, p.y, p.x).mul(0.1031));
+  q = q.add(std.dot(q, q.yzx.add(33.33)));
+  return std.fract((q.x + q.y) * q.z);
 };
 
 const hash3 = (p: d.v2f): d.v3f => {
@@ -122,7 +128,8 @@ const starsFragment = tgpu.fragmentFn({ in: { pos: d.builtin.position }, out: d.
     const off = std.fract(f).sub(0.5).sub(h.xy.sub(0.5).mul(0.7));
     const dist = std.length(d.vec2f(off.x, off.y / stretch)) * cell;
     const r = unit * (0.05 + 0.05 * h.z + fl * 0.025);
-    const twinkle = 0.7 + 0.3 * std.sin(u.time * (1 + 3 * h.x) + 6.28 * h.y);
+    // The rate is a multiple of 0.05 rad/s (1 to 3.95), so the clock wrap at CLOCK_PERIOD lands on the same phase.
+    const twinkle = 0.7 + 0.3 * std.sin(u.time * (1 + std.floor(h.x * 60) * 0.05) + 6.28 * h.y);
     const lit = (1 - std.smoothstep(0, r, dist)) * std.step(0.62, h.z) * twinkle / std.sqrt(stretch);
     col = col.add(std.mix(d.vec3f(0.55, 0.7, 1), d.vec3f(1, 0.7, 0.95), h.x).mul(lit * (0.45 + 0.3 * fl)));
   }
