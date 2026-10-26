@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, PixelRatio } from 'react-native';
+import { AccessibilityInfo, PixelRatio, Platform } from 'react-native';
 import { useCanvasRef, type NativeCanvas } from 'react-native-webgpu';
 import { MAX_PIXEL_RATIO, createRenderer, type Renderer } from '../render';
 import { advance, type Loop, type Sinks } from './loop';
 
 type CanvasRef = ReturnType<typeof useCanvasRef>;
+const ANDROID_MAX_PIXEL_RATIO = 3;
 /** Dev-only wrapper around one frame. Absent in release, so the clock never imports qa. */
 export type FrameSample = (now: number, tick: (now: number) => void) => void;
 
 /**
  * Owns the adapter, the device, the rAF clock, and the renderer.
- * The pixel ratio is read once, here, when the renderer is created.
+ * The pixel ratio is read once, here, when the renderer is created. iOS keeps the 2x cap that the iPhone benchmarks
+ * were taken at. Android renders at the screen's own density up to 3x: its TextureView stretches a smaller frame
+ * with a bilinear filter, and most Android phones sit between 2.6x and 3.5x, so the stretch smeared every edge.
  * A zero-size canvas retries on the next frame instead of configuring.
  * Also subscribes to Reduce Motion and returns that flag for the screen tree.
  */
@@ -63,7 +66,7 @@ export function useGpu(canvasRef: CanvasRef, loop: Loop, sinks: Sinks, sample: F
         const canvas = c?.canvas as unknown as NativeCanvas | undefined;
         if (!c || !canvas || canvas.clientWidth === 0 || canvas.clientHeight === 0 || !device) return;
         ctx = c;
-        renderer = createRenderer(device, ctx, format, Math.min(PixelRatio.get(), MAX_PIXEL_RATIO));
+        renderer = createRenderer(device, ctx, format, Math.min(PixelRatio.get(), Platform.OS === 'android' ? ANDROID_MAX_PIXEL_RATIO : MAX_PIXEL_RATIO));
         rendererRef.current = renderer;
         renderer.setReduceMotion(reduceRef.current);
         loop.last = now;

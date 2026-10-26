@@ -3,7 +3,7 @@
 export type GpuCall =
   | { op: 'createBuffer'; buffer: number; size: number }
   | { op: 'writeBuffer'; buffer: number; byteLength: number }
-  | { op: 'createTexture'; width: number; height: number; format: string }
+  | { op: 'createTexture'; width: number; height: number; format: string; sampleCount: number }
   | { op: 'setPipeline'; pipeline: number }
   | { op: 'setBindGroup'; index: number }
   | { op: 'setVertexBuffer'; slot: number; buffer: number; offset: number }
@@ -139,7 +139,7 @@ export function createFakeGpu(size: { clientWidth: number; clientHeight: number 
         createView() { return {}; },
       };
       textures.push(texture);
-      calls.push({ op: 'createTexture', width, height, format: desc.format });
+      calls.push({ op: 'createTexture', width, height, format: desc.format, sampleCount: desc.sampleCount ?? 1 });
       return texture as unknown as GPUTexture;
     },
     createBindGroupLayout(): GPUBindGroupLayout { return {} as GPUBindGroupLayout; },
